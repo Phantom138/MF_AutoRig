@@ -30,21 +30,7 @@ JOINT_CURVE = [1, [(0, 1, 0), (0, 0.92388000000000003, 0.382683), (0, 0.70710700
 
 ARROW = [1, [(-2, 0, 0), (1, 0, 1), (1, 0, -1), (-2, 0, 0), (1, 1, 0), (1, 0, 0), (1, -1, 0), (-2, 0, 0)], [0, 1, 2, 3, 4, 5, 6, 7]]
 
-def create_fk_joints(joints):
-    jnts = cmds.duplicate(joints, renameChildren=True)
-    fk_joints = []
-    for jnt in jnts:
-        # Names them by removing the skin suffix and the jnt suffix
-        if skin in jnt:
-            base_name = jnt[:-1].replace(skin + jnt_sff, '')
-        elif end_sff in jnt:
-            base_name = jnt[:-1].replace(end_sff + jnt_sff, '')
-        fk_name = base_name + fk_sff + jnt_sff
-        cmds.rename(jnt, fk_name)
-        fk_joints.append(fk_name)
-    return fk_joints
-
-def pm_create_fk_joint(joints):
+def create_fk_joint(joints):
     # Duplicates input joints
     jnts = pm.duplicate(joints, renameChildren=True)
     fk_joints = []
