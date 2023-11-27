@@ -30,7 +30,7 @@ JOINT_CURVE = [1, [(0, 1, 0), (0, 0.92388000000000003, 0.382683), (0, 0.70710700
 
 ARROW = [1, [(-2, 0, 0), (1, 0, 1), (1, 0, -1), (-2, 0, 0), (1, 1, 0), (1, 0, 0), (1, -1, 0), (-2, 0, 0)], [0, 1, 2, 3, 4, 5, 6, 7]]
 
-def create_fk_joint(joints):
+def create_fk_joints(joints):
     # Duplicates input joints
     jnts = pm.duplicate(joints, renameChildren=True)
     fk_joints = []
