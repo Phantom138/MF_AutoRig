@@ -13,12 +13,15 @@ fk_sff = '_fk'
 pole_sff = '_pole'
 attr_sff = '_attr'
 
-CUBE = [1, [(1, 1, 1), (1, 1, -1), (-1, 1, -1), (-1, 1, 1), (1, 1, 1), (1, -1, 1), (1, -1, -1), (1, 1, -1), (-1, 1, -1),
+
+# CTRL Shapes structure: Degree, Points, Knots
+CTRL_SHAPES = dict(
+    cube = [1, [(1, 1, 1), (1, 1, -1), (-1, 1, -1), (-1, 1, 1), (1, 1, 1), (1, -1, 1), (1, -1, -1), (1, 1, -1), (-1, 1, -1),
             (-1, -1, -1), (1, -1, -1),
             (-1, -1, -1), (-1, -1, 1), (-1, 1, 1), (-1, -1, 1), (1, -1, 1)],
-        [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]]
+            [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]],
 
-JOINT_CURVE = [1, [(0, 1, 0), (0, 0.92388000000000003, 0.382683), (0, 0.70710700000000004, 0.70710700000000004),
+    joint_curve = [1, [(0, 1, 0), (0, 0.92388000000000003, 0.382683), (0, 0.70710700000000004, 0.70710700000000004),
                    (0, 0.382683, 0.92388000000000003), (0, 0, 1), (0, -0.382683, 0.92388000000000003),
                    (0, -0.70710700000000004, 0.70710700000000004), (0, -0.92388000000000003, 0.382683), (0, -1, 0),
                    (0, -0.92388000000000003, -0.382683), (0, -0.70710700000000004, -0.70710700000000004),
@@ -40,14 +43,16 @@ JOINT_CURVE = [1, [(0, 1, 0), (0, 0.92388000000000003, 0.382683), (0, 0.70710700
                    (0.92388000000000003, 0, -0.382683), (0.70710700000000004, 0, -0.70710700000000004),
                    (0.382683, 0, -0.92388000000000003), (0, 0, -1)],
                [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27,
-                28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52]]
+                28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52]],
 
-ARROW = [1, [(-2, 0, 0), (1, 0, 1), (1, 0, -1), (-2, 0, 0), (1, 1, 0), (1, 0, 0), (1, -1, 0), (-2, 0, 0)],
-         [0, 1, 2, 3, 4, 5, 6, 7]]
+    arrow = [1, [(-2, 0, 0), (1, 0, 1), (1, 0, -1), (-2, 0, 0), (1, 1, 0), (1, 0, 0), (1, -1, 0), (-2, 0, 0)],
+            [0, 1, 2, 3, 4, 5, 6, 7]]
+)
 
-def get_overall_scale(geo):
+CTRL_SCALE = 5
 
-
+for shape in CTRL_SHAPES:
+    CTRL_SHAPES[shape][1] = [(x * CTRL_SCALE, y * CTRL_SCALE, z * CTRL_SCALE) for x, y, z in CTRL_SHAPES[shape][1]]
 
 def create_fk_joints(joints):
     # Duplicates input joints
@@ -176,7 +181,7 @@ def create_ik_joints(joints):
 
     # Create group and controller for ik
     grp = pm.createNode('transform', name=first_jnt_name + ik_sff + ctrl_sff + grp_sff)
-    ctrl = pm.curve(degree=CUBE[0], point=CUBE[1], knot=CUBE[2], name=first_jnt_name + ik_sff + ctrl_sff)
+    ctrl = pm.curve(degree=CTRL_SHAPES['cube'][0], point=CTRL_SHAPES['cube'][1], knot=CTRL_SHAPES['cube'][2], name=first_jnt_name + ik_sff + ctrl_sff)
     pm.parent(ctrl, grp)
     pm.matchTransform(grp, ikHandle, position=True)
 
@@ -187,7 +192,7 @@ def create_ik_joints(joints):
 
     # Create controller and group
     pole_grp = pm.createNode('transform', name=pole_name + grp_sff)
-    pole_ctrl = pm.curve(degree=JOINT_CURVE[0], point=JOINT_CURVE[1], knot=JOINT_CURVE[2], name=pole_name)
+    pole_ctrl = pm.curve(degree=CTRL_SHAPES['joint_curve'][0], point=CTRL_SHAPES['joint_curve'][1], knot=CTRL_SHAPES['joint_curve'][2], name=pole_name)
     pm.parent(pole_ctrl, pole_grp)
 
     # Place it into position
@@ -214,13 +219,11 @@ def create_fkik(joints):
     fk_joints = create_fk_joints(joints)
     print(fk_joints)
     fk_controllers(fk_joints)
-    #ik_joints = create_ik_joints(joints)
+    ik_joints = create_ik_joints(joints)
     #fkik_constraints = constraint_fkik(joints, ik_joints, fk_joints)
     # fkik_switch(joints, fkik_constraints)
 
 
-#selection = pm.selected()
-#create_fkik(selection)
+selection = pm.selected()
+create_fkik(selection)
 
-ARROW *= 3
-pole_ctrl = pm.curve(degree=ARROW[0], point=ARROW[1], knot=ARROW[2])
