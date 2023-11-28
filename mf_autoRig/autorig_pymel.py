@@ -3,10 +3,9 @@ import pymel.core.datatypes as dt
 import maya.cmds as cmds
 import maya.api.OpenMaya as om
 
-
-grp_sff = '_GRP'
-ctrl_sff = '_CTRL'
-jnt_sff = '_JNT'
+grp_sff = '_grp'
+ctrl_sff = '_ctrl'
+jnt_sff = '_jnt'
 end_sff = '_end'
 skin = '_skin'
 ik_sff = '_ik'
@@ -14,55 +13,75 @@ fk_sff = '_fk'
 pole_sff = '_pole'
 attr_sff = '_attr'
 
-CUBE = [1, [(1, 1, 1), (1, 1, -1), (-1, 1, -1), (-1, 1, 1), (1, 1, 1), (1, -1, 1), (1, -1, -1), (1, 1, -1), (-1, 1, -1), (-1, -1, -1), (1, -1, -1),
-            (-1, -1, -1), (-1, -1, 1), (-1, 1, 1), (-1, -1, 1), (1, -1, 1)], [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]]
+CUBE = [1, [(1, 1, 1), (1, 1, -1), (-1, 1, -1), (-1, 1, 1), (1, 1, 1), (1, -1, 1), (1, -1, -1), (1, 1, -1), (-1, 1, -1),
+            (-1, -1, -1), (1, -1, -1),
+            (-1, -1, -1), (-1, -1, 1), (-1, 1, 1), (-1, -1, 1), (1, -1, 1)],
+        [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]]
 
-JOINT_CURVE = [1, [(0, 1, 0), (0, 0.92388000000000003, 0.382683), (0, 0.70710700000000004, 0.70710700000000004), (0, 0.382683, 0.92388000000000003), (0, 0, 1), (0, -0.382683, 0.92388000000000003),
-        (0, -0.70710700000000004, 0.70710700000000004), (0, -0.92388000000000003, 0.382683), (0, -1, 0), (0, -0.92388000000000003, -0.382683),(0, -0.70710700000000004, -0.70710700000000004),(0, -0.382683, -0.92388000000000003),
-        (0, 0, -1), (0, 0.382683, -0.92388000000000003), (0, 0.70710700000000004, -0.70710700000000004), (0, 0.92388000000000003, -0.382683), (0, 1, 0), (0.382683, 0.92388000000000003, 0),
-        (0.70710700000000004, 0.70710700000000004, 0), (0.92388000000000003, 0.382683, 0), (1, 0, 0), (0.92388000000000003, -0.382683, 0), (0.70710700000000004, -0.70710700000000004, 0),
-        (0.382683, -0.92388000000000003, 0), (0, -1, 0), (-0.382683, -0.92388000000000003, 0), (-0.70710700000000004, -0.70710700000000004, 0), (-0.92388000000000003, -0.382683, 0),
-        (-1, 0, 0), (-0.92388000000000003, 0.382683, 0), (-0.70710700000000004, 0.70710700000000004, 0), (-0.382683, 0.92388000000000003, 0), (0, 1, 0), (0, 0.92388000000000003, -0.382683),
-        (0, 0.70710700000000004, -0.70710700000000004),(0, 0.382683, -0.92388000000000003), (0, 0, -1), (-0.382683, 0, -0.92388000000000003), (-0.70710700000000004, 0, -0.70710700000000004),
-        (-0.92388000000000003, 0, -0.382683), (-1, 0, 0), (-0.92388000000000003, 0, 0.382683), (-0.70710700000000004, 0, 0.70710700000000004), (-0.382683, 0, 0.92388000000000003), (0, 0, 1), (0.382683, 0, 0.92388000000000003),
-        (0.70710700000000004, 0, 0.70710700000000004),(0.92388000000000003, 0, 0.382683), (1, 0, 0), (0.92388000000000003, 0, -0.382683), (0.70710700000000004, 0, -0.70710700000000004),(0.382683, 0, -0.92388000000000003), (0, 0, -1)],
-        [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52]]
+JOINT_CURVE = [1, [(0, 1, 0), (0, 0.92388000000000003, 0.382683), (0, 0.70710700000000004, 0.70710700000000004),
+                   (0, 0.382683, 0.92388000000000003), (0, 0, 1), (0, -0.382683, 0.92388000000000003),
+                   (0, -0.70710700000000004, 0.70710700000000004), (0, -0.92388000000000003, 0.382683), (0, -1, 0),
+                   (0, -0.92388000000000003, -0.382683), (0, -0.70710700000000004, -0.70710700000000004),
+                   (0, -0.382683, -0.92388000000000003),
+                   (0, 0, -1), (0, 0.382683, -0.92388000000000003), (0, 0.70710700000000004, -0.70710700000000004),
+                   (0, 0.92388000000000003, -0.382683), (0, 1, 0), (0.382683, 0.92388000000000003, 0),
+                   (0.70710700000000004, 0.70710700000000004, 0), (0.92388000000000003, 0.382683, 0), (1, 0, 0),
+                   (0.92388000000000003, -0.382683, 0), (0.70710700000000004, -0.70710700000000004, 0),
+                   (0.382683, -0.92388000000000003, 0), (0, -1, 0), (-0.382683, -0.92388000000000003, 0),
+                   (-0.70710700000000004, -0.70710700000000004, 0), (-0.92388000000000003, -0.382683, 0),
+                   (-1, 0, 0), (-0.92388000000000003, 0.382683, 0), (-0.70710700000000004, 0.70710700000000004, 0),
+                   (-0.382683, 0.92388000000000003, 0), (0, 1, 0), (0, 0.92388000000000003, -0.382683),
+                   (0, 0.70710700000000004, -0.70710700000000004), (0, 0.382683, -0.92388000000000003), (0, 0, -1),
+                   (-0.382683, 0, -0.92388000000000003), (-0.70710700000000004, 0, -0.70710700000000004),
+                   (-0.92388000000000003, 0, -0.382683), (-1, 0, 0), (-0.92388000000000003, 0, 0.382683),
+                   (-0.70710700000000004, 0, 0.70710700000000004), (-0.382683, 0, 0.92388000000000003), (0, 0, 1),
+                   (0.382683, 0, 0.92388000000000003),
+                   (0.70710700000000004, 0, 0.70710700000000004), (0.92388000000000003, 0, 0.382683), (1, 0, 0),
+                   (0.92388000000000003, 0, -0.382683), (0.70710700000000004, 0, -0.70710700000000004),
+                   (0.382683, 0, -0.92388000000000003), (0, 0, -1)],
+               [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27,
+                28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52]]
 
-ARROW = [1, [(-2, 0, 0), (1, 0, 1), (1, 0, -1), (-2, 0, 0), (1, 1, 0), (1, 0, 0), (1, -1, 0), (-2, 0, 0)], [0, 1, 2, 3, 4, 5, 6, 7]]
+ARROW = [1, [(-2, 0, 0), (1, 0, 1), (1, 0, -1), (-2, 0, 0), (1, 1, 0), (1, 0, 0), (1, -1, 0), (-2, 0, 0)],
+         [0, 1, 2, 3, 4, 5, 6, 7]]
+
+def get_overall_scale(geo):
+
+
 
 def create_fk_joints(joints):
     # Duplicates input joints
-    jnts = pm.duplicate(joints, renameChildren=True)
-    fk_joints = []
-    for jnt in jnts:
-        # Names them by removing the skin suffix and the jnt suffix
+    fk_joints = pm.duplicate(joints, renameChildren=True)
 
-        if skin in jnt:
-            base_name = jnt[:-1].replace(skin + jnt_sff, '')
-        elif end_sff in jnt:
-            base_name = jnt[:-1].replace(end_sff + jnt_sff, '')
+    for jnt in fk_joints:
+
+        name = jnt.name()
+        # Names them by removing the skin suffix and the jnt suffix
+        if skin in name:
+            base_name = name[:-1].replace(skin + jnt_sff, '')
+        elif end_sff in name:
+            base_name = name[:-1].replace(end_sff + jnt_sff, '')
+
         fk_name = base_name + fk_sff + jnt_sff
         pm.rename(jnt, fk_name)
+    return fk_joints
 
 
 def get_joint_orientation(firstJnt, secondJnt):
     A = pm.xform(firstJnt, worldSpace=True, matrix=True, q=True)
     A_vector = dt.Vector(pm.xform(firstJnt, worldSpace=True, rotatePivot=True, q=True))
-    B_vector = dt.Vector(pm.xform(secondJnt,worldSpace=True, rotatePivot=True, q=True))
-    print(A)
+    B_vector = dt.Vector(pm.xform(secondJnt, worldSpace=True, rotatePivot=True, q=True))
 
     AB = B_vector - A_vector
     AB = AB.normal()
-    print(AB)
     axis = ''
     for i in range(3):
         axis_vector = dt.Vector(A[i * 4], A[i * 4 + 1], A[i * 4 + 2])
         dotP = axis_vector * AB
-        print(dotP)
 
         if axis_vector.isParallel(AB):
             axis = 'xyz'[i]
-            print(axis)
+    print(f'Joint orientation is {axis}')
     if axis:
         return axis
     else:
@@ -80,10 +99,15 @@ def fk_controllers(joints):
         axis = (0, 0, 1)
     else:
         axis = (1, 0, 0)
-    #print(axis)
+    # print(axis)
 
     ctrl_previous = None
-    for jnt in joints:
+    for jnt in joints[:-1]:
+        # Skip end joints
+        if end_sff + jnt_sff in jnt.name():
+            print('DA')
+            continue
+
         # Creates base name by removing the joint suffix
         base_name = jnt.replace(jnt_sff, '')
 
@@ -94,7 +118,7 @@ def fk_controllers(joints):
 
         # Match transforms and parent constrain controller to joint
         pm.matchTransform(grp, jnt)
-        pm.parentConstraint(ctrl, jnt, maintainOffset = True)
+        pm.parentConstraint(ctrl, jnt, maintainOffset=True)
 
         # Parent previous group to the current controller
         if ctrl_previous is not None:
@@ -103,7 +127,6 @@ def fk_controllers(joints):
 
 
 def create_pole_vector(joints):
-    print(joints)
     A = dt.Vector(pm.xform(joints[0], worldSpace=True, rotatePivot=True, q=True))
     B = dt.Vector(pm.xform(joints[1], worldSpace=True, rotatePivot=True, q=True))
     C = dt.Vector(pm.xform(joints[2], worldSpace=True, rotatePivot=True, q=True))
@@ -122,6 +145,7 @@ def create_pole_vector(joints):
     pole = TB * pole_len + T + A
 
     return pole
+
 
 def create_ik_joints(joints):
     if len(joints) > 3:
@@ -163,7 +187,7 @@ def create_ik_joints(joints):
 
     # Create controller and group
     pole_grp = pm.createNode('transform', name=pole_name + grp_sff)
-    pole_ctrl = pm.curve(degree=JOINT_CURVE[0], point=JOINT_CURVE[1], knot=JOINT_CURVE[2], name = pole_name)
+    pole_ctrl = pm.curve(degree=JOINT_CURVE[0], point=JOINT_CURVE[1], knot=JOINT_CURVE[2], name=pole_name)
     pm.parent(pole_ctrl, pole_grp)
 
     # Place it into position
@@ -173,8 +197,8 @@ def create_ik_joints(joints):
 
     return ik_joints
 
-def constraint_fkik(skin_joints, ik_joints, fk_joints):
 
+def constraint_fkik(skin_joints, ik_joints, fk_joints):
     fkik_constraints = []
     if len(skin_joints) is not len(fk_joints) is not len(ik_joints) is not 3:
         pm.error("Ik FK Joints not matching")
@@ -182,19 +206,21 @@ def constraint_fkik(skin_joints, ik_joints, fk_joints):
     for i in range(len(skin_joints)):
         constraint = pm.parentConstraint(ik_joints[i], fk_joints[i], skin_joints[i])
         fkik_constraints.append(constraint)
-        print(pm.listConnections(constraint, destination=True, source=True))
+        # print(pm.listConnections(constraint, destination=True, source=True))
     return fkik_constraints
+
 
 def create_fkik(joints):
     fk_joints = create_fk_joints(joints)
+    print(fk_joints)
     fk_controllers(fk_joints)
-    ik_joints = create_ik_joints(joints)
-    fkik_constraints = constraint_fkik(joints, ik_joints, fk_joints)
-    #fkik_switch(joints, fkik_constraints)
+    #ik_joints = create_ik_joints(joints)
+    #fkik_constraints = constraint_fkik(joints, ik_joints, fk_joints)
+    # fkik_switch(joints, fkik_constraints)
 
 
-selection = pm.selected()
-create_fkik(selection)
+#selection = pm.selected()
+#create_fkik(selection)
 
-
-
+ARROW *= 3
+pole_ctrl = pm.curve(degree=ARROW[0], point=ARROW[1], knot=ARROW[2])

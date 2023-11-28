@@ -2,8 +2,8 @@ import maya.cmds as cmds
 from PySide2 import QtCore, QtWidgets
 from functools import partial
 
-from maya import OpenMayaUI
 import shiboken2
+from maya import OpenMayaUI
 from maya.app.general.mayaMixin import MayaQWidgetDockableMixin
 
 
@@ -69,15 +69,16 @@ class MyWindow(MayaQWidgetDockableMixin, QtWidgets.QDialog):
 
         #Create button for each color
         buttonLayout = QtWidgets.QHBoxLayout(self)
+        buttonLayout.setSpacing(0)
         colors = [[255, 0, 0], [255, 255, 0],[21,203,3], [0,65,153],[44, 219, 210],[219, 0, 193]]
         for color in colors:
             button = QtWidgets.QPushButton()
             button.setGeometry(200, 150, 100, 40)
             # self.button.setStyleSheet(f'background-color: rgb({color[0] * 255},{color[1] * 255},{color[2] * 255})')
-            button.setStyleSheet(f'background-color: rgb({color[0]},{color[1]},{color[2]})')
+            button.setStyleSheet(f'background-color: rgb({color[0]},{color[1]},{color[2]}); border: none; min-height:30px')
             button.clicked.connect(partial(color_selection, color))
             #adds button to layout
-            buttonLayout.addWidget(button)
+            buttonLayout.addWidget(button,)
 
         #Button for disabling color override
         disableButton = QtWidgets.QPushButton("Default Color for Selection")
