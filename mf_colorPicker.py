@@ -29,6 +29,18 @@ def color_selection(color):
         cmds.setAttr(shape + ".overrideColorG", color[1]/255)
         cmds.setAttr(shape + ".overrideColorB", color[2]/255)
 
+def color_outliner(color):
+    selection = cmds.ls(sl=True)
+
+    if len(selection) == 0:
+        cmds.error("Nothing is selected")
+        return
+
+    for sl in selection:
+        cmds.setAttr(sl + ".useOutlinerColor", 1)
+        cmds.setAttr(sl + ".outlinerColorR", color[0]/255)
+        cmds.setAttr(sl + ".outlinerColorG", color[1]/255)
+        cmds.setAttr(sl + ".outlinerColorB", color[2] / 255)
 
 
 def disable_colors():
@@ -40,6 +52,13 @@ def disable_colors():
 
     for shape in shapes:
         cmds.setAttr(shape + '.overrideEnabled', 0) # disables color override
+
+def disable_colors_outliner():
+    selection = cmds.ls(sl=True)
+
+    for sl in selection:
+        cmds.setAttr(sl + '.useOutlinerColor', 0)  # disables color override
+
 
 def get_maya_win():
     win_ptr = OpenMayaUI.MQtUtil.mainWindow()
@@ -76,16 +95,47 @@ class MyWindow(MayaQWidgetDockableMixin, QtWidgets.QDialog):
             button.setGeometry(200, 150, 100, 40)
             # self.button.setStyleSheet(f'background-color: rgb({color[0] * 255},{color[1] * 255},{color[2] * 255})')
             button.setStyleSheet(f'background-color: rgb({color[0]},{color[1]},{color[2]}); border: none; min-height:30px')
-            button.clicked.connect(partial(color_selection, color))
+            #button.clicked.connect(partial(color_selection, color))
+            button.clicked.connect(partial(self.onColorClicked, color))
             #adds button to layout
             buttonLayout.addWidget(button,)
 
+        # Dropdown options
+        dropdown_layout = QtWidgets.QHBoxLayout()
+        label = QtWidgets.QLabel("Set color to:")
+        self.comboBox = QtWidgets.QComboBox()
+        self.comboBox.addItem("Viewport")
+        self.comboBox.addItem("Outliner")
+        self.comboBox.currentIndexChanged.connect(self.on_item_selected)
+        self.color_method = "Viewport"
+
+        dropdown_layout.addWidget(label)
+        dropdown_layout.addWidget(self.comboBox)
+
         #Button for disabling color override
         disableButton = QtWidgets.QPushButton("Default Color for Selection")
-        disableButton.clicked.connect(disable_colors)
+        disableButton.clicked.connect(self.disableColors)
 
+        mainLayout.addLayout(dropdown_layout)
         mainLayout.addLayout(buttonLayout)
         mainLayout.addWidget(disableButton)
+
+
+    def onColorClicked(self, color):
+        if self.color_method == "Viewport":
+            color_selection(color)
+        else:
+            color_outliner(color)
+
+    def on_item_selected(self, index):
+        self.color_method = self.comboBox.currentText()
+        print(f"Selected item: {self.color_method}")
+
+    def disableColors(self):
+        if self.color_method == "Viewport":
+            disable_colors()
+        else:
+            disable_colors_outliner()
 
 mywindow = MyWindow()
 mywindow.show(dockable=True)
