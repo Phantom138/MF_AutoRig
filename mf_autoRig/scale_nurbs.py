@@ -49,9 +49,9 @@ class MyWindow(MayaQWidgetDockableMixin, QtWidgets.QDialog):
 
     def buttonClicked(self):
         increment = float(self.increment_box.text())
-        make_ctrl_bigger(increment)
+        scale_ctrl(increment)
 
-def make_ctrl_bigger(increment):
+def scale_ctrl(increment):
     selection = pm.selected()
     for sl in selection:
         if sl.getShape().type() == 'nurbsCurve':
