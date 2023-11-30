@@ -136,6 +136,7 @@ def fk_controllers(joints):
 
     return fk_ctrls
 
+
 def create_pole_vector(joints):
     A = dt.Vector(pm.xform(joints[0], worldSpace=True, rotatePivot=True, q=True))
     B = dt.Vector(pm.xform(joints[1], worldSpace=True, rotatePivot=True, q=True))
@@ -228,6 +229,7 @@ def ikfk_constraint(skin_joints, ik_joints, fk_joints):
 
     return fkik_constraints
 
+
 def ikfk_switch(ik_ctrls, fk_ctrls, ikfk_constraints, endJnt):
     '''
     Method:
@@ -246,7 +248,7 @@ def ikfk_switch(ik_ctrls, fk_ctrls, ikfk_constraints, endJnt):
     pm.parent(switch_ctrl, switch_grp)
     print(endJnt)
     pm.matchTransform(switch_grp, endJnt)
-    pm.parentConstraint(switch_ctrl, endJnt, maintainOffset=True)
+    pm.parentConstraint(endJnt, switch_grp, maintainOffset=True)
 
     # Add ikfk switch attribute
     pm.addAttr(switch_ctrl, longName="IkFkSwitch", attributeType='float', min=0, max=1, defaultValue=1, keyable=True)
@@ -276,6 +278,7 @@ def ikfk_switch(ik_ctrls, fk_ctrls, ikfk_constraints, endJnt):
         print(fk_ctrls)
         pm.connectAttr(switch_ctrl + '.IkFkSwitch', ctrl+'.visibility')
 
+
 def create_fkik(joints):
     fk_joints = create_fk_joints(joints)
     print(fk_joints)
@@ -284,6 +287,10 @@ def create_fkik(joints):
     ik_joints, ik_ctrls = create_ik_joints(joints)
     fkik_constraints = ikfk_constraint(joints, ik_joints, fk_joints)
     ikfk_switch(ik_ctrls, fk_ctrls, fkik_constraints, joints[-1])
+
+    # Clean-up
+    pm.group(fk_joints[0], ik_joints[0], joints[0], name='R_leg_Joint_Grp')
+
 
 def make_ctrl_bigger(selection):
     for sl in selection:
@@ -296,5 +303,6 @@ def make_ctrl_bigger(selection):
 
 selection = pm.selected()
 
-create_fkik(selection)
+fk_controllers(selection)
+#create_fkik(selection)
 
