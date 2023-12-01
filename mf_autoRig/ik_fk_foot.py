@@ -11,10 +11,10 @@ sel = pm.selected()
 # pm.addAttr(selection, longName="ballRoll", attributeType='float', min=-10, max=10, defaultValue=0, keyable=True)
 #
 print(sel)
-attrName = '.innerBank'
-rotation = '.rotateZ'
+attrName = '.toeSwivel'
+rotation = '.rotateY'
 
-values = [(0, 0), (10, 30), (-10, -30)]
+values = [(0, 0), (10, -30), (-10, 20)]
 for val in values:
     pm.setDrivenKeyframe(sel[1]+rotation, currentDriver=sel[0]+attrName,
                          driverValue=val[0], value=val[1])
