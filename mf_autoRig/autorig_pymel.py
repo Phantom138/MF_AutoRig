@@ -121,7 +121,7 @@ def fk_controllers(joints):
 
         # Create controller and controller group, parenting the two of them
         grp = pm.createNode('transform', name=base_name + ctrl_sff + grp_sff)
-        ctrl = pm.circle(nr=axis, c=(0, 0, 0), radius=CTRL_SCALE, name=base_name + ctrl_sff)
+        ctrl = pm.circle(nr=axis, c=(0, 0, 0), radius=CTRL_SCALE, name=base_name + ctrl_sff, constructionHistory=False)
         pm.parent(ctrl, grp)
 
         # Match transforms and parent constrain controller to joint
@@ -328,16 +328,47 @@ def create_offset_grp(ctrls):
 
 
 def curl_switch(ikfkSwitch, offset_grps):
-    match = re.search('([a-zA-Z]_[a-zA-Z]+)\d*_', offset_grps[0].name())
+    match = re.search('([a-zA-Z]_([a-zA-Z]+))\d*_', offset_grps[0].name())
     base_name = match.group(1)
-
+    finger_name = match.group(2)
     # Create multDoubleLinear
     mult = pm.createNode('multDoubleLinear', name = base_name+'_multDoubleLinear')
-    pm.connectAttr(ikfkSwitch+'.indexCurl', mult + '.input1')
     pm.setAttr(mult + '.input2', -1)
+
+    # Connect attrs based on finger name
+    attr = f'{finger_name}Curl'
+    if ikfkSwitch.hasAttr(attr):
+        pm.connectAttr(ikfkSwitch + '.' + attr, mult + '.input1')
 
     for grp in offset_grps[1:]:
         pm.connectAttr(mult + '.output', grp + '.rotateZ')
+
+
+def spread_switch(ikfkSwitch, offset_grps):
+    values = {
+        'thumb': 21,
+        'index': 17,
+        'middle': 0,
+        'ring': -15,
+        'pinky': -30
+    }
+
+    rotation = '.rotateX'
+    #values = [(0, 0), (10, 25)]
+
+    baseJnt = offset_grps[0]
+    match = re.search('([a-zA-Z]_([a-zA-Z]+))\d*_', baseJnt.name())
+    base_name = match.group(2)
+
+
+    # Set 0 driver key
+    pm.setDrivenKeyframe(baseJnt + rotation, currentDriver=ikfkSwitch+'.spread',
+                     driverValue=0, value=0)
+
+    # Set driver value bassed on value dict
+    pm.setDrivenKeyframe(baseJnt + rotation, currentDriver=ikfkSwitch+'.spread',
+                     driverValue=10, value=values[base_name])
+
 
 selection = pm.selected()
 
@@ -350,10 +381,13 @@ for sl in selection:
 
     # Create ctrls
     ctrls = fk_controllers(joints)
-    print(ctrls)
+    # Create offset grps
     offset_grps = create_offset_grp(ctrls)
-    ikfkSwitch = pm.PyNode('L_arm_ikfkSwitch_ctrl')
+    ikfkSwitch = pm.PyNode('R_arm_ikfkSwitch_ctrl')
+
+    # Curl switch
     curl_switch(ikfkSwitch, offset_grps)
+    spread_switch(ikfkSwitch, offset_grps)
 
 '''
 if(len(selection)==1):
