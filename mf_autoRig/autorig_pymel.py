@@ -51,7 +51,7 @@ CTRL_SHAPES = dict(
             [0, 1, 2, 3, 4, 5, 6, 7]]
 )
 
-CTRL_SCALE = 10
+CTRL_SCALE = 2
 
 for shape in CTRL_SHAPES:
     CTRL_SHAPES[shape][1] = [(x * CTRL_SCALE, y * CTRL_SCALE, z * CTRL_SCALE) for x, y, z in CTRL_SHAPES[shape][1]]
@@ -301,8 +301,67 @@ def make_ctrl_bigger(selection):
             sl.updateCurve()
 
 
+def create_offset_grp(ctrls):
+    colors = [0, 255, 0]
+
+    offset_grps = []
+    for ctl in ctrls:
+        print(ctl)
+        pm.select(clear=True)
+
+        # Create name
+        name = ctl.name()
+        name = name.replace('_ctrl', '')
+        # Create Group
+        grp = pm.group(ctl, name=name + '_offset_grp', relative=False, world=False)
+        # Reset pivot
+        pm.xform(grp, objectSpace=True, pivots=[0, 0, 0])
+
+        offset_grps.append(grp)
+        # Set color
+        pm.setAttr(grp + '.useOutlinerColor', 1)
+        pm.setAttr(grp + ".outlinerColorR", colors[0] / 255)
+        pm.setAttr(grp + ".outlinerColorG", colors[1] / 255)
+        pm.setAttr(grp + ".outlinerColorB", colors[2] / 255)
+
+    return offset_grps
+
+
+def curl_switch(ikfkSwitch, offset_grps):
+    match = re.search('([a-zA-Z]_[a-zA-Z]+)\d*_', offset_grps[0].name())
+    base_name = match.group(1)
+
+    # Create multDoubleLinear
+    mult = pm.createNode('multDoubleLinear', name = base_name+'_multDoubleLinear')
+    pm.connectAttr(ikfkSwitch+'.indexCurl', mult + '.input1')
+    pm.setAttr(mult + '.input2', -1)
+
+    for grp in offset_grps[1:]:
+        pm.connectAttr(mult + '.output', grp + '.rotateZ')
+
 selection = pm.selected()
 
-fk_controllers(selection)
+
+for sl in selection:
+    joints = pm.listRelatives(sl, ad=True)
+    joints.append(sl)
+    joints.reverse()
+    print(joints)
+
+    # Create ctrls
+    ctrls = fk_controllers(joints)
+    print(ctrls)
+    offset_grps = create_offset_grp(ctrls)
+    ikfkSwitch = pm.PyNode('L_arm_ikfkSwitch_ctrl')
+    curl_switch(ikfkSwitch, offset_grps)
+
+'''
+if(len(selection)==1):
+    cmds.error("oly one joint selected")
+else:
+    ctrls = fk_controllers(selection)
+    print(ctrls)
+    create_offset_grp(ctrls)
+'''
 #create_fkik(selection)
 
