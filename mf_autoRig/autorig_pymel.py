@@ -17,13 +17,13 @@ attr_sff = '_attr'
 
 
 # CTRL Shapes structure: Degree, Points, Knots
-CTRL_SHAPES = dict(
-    cube = [1, [(1, 1, 1), (1, 1, -1), (-1, 1, -1), (-1, 1, 1), (1, 1, 1), (1, -1, 1), (1, -1, -1), (1, 1, -1), (-1, 1, -1),
+CTRL_SHAPES = {
+    'cube' : [1, [(1, 1, 1), (1, 1, -1), (-1, 1, -1), (-1, 1, 1), (1, 1, 1), (1, -1, 1), (1, -1, -1), (1, 1, -1), (-1, 1, -1),
             (-1, -1, -1), (1, -1, -1),
             (-1, -1, -1), (-1, -1, 1), (-1, 1, 1), (-1, -1, 1), (1, -1, 1)],
             [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]],
 
-    joint_curve = [1, [(0, 1, 0), (0, 0.92388000000000003, 0.382683), (0, 0.70710700000000004, 0.70710700000000004),
+    "joint_curve" : [1, [(0, 1, 0), (0, 0.92388000000000003, 0.382683), (0, 0.70710700000000004, 0.70710700000000004),
                    (0, 0.382683, 0.92388000000000003), (0, 0, 1), (0, -0.382683, 0.92388000000000003),
                    (0, -0.70710700000000004, 0.70710700000000004), (0, -0.92388000000000003, 0.382683), (0, -1, 0),
                    (0, -0.92388000000000003, -0.382683), (0, -0.70710700000000004, -0.70710700000000004),
@@ -47,11 +47,11 @@ CTRL_SHAPES = dict(
                [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27,
                 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52]],
 
-    arrow = [1, [(-2, 0, 0), (1, 0, 1), (1, 0, -1), (-2, 0, 0), (1, 1, 0), (1, 0, 0), (1, -1, 0), (-2, 0, 0)],
+    "arrow" : [1, [(-2, 0, 0), (1, 0, 1), (1, 0, -1), (-2, 0, 0), (1, 1, 0), (1, 0, 0), (1, -1, 0), (-2, 0, 0)],
             [0, 1, 2, 3, 4, 5, 6, 7]]
-)
+}
 
-CTRL_SCALE = 2
+CTRL_SCALE = 10
 
 for shape in CTRL_SHAPES:
     CTRL_SHAPES[shape][1] = [(x * CTRL_SCALE, y * CTRL_SCALE, z * CTRL_SCALE) for x, y, z in CTRL_SHAPES[shape][1]]
@@ -84,7 +84,6 @@ def get_joint_orientation(firstJnt, secondJnt):
     axis = ''
     for i in range(3):
         axis_vector = dt.Vector(A[i * 4], A[i * 4 + 1], A[i * 4 + 2])
-        dotP = axis_vector * AB
 
         if axis_vector.isParallel(AB):
             axis = 'xyz'[i]
@@ -113,7 +112,7 @@ def fk_controllers(joints):
     for jnt in joints[:-1]:
         # Skip end joints
         if end_sff + jnt_sff in jnt.name():
-            print('DA')
+            print('end joint')
             continue
 
         # Creates base name by removing the joint suffix
@@ -151,14 +150,14 @@ def create_pole_vector(joints):
     TB = AB - T
     # Create pole length
     TB = TB.normal()
-    pole_len = AB.length() + 1
+    pole_len = AB.length() * 2
     # Create pole position
     pole = TB * pole_len + T + A
 
     return pole
 
 
-def create_ik_joints(joints):
+def create_ik(joints):
     if len(joints) > 3:
         pm.error("Only joint chains of 3 supported")
 
@@ -190,7 +189,8 @@ def create_ik_joints(joints):
     grp = pm.createNode('transform', name=first_jnt_name + ik_sff + ctrl_sff + grp_sff)
     ctrl = pm.curve(degree=CTRL_SHAPES['cube'][0], point=CTRL_SHAPES['cube'][1], knot=CTRL_SHAPES['cube'][2], name=first_jnt_name + ik_sff + ctrl_sff)
     pm.parent(ctrl, grp)
-    pm.matchTransform(grp, ikHandle, position=True)
+    # TODO: orient grp the right way
+    pm.matchTransform(grp, ik_joints[-1])
 
     pm.parentConstraint(ctrl, ikHandle[0], maintainOffset=True)
     ik_ctrls.append(ctrl)
@@ -284,7 +284,7 @@ def create_fkik(joints):
     print(fk_joints)
     fk_ctrls = fk_controllers(fk_joints)
     print(fk_ctrls)
-    ik_joints, ik_ctrls = create_ik_joints(joints)
+    ik_joints, ik_ctrls = create_ik(joints)
     fkik_constraints = ikfk_constraint(joints, ik_joints, fk_joints)
     ikfk_switch(ik_ctrls, fk_ctrls, fkik_constraints, joints[-1])
 
@@ -379,6 +379,8 @@ for sl in selection:
     joints.reverse()
     print(joints)
 
+    create_fkik(joints)
+    '''
     # Create ctrls
     ctrls = fk_controllers(joints)
     # Create offset grps
@@ -388,7 +390,7 @@ for sl in selection:
     # Curl switch
     curl_switch(ikfkSwitch, offset_grps)
     spread_switch(ikfkSwitch, offset_grps)
-
+    '''
 '''
 if(len(selection)==1):
     cmds.error("oly one joint selected")
