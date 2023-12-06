@@ -4,7 +4,6 @@ import maya.cmds as cmds
 import maya.api.OpenMaya as om
 import re
 
-
 grp_sff = '_grp'
 ctrl_sff = '_ctrl'
 jnt_sff = '_jnt'
@@ -14,41 +13,44 @@ ik_sff = '_ik'
 fk_sff = '_fk'
 pole_sff = '_pole'
 attr_sff = '_attr'
-
+ikfkSwitch_name = 'IkFkSwitch'
 
 # CTRL Shapes structure: Degree, Points, Knots
 CTRL_SHAPES = {
-    'cube' : [1, [(1, 1, 1), (1, 1, -1), (-1, 1, -1), (-1, 1, 1), (1, 1, 1), (1, -1, 1), (1, -1, -1), (1, 1, -1), (-1, 1, -1),
-            (-1, -1, -1), (1, -1, -1),
-            (-1, -1, -1), (-1, -1, 1), (-1, 1, 1), (-1, -1, 1), (1, -1, 1)],
-            [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]],
+    'cube': [1, [(1, 1, 1), (1, 1, -1), (-1, 1, -1), (-1, 1, 1), (1, 1, 1), (1, -1, 1), (1, -1, -1), (1, 1, -1),
+                 (-1, 1, -1),
+                 (-1, -1, -1), (1, -1, -1),
+                 (-1, -1, -1), (-1, -1, 1), (-1, 1, 1), (-1, -1, 1), (1, -1, 1)],
+             [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]],
 
-    "joint_curve" : [1, [(0, 1, 0), (0, 0.92388000000000003, 0.382683), (0, 0.70710700000000004, 0.70710700000000004),
-                   (0, 0.382683, 0.92388000000000003), (0, 0, 1), (0, -0.382683, 0.92388000000000003),
-                   (0, -0.70710700000000004, 0.70710700000000004), (0, -0.92388000000000003, 0.382683), (0, -1, 0),
-                   (0, -0.92388000000000003, -0.382683), (0, -0.70710700000000004, -0.70710700000000004),
-                   (0, -0.382683, -0.92388000000000003),
-                   (0, 0, -1), (0, 0.382683, -0.92388000000000003), (0, 0.70710700000000004, -0.70710700000000004),
-                   (0, 0.92388000000000003, -0.382683), (0, 1, 0), (0.382683, 0.92388000000000003, 0),
-                   (0.70710700000000004, 0.70710700000000004, 0), (0.92388000000000003, 0.382683, 0), (1, 0, 0),
-                   (0.92388000000000003, -0.382683, 0), (0.70710700000000004, -0.70710700000000004, 0),
-                   (0.382683, -0.92388000000000003, 0), (0, -1, 0), (-0.382683, -0.92388000000000003, 0),
-                   (-0.70710700000000004, -0.70710700000000004, 0), (-0.92388000000000003, -0.382683, 0),
-                   (-1, 0, 0), (-0.92388000000000003, 0.382683, 0), (-0.70710700000000004, 0.70710700000000004, 0),
-                   (-0.382683, 0.92388000000000003, 0), (0, 1, 0), (0, 0.92388000000000003, -0.382683),
-                   (0, 0.70710700000000004, -0.70710700000000004), (0, 0.382683, -0.92388000000000003), (0, 0, -1),
-                   (-0.382683, 0, -0.92388000000000003), (-0.70710700000000004, 0, -0.70710700000000004),
-                   (-0.92388000000000003, 0, -0.382683), (-1, 0, 0), (-0.92388000000000003, 0, 0.382683),
-                   (-0.70710700000000004, 0, 0.70710700000000004), (-0.382683, 0, 0.92388000000000003), (0, 0, 1),
-                   (0.382683, 0, 0.92388000000000003),
-                   (0.70710700000000004, 0, 0.70710700000000004), (0.92388000000000003, 0, 0.382683), (1, 0, 0),
-                   (0.92388000000000003, 0, -0.382683), (0.70710700000000004, 0, -0.70710700000000004),
-                   (0.382683, 0, -0.92388000000000003), (0, 0, -1)],
-               [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27,
-                28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52]],
+    "joint_curve": [1, [(0, 1, 0), (0, 0.92388000000000003, 0.382683), (0, 0.70710700000000004, 0.70710700000000004),
+                        (0, 0.382683, 0.92388000000000003), (0, 0, 1), (0, -0.382683, 0.92388000000000003),
+                        (0, -0.70710700000000004, 0.70710700000000004), (0, -0.92388000000000003, 0.382683), (0, -1, 0),
+                        (0, -0.92388000000000003, -0.382683), (0, -0.70710700000000004, -0.70710700000000004),
+                        (0, -0.382683, -0.92388000000000003),
+                        (0, 0, -1), (0, 0.382683, -0.92388000000000003), (0, 0.70710700000000004, -0.70710700000000004),
+                        (0, 0.92388000000000003, -0.382683), (0, 1, 0), (0.382683, 0.92388000000000003, 0),
+                        (0.70710700000000004, 0.70710700000000004, 0), (0.92388000000000003, 0.382683, 0), (1, 0, 0),
+                        (0.92388000000000003, -0.382683, 0), (0.70710700000000004, -0.70710700000000004, 0),
+                        (0.382683, -0.92388000000000003, 0), (0, -1, 0), (-0.382683, -0.92388000000000003, 0),
+                        (-0.70710700000000004, -0.70710700000000004, 0), (-0.92388000000000003, -0.382683, 0),
+                        (-1, 0, 0), (-0.92388000000000003, 0.382683, 0), (-0.70710700000000004, 0.70710700000000004, 0),
+                        (-0.382683, 0.92388000000000003, 0), (0, 1, 0), (0, 0.92388000000000003, -0.382683),
+                        (0, 0.70710700000000004, -0.70710700000000004), (0, 0.382683, -0.92388000000000003), (0, 0, -1),
+                        (-0.382683, 0, -0.92388000000000003), (-0.70710700000000004, 0, -0.70710700000000004),
+                        (-0.92388000000000003, 0, -0.382683), (-1, 0, 0), (-0.92388000000000003, 0, 0.382683),
+                        (-0.70710700000000004, 0, 0.70710700000000004), (-0.382683, 0, 0.92388000000000003), (0, 0, 1),
+                        (0.382683, 0, 0.92388000000000003),
+                        (0.70710700000000004, 0, 0.70710700000000004), (0.92388000000000003, 0, 0.382683), (1, 0, 0),
+                        (0.92388000000000003, 0, -0.382683), (0.70710700000000004, 0, -0.70710700000000004),
+                        (0.382683, 0, -0.92388000000000003), (0, 0, -1)],
+                    [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26,
+                     27,
+                     28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51,
+                     52]],
 
-    "arrow" : [1, [(-2, 0, 0), (1, 0, 1), (1, 0, -1), (-2, 0, 0), (1, 1, 0), (1, 0, 0), (1, -1, 0), (-2, 0, 0)],
-            [0, 1, 2, 3, 4, 5, 6, 7]]
+    "arrow": [1, [(-2, 0, 0), (1, 0, 1), (1, 0, -1), (-2, 0, 0), (1, 1, 0), (1, 0, 0), (1, -1, 0), (-2, 0, 0)],
+              [0, 1, 2, 3, 4, 5, 6, 7]]
 }
 
 CTRL_SCALE = 10
@@ -56,21 +58,23 @@ CTRL_SCALE = 10
 for shape in CTRL_SHAPES:
     CTRL_SHAPES[shape][1] = [(x * CTRL_SCALE, y * CTRL_SCALE, z * CTRL_SCALE) for x, y, z in CTRL_SHAPES[shape][1]]
 
-def create_fk_joints(joints):
+
+def create_fk_joints(joints, ):
     # Duplicates input joints
     fk_joints = pm.duplicate(joints, renameChildren=True)
 
     for jnt in fk_joints:
-
         name = jnt.name()
-        # Names them by removing the skin suffix and the jnt suffix
+        # Names joints by removing the skin suffix and the jnt suffix
         if skin in name:
             base_name = name[:-1].replace(skin + jnt_sff, '')
-        elif end_sff in name:
+        else:
             base_name = name[:-1].replace(end_sff + jnt_sff, '')
 
         fk_name = base_name + fk_sff + jnt_sff
+
         pm.rename(jnt, fk_name)
+
     return fk_joints
 
 
@@ -105,16 +109,13 @@ def fk_controllers(joints):
         axis = (0, 0, 1)
     else:
         axis = (1, 0, 0)
-    # print(axis)
 
+    # Initialize ctrl list
     fk_ctrls = []
     ctrl_previous = None
-    for jnt in joints[:-1]:
-        # Skip end joints
-        if end_sff + jnt_sff in jnt.name():
-            print('end joint')
-            continue
 
+    # Skips end joints
+    for jnt in joints[:-1]:
         # Creates base name by removing the joint suffix
         base_name = jnt.replace(jnt_sff, '')
 
@@ -131,6 +132,8 @@ def fk_controllers(joints):
         if ctrl_previous is not None:
             pm.parent(grp, ctrl_previous)
         ctrl_previous = ctrl
+
+        # Add ctrl
         fk_ctrls.append(ctrl[0])
 
     return fk_ctrls
@@ -178,29 +181,31 @@ def create_ik(joints):
         ik_joints.append(ik_jnt)
 
     # Get base name of first joint eg. joint1_skin_JNT -> joint1
-    first_jnt_name = joints[0].name().replace(skin + jnt_sff, '')
+    match = re.search('([a-zA-Z]_[a-zA-Z]+)\d*_', joints[-1].name())
+    base_name = match.group(1)
 
     # Create ik handle
-    handle_name = first_jnt_name + '_ikHandle'
+    handle_name = base_name + '_ikHandle'
     ikHandle = pm.ikHandle(name=handle_name, startJoint=ik_joints[0], endEffector=ik_joints[2], solver='ikRPsolver')
 
     ik_ctrls = []
     # Create group and controller for ikHandle
-    grp = pm.createNode('transform', name=first_jnt_name + ik_sff + ctrl_sff + grp_sff)
-    ctrl = pm.curve(degree=CTRL_SHAPES['cube'][0], point=CTRL_SHAPES['cube'][1], knot=CTRL_SHAPES['cube'][2], name=first_jnt_name + ik_sff + ctrl_sff)
+    grp = pm.createNode('transform', name=base_name + ik_sff + ctrl_sff + grp_sff)
+    ctrl = pm.curve(degree=CTRL_SHAPES['cube'][0], point=CTRL_SHAPES['cube'][1], knot=CTRL_SHAPES['cube'][2],
+                    name=base_name + ik_sff + ctrl_sff)
     pm.parent(ctrl, grp)
     # TODO: orient grp the right way
     pm.matchTransform(grp, ik_joints[-1])
 
     pm.parentConstraint(ctrl, ikHandle[0], maintainOffset=True)
-    ik_ctrls.append(ctrl)
 
     # Pole Vector
     pole_name = base_name + pole_sff + ctrl_sff
 
     # Create controller and group
     pole_grp = pm.createNode('transform', name=pole_name + grp_sff)
-    pole_ctrl = pm.curve(degree=CTRL_SHAPES['joint_curve'][0], point=CTRL_SHAPES['joint_curve'][1], knot=CTRL_SHAPES['joint_curve'][2], name=pole_name)
+    pole_ctrl = pm.curve(degree=CTRL_SHAPES['joint_curve'][0], point=CTRL_SHAPES['joint_curve'][1],
+                         knot=CTRL_SHAPES['joint_curve'][2], name=pole_name)
     pm.parent(pole_ctrl, pole_grp)
 
     # Place it into position
@@ -208,9 +213,10 @@ def create_ik(joints):
     pm.move(pole_vector.x, pole_vector.y, pole_vector.z, pole_grp, worldSpace=True)
     pm.poleVectorConstraint(pole_ctrl, ikHandle[0])
 
-    ik_ctrls.append(pole_ctrl)
 
-    return ik_joints, ik_ctrls
+    # Clean-Up
+    ik_ctrl_grp = pm.group(grp, pole_grp, name = base_name + ik_sff + '_Control_Grp')
+    return ik_joints, ik_ctrl_grp
 
 
 def ikfk_constraint(skin_joints, ik_joints, fk_joints):
@@ -218,19 +224,14 @@ def ikfk_constraint(skin_joints, ik_joints, fk_joints):
     if len(skin_joints) is not len(fk_joints) is not len(ik_joints) is not 3:
         pm.error("Ik FK Joints not matching")
 
-
     for i in range(len(skin_joints)):
         constraint = pm.parentConstraint(ik_joints[i], fk_joints[i], skin_joints[i])
         fkik_constraints.append(constraint)
-        # print(pm.listConnections(constraint, destination=True, source=True))
-
-    #grp = pm.createNode('transform', name='test_grp')
-
 
     return fkik_constraints
 
 
-def ikfk_switch(ik_ctrls, fk_ctrls, ikfk_constraints, endJnt):
+def ikfk_switch(ik_ctrls_grp, fk_ctrls, ikfk_constraints, endJnt):
     '''
     Method:
     ik Fk Switch = fk weight
@@ -244,18 +245,18 @@ def ikfk_switch(ik_ctrls, fk_ctrls, ikfk_constraints, endJnt):
 
     # Create switch controller and grp
     switch_grp = pm.createNode('transform', name=name + '_grp')
-    switch_ctrl = pm.curve(degree=CTRL_SHAPES['arrow'][0], point=CTRL_SHAPES['arrow'][1], knot=CTRL_SHAPES['arrow'][2], name=name)
+    switch_ctrl = pm.curve(degree=CTRL_SHAPES['arrow'][0], point=CTRL_SHAPES['arrow'][1], knot=CTRL_SHAPES['arrow'][2],
+                           name=name)
     pm.parent(switch_ctrl, switch_grp)
-    print(endJnt)
     pm.matchTransform(switch_grp, endJnt)
     pm.parentConstraint(endJnt, switch_grp, maintainOffset=True)
 
     # Add ikfk switch attribute
-    pm.addAttr(switch_ctrl, longName="IkFkSwitch", attributeType='float', min=0, max=1, defaultValue=1, keyable=True)
+    pm.addAttr(switch_ctrl, longName=ikfkSwitch_name, attributeType='float', min=0, max=1, defaultValue=1, keyable=True)
 
     # Reverse node
     reverse_sw = pm.createNode('reverse', name=base_name + '_Ik_Fk_reverse')
-    pm.connectAttr(switch_ctrl + '.IkFkSwitch', reverse_sw + '.inputX')
+    pm.connectAttr(switch_ctrl + f'.{ikfkSwitch_name}', reverse_sw + '.inputX')
 
     # For each constraint get the weight names and connect them accrodingly
     for constraint in ikfk_constraints:
@@ -270,26 +271,51 @@ def ikfk_switch(ik_ctrls, fk_ctrls, ikfk_constraints, endJnt):
                 pm.connectAttr(switch_ctrl + '.IkFkSwitch', weight)
 
     # Hide ik or fk ctrls based on switch
-    for ctrl in ik_ctrls:
-        pm.connectAttr(reverse_sw + '.outputX', ctrl+'.visibility')
-
-    for ctrl in fk_ctrls:
-        print(ctrl)
-        print(fk_ctrls)
-        pm.connectAttr(switch_ctrl + '.IkFkSwitch', ctrl+'.visibility')
-
-
-def create_fkik(joints):
-    fk_joints = create_fk_joints(joints)
-    print(fk_joints)
-    fk_ctrls = fk_controllers(fk_joints)
+    pm.connectAttr(reverse_sw + '.outputX', ik_ctrls_grp + '.visibility')
     print(fk_ctrls)
-    ik_joints, ik_ctrls = create_ik(joints)
+    fk_ctrls_grp = fk_ctrls[0].getParent()
+    pm.connectAttr(switch_ctrl + f'.{ikfkSwitch_name}', fk_ctrls_grp + '.visibility')
+
+    return switch_ctrl
+
+def create_fkik(joints, method = None):
+    # FK
+    fk_joints = create_fk_joints(joints)
+    fk_ctrls = fk_controllers(fk_joints)
+    # IK
+    ik_joints, ik_ctrls_grp = create_ik(joints)
+    # Constraints
     fkik_constraints = ikfk_constraint(joints, ik_joints, fk_joints)
-    ikfk_switch(ik_ctrls, fk_ctrls, fkik_constraints, joints[-1])
+    # Switch
+    switch_ctrl = ikfk_switch(ik_ctrls_grp, fk_ctrls, fkik_constraints, joints[-1])
 
     # Clean-up
-    pm.group(fk_joints[0], ik_joints[0], joints[0], name='R_leg_Joint_Grp')
+    # Get Base Name L_arm01_skin_jnt -> L_arm
+    match = re.search('([a-zA-Z]_[a-zA-Z]+)\d*_', joints[0].name())
+    base_name = match.group(1)
+
+    # Group joints only if group isn't already there
+    joint_grp_name = base_name + '_Joint_Grp'
+    skin_jnt_parent = joints[0].getParent(1)
+    if skin_jnt_parent.name() != joint_grp_name:
+        pm.group(fk_joints[0], ik_joints[0], joints[0], name=joint_grp_name)
+
+    # Hide ik fk joints
+    fk_joints[0].visibility.set(0)
+    ik_joints[0].visibility.set(0)
+
+    # Move ik control grp under root_ctrl
+    root_ctrl = pm.PyNode('Root_ctrl')
+    pm.parent(ik_ctrls_grp, root_ctrl)
+
+    switch_ctrl_grp = switch_ctrl.getParent(1)
+    pm.parent(switch_ctrl_grp, root_ctrl)
+
+    # if method == 'arm':
+    #     # Parent fk_ctrl_grp to clavicle
+    # elif method == 'leg':
+    #     # Parent fk_ctrl_grp to hip
+    #     pm.pare
 
 
 def make_ctrl_bigger(selection):
@@ -332,7 +358,7 @@ def curl_switch(ikfkSwitch, offset_grps):
     base_name = match.group(1)
     finger_name = match.group(2)
     # Create multDoubleLinear
-    mult = pm.createNode('multDoubleLinear', name = base_name+'_multDoubleLinear')
+    mult = pm.createNode('multDoubleLinear', name=base_name + '_multDoubleLinear')
     pm.setAttr(mult + '.input2', -1)
 
     # Connect attrs based on finger name
@@ -354,32 +380,35 @@ def spread_switch(ikfkSwitch, offset_grps):
     }
 
     rotation = '.rotateX'
-    #values = [(0, 0), (10, 25)]
+    # values = [(0, 0), (10, 25)]
 
     baseJnt = offset_grps[0]
     match = re.search('([a-zA-Z]_([a-zA-Z]+))\d*_', baseJnt.name())
     base_name = match.group(2)
 
-
     # Set 0 driver key
-    pm.setDrivenKeyframe(baseJnt + rotation, currentDriver=ikfkSwitch+'.spread',
-                     driverValue=0, value=0)
+    pm.setDrivenKeyframe(baseJnt + rotation, currentDriver=ikfkSwitch + '.spread',
+                         driverValue=0, value=0)
 
     # Set driver value bassed on value dict
-    pm.setDrivenKeyframe(baseJnt + rotation, currentDriver=ikfkSwitch+'.spread',
-                     driverValue=10, value=values[base_name])
+    pm.setDrivenKeyframe(baseJnt + rotation, currentDriver=ikfkSwitch + '.spread',
+                         driverValue=10, value=values[base_name])
 
 
 selection = pm.selected()
 
 
-for sl in selection:
-    joints = pm.listRelatives(sl, ad=True)
-    joints.append(sl)
-    joints.reverse()
-    print(joints)
+def ikfk_selectedChain():
+    for sl in selection:
+        joints = pm.listRelatives(sl, ad=True)
+        joints.append(sl)
+        joints.reverse()
 
-    create_fkik(joints)
+        print(f'Creating ikfk for {joints}')
+        # fk_joints = create_fk_joints(joints)
+        # fk_controllers(fk_joints)
+        create_fkik(joints)
+
     '''
     # Create ctrls
     ctrls = fk_controllers(joints)
@@ -391,6 +420,8 @@ for sl in selection:
     curl_switch(ikfkSwitch, offset_grps)
     spread_switch(ikfkSwitch, offset_grps)
     '''
+
+
 '''
 if(len(selection)==1):
     cmds.error("oly one joint selected")
@@ -399,5 +430,10 @@ else:
     print(ctrls)
     create_offset_grp(ctrls)
 '''
-#create_fkik(selection)
+# create_fkik(selection)
 
+ikfk_selectedChain()
+
+#####################
+# ________UI__________
+#####################
