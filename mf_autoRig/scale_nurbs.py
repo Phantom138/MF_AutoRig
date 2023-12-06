@@ -51,6 +51,8 @@ class MyWindow(MayaQWidgetDockableMixin, QtWidgets.QDialog):
         increment = float(self.increment_box.text())
         scale_ctrl(increment)
 
+# TODO: use xform transform instead of set cvs, so that you can undo
+
 def scale_ctrl(increment):
     selection = pm.selected()
     for sl in selection:
