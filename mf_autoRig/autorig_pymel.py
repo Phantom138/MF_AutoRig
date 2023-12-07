@@ -93,22 +93,21 @@ def get_joint_orientation(firstJnt, secondJnt):
             axis = 'xyz'[i]
     print(f'Joint orientation is {axis}')
     if axis:
-        return axis
+        if axis == 'y':
+            return (0, 1, 0)
+        elif axis == 'z':
+            return (0, 0, 1)
+        else:
+            return (1, 0, 0)
     else:
         cmds.warning(f'{firstJnt} is not oriented properly to {secondJnt}, assuming Y axis')
-        return 'y'
+        return (0,1,0)
 
 
 def fk_controllers(joints):
     # Get joint orientation and create circle controller accordingly
     # Ex. if orientation = X, circle is pointing in X
-    orientation = get_joint_orientation(joints[0], joints[1])
-    if orientation == 'y':
-        axis = (0, 1, 0)
-    elif orientation == 'z':
-        axis = (0, 0, 1)
-    else:
-        axis = (1, 0, 0)
+    axis = get_joint_orientation(joints[0], joints[1])
 
     # Initialize ctrl list
     fk_ctrls = []
@@ -311,11 +310,29 @@ def create_fkik(joints, method = None):
     switch_ctrl_grp = switch_ctrl.getParent(1)
     pm.parent(switch_ctrl_grp, root_ctrl)
 
-    # if method == 'arm':
-    #     # Parent fk_ctrl_grp to clavicle
-    # elif method == 'leg':
-    #     # Parent fk_ctrl_grp to hip
-    #     pm.pare
+    # Parent fk ctrls under the right stuff
+    if method == 'arm':
+        # Parent fk_ctrl_grp to clavicle
+        pm.parent(fk_ctrls[0])
+
+class Module():
+    def __init__(self, skin_jnts, type):
+        self.type = type
+        if type == 'arm' or type == 'leg':
+            self.skin_jnts = skin_jnts
+            self.fk_jnts = create_fk_joints(skin_jnts)
+            self.fk_ctrls = fk_controllers(self.fk_jnts)
+            self.ik_jnts, self.ik_ctrls_grp = create_ik(skin_jnts)
+            self.ikfkSwitch = ikfk_switch(self.ik_ctrls_grp, self.fk_ctrls, self.ikfk_constraints, endJnt)
+
+
+def attach_limbs(method):
+    if method == 'arm':
+    # Parent fk_ctrl_grp to clavicle
+        pm.setAttr()
+    elif method == 'leg':
+        # Parent fk_ctrl_grp to hip
+        pm.pare
 
 
 def make_ctrl_bigger(selection):
@@ -395,6 +412,70 @@ def spread_switch(ikfkSwitch, offset_grps):
                          driverValue=10, value=values[base_name])
 
 
+def connect_hand(handJnt, arm_end_jnt, arm_ik_ctrl, arm_fk_ctrl, ikfkController):
+    match = re.search('([a-zA-Z]_([a-zA-Z]+))\d*_', handJnt.name())
+    base_name = match.group(1)
+
+    # Create controller and controller group, parenting the two of them
+    grp = pm.createNode('transform', name=base_name + ctrl_sff + grp_sff)
+    hand_ctrl = pm.circle(nr=(0, 1, 0), c=(0, 0, 0), radius=CTRL_SCALE, name=base_name + ctrl_sff, constructionHistory=False)
+    pm.parent(hand_ctrl, grp)
+
+    # Match transforms and parent constrain controller to joint
+    pm.matchTransform(grp, handJnt)
+    pm.parentConstraint(hand_ctrl, handJnt, maintainOffset=True)
+
+    # Point constraint
+    pm.pointConstraint(arm_end_jnt, hand_ctrl)
+
+    # Create locators
+    # IK locator
+    ik_loc = pm.spaceLocator(name=base_name+'_ik_space_loc')
+    ik_loc_grp = pm.createNode('transform', name = base_name+'_ik_loc_grp')
+    pm.parent(ik_loc, ik_loc_grp)
+    pm.matchTransform(ik_loc_grp, handJnt)
+    pm.parent(ik_loc_grp, arm_ik_ctrl)
+
+    # FK locator
+    fk_loc = pm.spaceLocator(name=base_name+'_fk_space_loc')
+    fk_loc_grp = pm.createNode('transform', name=base_name + '_ik_loc_grp')
+    pm.parent(fk_loc, fk_loc_grp)
+    pm.matchTransform(fk_loc_grp, handJnt)
+    pm.parent(fk_loc_grp, arm_fk_ctrl)
+
+    constraint = pm.orientConstraint(ik_loc, fk_loc, hand_ctrl)
+    weights = constraint.getWeightAliasList()
+    print(weights)
+
+    for weight in weights:
+        ikfkSwitch = pm.Attribute(ikfkController + '.IkFkSwitch')
+        # Get reverse node and switch
+        reverseNode = pm.listConnections(ikfkSwitch, destination=True, type='reverse')[0]
+
+
+        # Connect Weights accordingly
+        if fk_sff in weight.name():
+            ikfkSwitch.connect(weight)
+        elif ik_sff in weight.name():
+            reverseNode.outputX.connect(weight)
+
+def create_clavicle(joints):
+    match = re.search('([a-zA-Z]_([a-zA-Z]+))\d*_', joints[0].name())
+    base_name = match.group(1)
+
+    axis = get_joint_orientation(joints[0], joints[1])
+
+
+    grp = pm.createNode('transform', name=base_name + ctrl_sff + grp_sff)
+    ctrl = pm.circle(c=(0,0,0), nr=axis, sw=180, r=1, d=3, ut=0, tol=0.01, s=8, ch=0, name=base_name + ctrl_sff) # Create arc
+    pm.parent(ctrl, grp)
+
+    # Match transforms and parent constrain controller to joint
+    jnt = joints[0]
+    pm.matchTransform(grp, jnt)
+    pm.parentConstraint(ctrl, jnt, maintainOffset=True)
+
+
 selection = pm.selected()
 
 
@@ -433,7 +514,7 @@ else:
 # create_fkik(selection)
 
 ikfk_selectedChain()
-
+#create_clavicle(selection)
 #####################
 # ________UI__________
 #####################
