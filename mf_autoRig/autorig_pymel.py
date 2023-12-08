@@ -59,7 +59,7 @@ for shape in CTRL_SHAPES:
     CTRL_SHAPES[shape][1] = [(x * CTRL_SCALE, y * CTRL_SCALE, z * CTRL_SCALE) for x, y, z in CTRL_SHAPES[shape][1]]
 
 
-def create_fk_joints(joints, ):
+def create_fk_joints(joints):
     # Duplicates input joints
     fk_joints = pm.duplicate(joints, renameChildren=True)
 
@@ -451,7 +451,6 @@ def connect_hand(handJnt, arm_end_jnt, arm_ik_ctrl, arm_fk_ctrl, ikfkController)
         ikfkSwitch = pm.Attribute(ikfkController + '.IkFkSwitch')
         # Get reverse node and switch
         reverseNode = pm.listConnections(ikfkSwitch, destination=True, type='reverse')[0]
-
 
         # Connect Weights accordingly
         if fk_sff in weight.name():
