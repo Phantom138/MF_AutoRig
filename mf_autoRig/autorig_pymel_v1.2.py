@@ -682,64 +682,6 @@ locators = []
 locators.append(l_locators)
 locators.append(r_locators)
 
-def create_rig():
-    # Clavicles
-    l_clavicle_jnt = pm.ls(regex=f'(L|l)_clavicle(01)*{skin_sff}{jnt_sff}', type='joint')[0]
-    l_clavicle = Clavicle(getHierachy(l_clavicle_jnt))
-
-    r_clavicle_jnt = pm.ls(regex=f'(R|r)_clavicle(01)*{skin_sff}{jnt_sff}', type='joint')[0]
-    r_clavicle = Clavicle(getHierachy(r_clavicle_jnt))
-
-    # Arm
-    l_arm_jnt = pm.ls(regex=f'(L|l)_(shoulder|arm(01)*){skin_sff}{jnt_sff}', type='joint')[0]
-    l_arm = Limb(getHierachy(l_arm_jnt))
-
-    r_arm_jnt = pm.ls(regex=f'(R|r)_(shoulder|arm(01)*){skin_sff}{jnt_sff}', type='joint')[0]
-    r_arm = Limb(getHierachy(r_arm_jnt))
-
-    # Torso
-    torso_jnt = pm.ls(regex=f'(M|m)_pelvis(01)*{skin_sff}{jnt_sff}', type='joint')[0]
-    hip_jnt = pm.ls(regex=f'(M|m)_hip(01)*{skin_sff}{jnt_sff}', type='joint')[0]
-    torso = Torso(getHierachy(torso_jnt), hip_jnt)
-
-    # Legs
-    l_leg_jnt = pm.ls(regex=f'(L|l)_leg(01)*{skin_sff}{jnt_sff}', type='joint')[0]
-    l_leg = Limb(getHierachy(l_leg_jnt))
-
-    r_leg_jnt = pm.ls(regex=f'(R|r)_leg(01)*{skin_sff}{jnt_sff}', type='joint')[0]
-    r_leg = Limb(getHierachy(r_leg_jnt))
-
-    # Feet
-    l_foot_jnt = pm.ls(regex=f'(L|l)_foot(01)*{skin_sff}{jnt_sff}', type='joint')[0]
-    l_foot = Foot(getHierachy(l_foot_jnt))
-
-    r_foot_jnt = pm.ls(regex=f'(R|r)_foot(01)*{skin_sff}{jnt_sff}', type='joint')[0]
-    r_foot = Foot(getHierachy(r_foot_jnt))
-
-    # Connections
-    # TODO connect lists instead. eg. arms to clavicles
-    connect_leg(l_leg, torso)
-    connect_leg(r_leg, torso)
-
-    connect_arm(r_arm, r_clavicle)
-    l_arm.connect(l_clavicle, 'arm')
-    r_arm.connect(r_clavicle, 'arm')
-
-    connect_clavicle(r_clavicle, torso)
-    connect_clavicle(l_clavicle, torso)
-
-    r_foot.connectAttributes(r_locators, r_leg)
-    l_foot.connectAttributes(l_locators, l_leg)
-
-    print(l_clavicle_jnt)
-    print(r_clavicle_jnt)
-    print(l_arm_jnt)
-    print(r_arm_jnt)
-    print(l_leg_jnt)
-    print(r_leg_jnt)
-    print(l_foot_jnt)
-    print(r_foot_jnt)
-
 
 def search_and_create(name, func):
     jnts = pm.ls(regex=f'(L|l|R|r)_{name}(01)*{skin_sff}{jnt_sff}', type='joint')
@@ -778,4 +720,4 @@ def create_rig():
          foot.connectAttributes(locator, leg)
 
 
-search_stuff()
+create_rig()
