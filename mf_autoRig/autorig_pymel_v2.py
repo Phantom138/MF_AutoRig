@@ -695,12 +695,14 @@ def create_rig():
 
     # Hand
     hand_jnts = pm.ls(regex=f'(R|r|L|l)_hand(01)*{skin_sff}{jnt_sff}', type='joint')
+    # Add fingers in a nested list having the left side as the first element and the right side as the second
     fingers = []
     l_fingers = pm.ls(regex=f'(L|l)_(thumb|index|middle|ring|pinky)(01)*{skin_sff}{jnt_sff}', type='joint')
     r_fingers = pm.ls(regex=f'(R|r)_(thumb|index|middle|ring|pinky)(01)*{skin_sff}{jnt_sff}', type='joint')
     fingers.append(l_fingers)
     fingers.append(r_fingers)
     print(fingers)
+
     hands = []
     for jnts, side in zip(hand_jnts, fingers):
         hand = Hand(getHierachy(jnts), side)
