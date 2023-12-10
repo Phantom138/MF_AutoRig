@@ -11,6 +11,7 @@ ik_sff = '_ik'
 fk_sff = '_fk'
 pole_sff = '_pole'
 attr_sff = '_attr'
+loc_sff = '_loc'
 ikfkSwitch_name = 'IkFkSwitch'
 
 # CTRL Shapes structure: Degree, Points, Knots
@@ -20,8 +21,8 @@ CTRL_SHAPES = {
                  (-1, -1, -1), (1, -1, -1),
                  (-1, -1, -1), (-1, -1, 1), (-1, 1, 1), (-1, -1, 1), (1, -1, 1)],
              [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]],
-
-    "joint_curve": [1, [(0, 1, 0), (0, 0.92388000000000003, 0.382683), (0, 0.70710700000000004, 0.70710700000000004),
+    'square': [1, [(-1.0, 0.0, -1.0), (1.0, 0.0, -1.0), (1.0, 0.0, 1.0), (-1.0, 0.0, 1.0), (-1.0, 0.0, -1.0)]],
+    'joint_curve': [1, [(0, 1, 0), (0, 0.92388000000000003, 0.382683), (0, 0.70710700000000004, 0.70710700000000004),
                         (0, 0.382683, 0.92388000000000003), (0, 0, 1), (0, -0.382683, 0.92388000000000003),
                         (0, -0.70710700000000004, 0.70710700000000004), (0, -0.92388000000000003, 0.382683), (0, -1, 0),
                         (0, -0.92388000000000003, -0.382683), (0, -0.70710700000000004, -0.70710700000000004),
@@ -43,11 +44,10 @@ CTRL_SHAPES = {
                         (0.92388000000000003, 0, -0.382683), (0.70710700000000004, 0, -0.70710700000000004),
                         (0.382683, 0, -0.92388000000000003), (0, 0, -1)],
                     [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26,
-                     27,
-                     28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51,
+                     27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51,
                      52]],
-
-    "arrow": [1, [(0.0, 0.0, 0.0), (-1.0, 0.0, -0.33), (-1.0, 0.0, 0.33), (0.0, 0.0, 0.0), (-1.0, 0.33, 0.0), (-1.0, 0.0, 0.0), (-1.0, -0.33, 0.0), (0.0, 0.0, 0.0)]]
+    'arrow': [1, [(0.0, 0.0, 0.0), (-1.0, 0.0, -0.33), (-1.0, 0.0, 0.33), (0.0, 0.0, 0.0), (-1.0, 0.33, 0.0),
+                  (-1.0, 0.0, 0.0), (-1.0, -0.33, 0.0), (0.0, 0.0, 0.0)]]
 }
 
 CTRL_SCALE = 10
@@ -60,10 +60,10 @@ class CtrlGrp():
 
         if shape == 'circle':
             self.ctrl = pm.circle(nr=axis, c=(0, 0, 0), radius=scale, name=name + ctrl_sff,
-                                  constructionHistory=False)
+                                  constructionHistory=False)[0]
         elif shape == 'arc':
             self.ctrl = pm.circle(nr=axis, c=(0, 0, 0), radius=scale, sw=180, d=3, ut=0, tol=0.01, s=8, ch=0,
-                                  name=name + ctrl_sff)
+                                  name=name + ctrl_sff)[0]
         else:
             points = [(x * scale, y * scale, z * scale) for x, y, z in CTRL_SHAPES[shape][1]]
             self.ctrl = pm.curve(degree=CTRL_SHAPES[shape][0],
@@ -119,7 +119,23 @@ def get_joint_orientation(firstJnt, secondJnt):
         return (0, 1, 0)
 
 
-def create_fk_ctrls(joints, scale=CTRL_SCALE):
+def create_fk_ctrls(joints, skipEnd=True, shape='circle', scale=CTRL_SCALE):
+    print(f"// Running fk_ctrls for {joints}")
+    # Exception case: only one joint
+    if type(joints) == pm.nodetypes.Joint:
+        jnt = joints
+        base_name = jnt.replace(jnt_sff, '')
+        if skin_sff in base_name:
+            base_name = base_name.replace(skin_sff, '')
+        # Create controller and controller group, parenting the two of them
+        fk = CtrlGrp(base_name, shape, scale=scale)
+
+        # Match transforms and parent constrain controller to joint
+        pm.matchTransform(fk.grp, jnt)
+        pm.parentConstraint(fk.ctrl, jnt, maintainOffset=True)
+
+        return fk.ctrl
+
     # Get joint orientation and create circle controller accordingly
     # Ex. if orientation = X, circle is pointing in X
     axis = get_joint_orientation(joints[0], joints[1])
@@ -128,14 +144,17 @@ def create_fk_ctrls(joints, scale=CTRL_SCALE):
     fk_ctrls = []
     ctrl_previous = None
 
+    if skipEnd:
+        joints = joints[:-1]
+
     # Skips end joints
-    for jnt in joints[:-1]:
+    for jnt in joints:
         # Creates base name by removing the joint suffix and also skin sff if present
         base_name = jnt.replace(jnt_sff, '')
         if skin_sff in base_name:
             base_name = base_name.replace(skin_sff, '')
         # Create controller and controller group, parenting the two of them
-        fk = CtrlGrp(base_name, 'circle', scale=scale, axis=axis)
+        fk = CtrlGrp(base_name, shape, scale=scale, axis=axis)
 
         # Match transforms and parent constrain controller to joint
         pm.matchTransform(fk.grp, jnt)
@@ -147,7 +166,7 @@ def create_fk_ctrls(joints, scale=CTRL_SCALE):
         ctrl_previous = fk.ctrl
 
         # Add ctrl
-        fk_ctrls.append(fk.ctrl[0])
+        fk_ctrls.append(fk.ctrl)
 
     return fk_ctrls
 
@@ -225,7 +244,7 @@ def create_ik(joints):
     ikHandle_grp = pm.PyNode('ikHandle_Grp')
     pm.parent(ikHandle[0], ikHandle_grp)
 
-    return ik_joints, ik_ctrl_grp
+    return ik_joints, ik_ctrl_grp, ikHandle[0]
 
 
 def constraint_ikfk(joints, ik_joints, fk_joints):
@@ -315,7 +334,7 @@ class Limb:
         self.joints = joints
         self.skin_jnts = joints[:-1]
         # IK
-        self.ik_jnts, self.ik_ctrls_grp = create_ik(joints)
+        self.ik_jnts, self.ik_ctrls_grp, self.ikHandle = create_ik(joints)
         # FK
         self.fk_jnts = create_fk_jnts(joints)
         self.fk_ctrls = create_fk_ctrls(self.fk_jnts)
@@ -341,23 +360,23 @@ class Limb:
         self.ik_jnts[0].visibility.set(0)
 
         # Move ik control grp under root_ctrl
-        root_ctrl = pm.PyNode('Root_ctrl')
+        root_ctrl = pm.PyNode('Root_Ctrl')
         pm.parent(self.ik_ctrls_grp, root_ctrl)
 
         switch_ctrl_grp = self.switch.getParent(1)
         pm.parent(switch_ctrl_grp, root_ctrl)
 
+    def connect(self, dest, method):
+        ctrl_grp = self.fk_ctrls[0].getParent(1)
 
-# class Hand():
-#     def __int__(self, joints):
+        if method == 'arm':
+            pm.parent(ctrl_grp, dest.ctrl)
+            pm.parentConstraint(dest.joints[-1], self.ik_jnts[0])
 
+        elif method == 'leg':
+            pm.parent(ctrl_grp, dest.hip_ctrl)
+            pm.parentConstraint(dest.hip_ctrl, self.ik_jnts[0], maintainOffset=True)
 
-class Torso:
-    def __init__(self, joints):
-        # Skin joints are all the joint chain but without the last one (end_jnt)
-        # TODO: check if the suffix of each jnt is in fact skin_jnt
-        self.skin_jnts = joints[:-1]
-        self.fk_ctrls = create_fk_ctrls(joints)
 
 
 class Clavicle:
@@ -381,6 +400,8 @@ class Clavicle:
 
         self.ctrl = clav.ctrl
 
+    def connect(self, torso):
+        pm.parent(self.ctrl.getParent(1), torso.fk_ctrls[-1])
 
 class Hand:
     def __init__(self, hand_jnts, finger_jnts, curl=True, spread=True):
@@ -470,31 +491,120 @@ class Hand:
 class Foot:
     def __init__(self, joints):
         self.skin_jnts = joints[:-1]
-        self.fk_ctrls = create_fk_ctrls(joints)
+
+        self.fk_jnts = create_fk_jnts(joints)
+        self.fk_ctrls = create_fk_ctrls(self.fk_jnts)
+
+        # Create ik joints for foot
+        self.ik_jnts = pm.duplicate(joints)
+        for jnt in self.ik_jnts:
+            match = re.search('([a-zA-Z]_[a-zA-Z]+\d*)_', jnt.name())
+            name = match.group(1)
+            name += ik_sff + jnt_sff
+
+            pm.rename(jnt, name)
+
+        self.ikfk_constraints = constraint_ikfk(joints, self.ik_jnts, self.fk_jnts)
+        print(self.ikfk_constraints)
+        match = re.match('(^[A-Za-z]_)\w+', joints[0].name())
+        side = match.group(1)
+
+        self.ball_ikHandle = \
+        pm.ikHandle(name=side + 'ball' + ik_sff + loc_sff, startJoint=self.ik_jnts[0], endEffector=self.ik_jnts[1],
+                    solver='ikSCsolver')[0]
+        self.toe_ikHandle = \
+        pm.ikHandle(name=side + 'toe' + ik_sff + loc_sff, startJoint=self.ik_jnts[1], endEffector=self.ik_jnts[2],
+                    solver='ikSCsolver')[0]
+
+        # Hide ik and fk joints
+        self.ik_jnts[0].visibility.set(0)
+        self.fk_jnts[0].visibility.set(0)
 
     def connectAttributes(self, locators, leg):
+        # Remove leg parent constraint for the ikHandle
+        for constraint in pm.listRelatives(leg.ikHandle):
+            if isinstance(constraint, pm.nodetypes.ParentConstraint):
+                pm.delete(constraint)
+
+        # Connect foot ik fk constraints to leg switch
+        reverse_sw = leg.switch.IkFkSwitch.listConnections(type='reverse')[0]
+
+        for constraint in self.ikfk_constraints:
+            weights = constraint.getWeightAliasList()
+
+            for weight in weights:
+                name = weight.longName(fullPath=False)
+                # If ik weight connect to reverse
+                if ik_sff in name:
+                    reverse_sw.outputX.connect(weight)
+                # If fk weight connect to switch
+                if fk_sff in name:
+                    leg.switch.IkFkSwitch.connect(weight)
+
+        # Parent foot fk ctrls grp under leg fk ctrls grp
+        pm.parent(self.fk_ctrls[0].getParent(1), leg.fk_ctrls[-1])
+
+        # Parent ik handles under locators
+        # Locators order : outerbank, innerbank, heel, toe_tip, ball !!
+        pm.parent(self.ball_ikHandle, locators[3])
+        pm.parent(self.toe_ikHandle, locators[2])
+        pm.parent(leg.ikHandle, locators[4])
+
+        # Connect to ik_ctrl
         ik_ctrl = leg.ik_ctrls_grp.getChildren()[0].getChildren()[0]
 
-        attrs = ['outerBank', 'innerBank', 'heelLift', 'heelSwivel', 'toeLift', 'toeSwivel', 'ballRoll']
-
-        dict = {
-            'outerBank':    ['rotationX', [(-10, 30), (10, -90)]],
-            'innerBank':    ['rotationX', [(-10, 30), (10, -30)]],
-            'heelLift':     ['rotationX', [(-10, -15), (10, 30)]],
-            'heelSwivel':   ['rotationX', [(-10, -30), (10, 30)]],
-            'toeLift':      ['rotationX', [(-10, -30), (10, 50)]],
-            'toeSwivel':    ['rotationX', [(-10, -20), (10, 21)]],
-            'ballRoll':     ['rotationX', [(-10, 20), (10, -30)]],
+        connections = {
+            'outerBank': [locators[0], 'rotateZ', [(-10, 30), (10, -90)]],
+            'innerBank': [locators[1], 'rotateZ', [(-10, 30), (10, -30)]],
+            'heelLift': [locators[2], 'rotateX', [(-10, -15), (10, 30)]],
+            'heelSwivel': [locators[2], 'rotateY', [(-10, -30), (10, 30)]],
+            'toeLift': [locators[3], 'rotateX', [(-10, -30), (10, 50)]],
+            'toeSwivel': [locators[3], 'rotateY', [(-10, -20), (10, 21)]],
+            'ballRoll': [locators[4], 'rotateX', [(-10, -20), (10, 30)]],
         }
 
-        for attr in dict:
-            pm.addAttr(ik_ctrl, attr, min=-10, max=10, keyable=True)
+        # Create driven keys and attributes
+        for attr in connections:
+            pm.addAttr(ik_ctrl, longName=attr, min=-10, max=10, keyable=True)
+
+            # Get rotation and values from dictionary
+            locator = connections[attr][0]
+            rotation = f'.{connections[attr][1]}'
+            values = connections[attr][2]
+
+            # Set 0 driven key
+            pm.setDrivenKeyframe(locator + rotation, currentDriver=ik_ctrl + f'.{attr}', driverValue=0, value=0)
+            # Set the rest
+            for value in values:
+                pm.setDrivenKeyframe(locator + rotation, currentDriver=ik_ctrl + f'.{attr}', driverValue=value[0],
+                                     value=value[1])
+
+        # Constraint leg ik_jnt to foot ik_jnt start
+        pm.parentConstraint(leg.ik_jnts[-1], self.ik_jnts[0])
+
+        # Constraint ik_ctrl to locator grp
+        locator_grp = locators[0].getParent(1)
+        pm.parentConstraint(ik_ctrl, locator_grp, maintainOffset=True)
 
 
+class Torso:
+    def __init__(self, joints, hip):
+        self.fk_ctrls = create_fk_ctrls(joints, skipEnd=False, shape='square')
+        self.hip_ctrl = create_fk_ctrls(hip, shape='circle')
+
+        # Parent hip ctrl grp under pelvis ctrl
+        pm.parent(self.hip_ctrl.getParent(1), self.fk_ctrls[0])
 
 ################################
 #### CONNECT METHODS ###########
 ################################
+
+
+def connect_leg(leg, torso):
+    pm.parent(leg.fk_ctrls[0].getParent(1), torso.hip_ctrl)
+
+    pm.parentConstraint(torso.hip_ctrl, leg.ik_jnts[0], maintainOffset=True)
+
 
 def connect_arm(arm, clavicle):
     arm_grp = arm.fk_ctrls[0].getParent(1)
@@ -545,40 +655,127 @@ def connect_hand(hand, arm):
         elif ik_sff in weight.name():
             reverseNode.outputX.connect(weight)
 
-
-
-
-sel = pm.selected()
-
-
-
+def connect_clavicle(clavicle, torso):
+    pm.parent(clavicle.ctrl.getParent(1), torso.fk_ctrls[-1])
 
 def getHierachy(joint):
+    #jnt = pm.PyNode(joint)
     jnts = pm.listRelatives(joint, ad=True)
     jnts.append(joint)
     jnts.reverse()
     return jnts
 
-joints = [pm.PyNode('L_arm01_skin_jnt'), pm.PyNode('L_clavicle01_skin_jnt')]
-l_arm = Limb(getHierachy(joints[0]))
-l_clavicle = Clavicle(getHierachy(joints[1]))
-# connect_arm(l_arm, l_clavicle)
 
-handJnt = pm.PyNode('L_hand_skin_jnt')
-handJnts = getHierachy(handJnt)
-fingerJnts = [pm.PyNode('L_thumb01_skin_jnt'), pm.PyNode('L_index01_skin_jnt'), pm.PyNode('L_middle01_skin_jnt'),
-              pm.PyNode('L_ring01_skin_jnt'), pm.PyNode('L_pinky01_skin_jnt')]
+loc = ['L_outerbank_loc', 'L_innerrbank_loc', 'L_heel_loc', 'L_toe_tip_loc', 'L_ball_loc']
+l_locators = []
 
-fingers = []
-for finger in fingerJnts:
-    fingers.append(getHierachy(finger))
-print(fingers)
+for locator in loc:
+    l_locators.append(pm.PyNode(locator))
 
-hand = Hand(handJnts, fingers)
-connect_hand(hand, l_arm)
+loc = ['R_outerbank_loc', 'R_innerrbank_loc', 'R_heel_loc', 'R_toe_tip_loc', 'R_ball_loc']
+r_locators = []
 
-legJnt = pm.PyNode('L_leg01_skin_jnt')
-legJnts = getHierachy(legJnt)
-l_leg = Limb(legJnts)
+for locator in loc:
+    r_locators.append(pm.PyNode(locator))
 
-#ctrl = CtrlGrp('test','arrow', scale=1)
+locators = []
+locators.append(l_locators)
+locators.append(r_locators)
+
+def create_rig():
+    # Clavicles
+    l_clavicle_jnt = pm.ls(regex=f'(L|l)_clavicle(01)*{skin_sff}{jnt_sff}', type='joint')[0]
+    l_clavicle = Clavicle(getHierachy(l_clavicle_jnt))
+
+    r_clavicle_jnt = pm.ls(regex=f'(R|r)_clavicle(01)*{skin_sff}{jnt_sff}', type='joint')[0]
+    r_clavicle = Clavicle(getHierachy(r_clavicle_jnt))
+
+    # Arm
+    l_arm_jnt = pm.ls(regex=f'(L|l)_(shoulder|arm(01)*){skin_sff}{jnt_sff}', type='joint')[0]
+    l_arm = Limb(getHierachy(l_arm_jnt))
+
+    r_arm_jnt = pm.ls(regex=f'(R|r)_(shoulder|arm(01)*){skin_sff}{jnt_sff}', type='joint')[0]
+    r_arm = Limb(getHierachy(r_arm_jnt))
+
+    # Torso
+    torso_jnt = pm.ls(regex=f'(M|m)_pelvis(01)*{skin_sff}{jnt_sff}', type='joint')[0]
+    hip_jnt = pm.ls(regex=f'(M|m)_hip(01)*{skin_sff}{jnt_sff}', type='joint')[0]
+    torso = Torso(getHierachy(torso_jnt), hip_jnt)
+
+    # Legs
+    l_leg_jnt = pm.ls(regex=f'(L|l)_leg(01)*{skin_sff}{jnt_sff}', type='joint')[0]
+    l_leg = Limb(getHierachy(l_leg_jnt))
+
+    r_leg_jnt = pm.ls(regex=f'(R|r)_leg(01)*{skin_sff}{jnt_sff}', type='joint')[0]
+    r_leg = Limb(getHierachy(r_leg_jnt))
+
+    # Feet
+    l_foot_jnt = pm.ls(regex=f'(L|l)_foot(01)*{skin_sff}{jnt_sff}', type='joint')[0]
+    l_foot = Foot(getHierachy(l_foot_jnt))
+
+    r_foot_jnt = pm.ls(regex=f'(R|r)_foot(01)*{skin_sff}{jnt_sff}', type='joint')[0]
+    r_foot = Foot(getHierachy(r_foot_jnt))
+
+    # Connections
+    # TODO connect lists instead. eg. arms to clavicles
+    connect_leg(l_leg, torso)
+    connect_leg(r_leg, torso)
+
+    connect_arm(r_arm, r_clavicle)
+    l_arm.connect(l_clavicle, 'arm')
+    r_arm.connect(r_clavicle, 'arm')
+
+    connect_clavicle(r_clavicle, torso)
+    connect_clavicle(l_clavicle, torso)
+
+    r_foot.connectAttributes(r_locators, r_leg)
+    l_foot.connectAttributes(l_locators, l_leg)
+
+    print(l_clavicle_jnt)
+    print(r_clavicle_jnt)
+    print(l_arm_jnt)
+    print(r_arm_jnt)
+    print(l_leg_jnt)
+    print(r_leg_jnt)
+    print(l_foot_jnt)
+    print(r_foot_jnt)
+
+
+def search_and_create(name, func):
+    jnts = pm.ls(regex=f'(L|l|R|r)_{name}(01)*{skin_sff}{jnt_sff}', type='joint')
+    objects = []
+    for jnt in jnts:
+        object = func(getHierachy(jnt))
+        objects.append(object)
+
+    if len(objects) == 1:
+        return objects[0]
+
+    return objects
+
+def create_rig():
+    # IMPORTANT, MIGHT BREAK STUFF:
+    # I think ls returns alphabetical order
+    arms = search_and_create('arm', Limb)
+    legs = search_and_create('leg', Limb)
+    clavicles = search_and_create('clavicle', Clavicle)
+    feet = search_and_create('foot', Foot)
+
+    # Torso
+    torso_jnt = pm.ls(regex=f'(M|m)_pelvis(01)*{skin_sff}{jnt_sff}', type='joint')[0]
+    hip_jnt = pm.ls(regex=f'(M|m)_hip(01)*{skin_sff}{jnt_sff}', type='joint')[0]
+    torso = Torso(getHierachy(torso_jnt), hip_jnt)
+
+    # Connections
+    for arm, clavicle in zip(arms, clavicles):
+        arm.connect(clavicle, method='arm')
+        clavicle.connect(torso)
+
+    for leg in legs:
+        leg.connect(torso, method='leg')
+
+    for foot, locator, leg in zip(feet, locators, legs):
+         foot.connectAttributes(locator, leg)
+
+
+search_stuff()
