@@ -19,8 +19,7 @@ CTRL_SHAPES = {
     'cube': [1, [(1, 1, 1), (1, 1, -1), (-1, 1, -1), (-1, 1, 1), (1, 1, 1), (1, -1, 1), (1, -1, -1), (1, 1, -1),
                  (-1, 1, -1),
                  (-1, -1, -1), (1, -1, -1),
-                 (-1, -1, -1), (-1, -1, 1), (-1, 1, 1), (-1, -1, 1), (1, -1, 1)],
-             [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]],
+                 (-1, -1, -1), (-1, -1, 1), (-1, 1, 1), (-1, -1, 1), (1, -1, 1)],[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]],
     'square': [1, [(-1.0, 0.0, -1.0), (1.0, 0.0, -1.0), (1.0, 0.0, 1.0), (-1.0, 0.0, 1.0), (-1.0, 0.0, -1.0)]],
     'joint_curve': [1, [(0, 1, 0), (0, 0.92388000000000003, 0.382683), (0, 0.70710700000000004, 0.70710700000000004),
                         (0, 0.382683, 0.92388000000000003), (0, 0, 1), (0, -0.382683, 0.92388000000000003),
@@ -42,12 +41,8 @@ CTRL_SHAPES = {
                         (0.382683, 0, 0.92388000000000003),
                         (0.70710700000000004, 0, 0.70710700000000004), (0.92388000000000003, 0, 0.382683), (1, 0, 0),
                         (0.92388000000000003, 0, -0.382683), (0.70710700000000004, 0, -0.70710700000000004),
-                        (0.382683, 0, -0.92388000000000003), (0, 0, -1)],
-                    [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26,
-                     27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51,
-                     52]],
-    'arrow': [1, [(0.0, 0.0, 0.0), (-1.0, 0.0, -0.33), (-1.0, 0.0, 0.33), (0.0, 0.0, 0.0), (-1.0, 0.33, 0.0),
-                  (-1.0, 0.0, 0.0), (-1.0, -0.33, 0.0), (0.0, 0.0, 0.0)]]
+                        (0.382683, 0, -0.92388000000000003), (0, 0, -1)],[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52]],
+    'arrow': [1, [(0.0, 0.0, 0.0), (-1.0, 0.0, -0.33), (-1.0, 0.0, 0.33), (0.0, 0.0, 0.0), (-1.0, 0.33, 0.0), (-1.0, 0.0, 0.0), (-1.0, -0.33, 0.0), (0.0, 0.0, 0.0)]]
 }
 
 CTRL_SCALE = 10
@@ -260,11 +255,11 @@ def constraint_ikfk(joints, ik_joints, fk_joints):
 
 
 def ikfk_switch(ik_ctrls_grp, fk_ctrls, ikfk_constraints, endJnt):
-    '''
+    """
     Method:
     ik Fk Switch = fk weight
     ik Fk Switch * (-1) = ik weight
-    '''
+    """
     # Get base name of the joint (L_arm01_skin_jnt -> L_arm
     match = re.search('([a-zA-Z]_[a-zA-Z]+)\d*_', endJnt.name())
     base_name = match.group(1)
@@ -402,6 +397,7 @@ class Clavicle:
 
     def connect(self, torso):
         pm.parent(self.ctrl.getParent(1), torso.fk_ctrls[-1])
+
 
 class Hand:
     def __init__(self, hand_jnts, finger_jnts, curl=True, spread=True):
@@ -595,68 +591,11 @@ class Torso:
         # Parent hip ctrl grp under pelvis ctrl
         pm.parent(self.hip_ctrl.getParent(1), self.fk_ctrls[0])
 
+
 ################################
 #### CONNECT METHODS ###########
 ################################
 
-
-def connect_leg(leg, torso):
-    pm.parent(leg.fk_ctrls[0].getParent(1), torso.hip_ctrl)
-
-    pm.parentConstraint(torso.hip_ctrl, leg.ik_jnts[0], maintainOffset=True)
-
-
-def connect_arm(arm, clavicle):
-    arm_grp = arm.fk_ctrls[0].getParent(1)
-    pm.parent(arm_grp, clavicle.ctrl)
-
-    pm.parentConstraint(clavicle.joints[-1], arm.ik_jnts[0])
-
-
-def connect_hand(hand, arm):
-    match = re.search('([a-zA-Z]_([a-zA-Z]+))\d*_', hand.handJnt.name())
-    base_name = match.group(1)
-
-    # Point constraint
-    pm.pointConstraint(arm.joints[-1], hand.hand.ctrl)
-
-    # Create locators
-    # IK locator
-    ik_loc = pm.spaceLocator(name=base_name + '_ik_space_loc')
-    ik_loc_grp = pm.createNode('transform', name=base_name + '_ik_loc_grp')
-    pm.parent(ik_loc, ik_loc_grp)
-    pm.matchTransform(ik_loc_grp, hand.handJnt)
-
-    # Get ik ctrl and parent locator to it
-    # TODO: make it so i don't have so many get children
-    ik_ctrl = arm.ik_ctrls_grp.getChildren()[0].getChildren()[0]
-    pm.parent(ik_loc_grp, ik_ctrl)
-
-    # FK locator
-    fk_loc = pm.spaceLocator(name=base_name + '_fk_space_loc')
-    fk_loc_grp = pm.createNode('transform', name=base_name + '_ik_loc_grp')
-    pm.parent(fk_loc, fk_loc_grp)
-    pm.matchTransform(fk_loc_grp, handJnt)
-    print(arm.fk_ctrls[-1])
-    pm.parent(fk_loc_grp, arm.fk_ctrls[-1])
-
-    # Create orient constraint and get weight list
-    constraint = pm.orientConstraint(ik_loc, fk_loc, hand.hand.ctrl)
-    weights = constraint.getWeightAliasList()
-
-    for weight in weights:
-        ikfkSwitch = pm.Attribute(arm.switch + '.IkFkSwitch')
-        # Get reverse node and switch
-        reverseNode = pm.listConnections(arm.switch, destination=True, type='reverse')[0]
-
-        # Connect Weights accordingly
-        if fk_sff in weight.name():
-            ikfkSwitch.connect(weight)
-        elif ik_sff in weight.name():
-            reverseNode.outputX.connect(weight)
-
-def connect_clavicle(clavicle, torso):
-    pm.parent(clavicle.ctrl.getParent(1), torso.fk_ctrls[-1])
 
 def getHierachy(joint):
     #jnt = pm.PyNode(joint)
