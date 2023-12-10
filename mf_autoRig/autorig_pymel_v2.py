@@ -2,6 +2,8 @@ import pymel.core as pm
 import pymel.core.datatypes as dt
 import re
 
+
+
 grp_sff = '_grp'
 ctrl_sff = '_ctrl'
 jnt_sff = '_jnt'
@@ -403,7 +405,7 @@ class Hand:
     def __init__(self, hand_jnts, finger_jnts, curl=True, spread=True):
         '''
         hand_jnts = 2 joints for the hand
-        finger_jnts = nested list with all the fingers eg. [[index01, index02, index03],[middle01, middle02]...]
+        finger_jnts =  list with all the beginning fingers eg. [index01,middle01...]
         '''
 
         # Get base name and create hand ctrl and grp
@@ -418,7 +420,9 @@ class Hand:
 
         # Go through each finger
         all_offset_grps = []
-        for finger in finger_jnts:
+        for finger_jnt in finger_jnts:
+            finger = getHierachy(finger_jnt)
+
             finger_ctrls = create_fk_ctrls(finger, scale=1)
             finger_grp = finger_ctrls[0].getParent(1)
 
@@ -429,10 +433,10 @@ class Hand:
 
             # Do curl, spread, etc. switches
             if curl:
-                self.curl_switch(self.hand.ctrl[0], offset_grps)
+                self.curl_switch(self.hand.ctrl, offset_grps)
 
             if spread:
-                self.spread_switch(self.hand.ctrl[0], offset_grps)
+                self.spread_switch(self.hand.ctrl, offset_grps)
 
     def curl_switch(self, hand_ctrl, offset_grps):
         match = re.search('([a-zA-Z]_([a-zA-Z]+))\d*_', offset_grps[0].name())
@@ -482,6 +486,48 @@ class Hand:
         # Set driver value based on value dict
         pm.setDrivenKeyframe(offset + rotation, currentDriver=hand_ctrl + f'.{attr}',
                              driverValue=max_spread, value=values[base_name])
+
+    def connect(self, arm):
+        match = re.search('([a-zA-Z]_([a-zA-Z]+))\d*_', self.handJnt.name())
+        base_name = match.group(1)
+
+        # Point constraint
+        pm.pointConstraint(arm.joints[-1], self.hand.ctrl)
+
+        # Create locators
+        # IK locator
+        ik_loc = pm.spaceLocator(name=base_name + '_ik_space_loc')
+        ik_loc_grp = pm.createNode('transform', name=base_name + '_ik_loc_grp')
+        pm.parent(ik_loc, ik_loc_grp)
+        pm.matchTransform(ik_loc_grp, self.handJnt)
+
+        # Get ik ctrl and parent locator to it
+        # TODO: make it so i don't have so many get children
+        ik_ctrl = arm.ik_ctrls_grp.getChildren()[0].getChildren()[0]
+        pm.parent(ik_loc_grp, ik_ctrl)
+
+        # FK locator
+        fk_loc = pm.spaceLocator(name=base_name + '_fk_space_loc')
+        fk_loc_grp = pm.createNode('transform', name=base_name + '_ik_loc_grp')
+        pm.parent(fk_loc, fk_loc_grp)
+        pm.matchTransform(fk_loc_grp, self.handJnt)
+        print(arm.fk_ctrls[-1])
+        pm.parent(fk_loc_grp, arm.fk_ctrls[-1])
+
+        # Create orient constraint and get weight list
+        constraint = pm.orientConstraint(ik_loc, fk_loc, self.hand.ctrl)
+        weights = constraint.getWeightAliasList()
+
+        for weight in weights:
+            ikfkSwitch = pm.Attribute(arm.switch + '.IkFkSwitch')
+            # Get reverse node and switch
+            reverseNode = pm.listConnections(arm.switch, destination=True, type='reverse')[0]
+
+            # Connect Weights accordingly
+            if fk_sff in weight.name():
+                ikfkSwitch.connect(weight)
+            elif ik_sff in weight.name():
+                reverseNode.outputX.connect(weight)
 
 
 class Foot:
@@ -647,10 +693,26 @@ def create_rig():
     hip_jnt = pm.ls(regex=f'(M|m)_hip(01)*{skin_sff}{jnt_sff}', type='joint')[0]
     torso = Torso(getHierachy(torso_jnt), hip_jnt)
 
+    # Hand
+    hand_jnts = pm.ls(regex=f'(R|r|L|l)_hand(01)*{skin_sff}{jnt_sff}', type='joint')
+    fingers = []
+    l_fingers = pm.ls(regex=f'(L|l)_(thumb|index|middle|ring|pinky)(01)*{skin_sff}{jnt_sff}', type='joint')
+    r_fingers = pm.ls(regex=f'(R|r)_(thumb|index|middle|ring|pinky)(01)*{skin_sff}{jnt_sff}', type='joint')
+    fingers.append(l_fingers)
+    fingers.append(r_fingers)
+    print(fingers)
+    hands = []
+    for jnts, side in zip(hand_jnts, fingers):
+        hand = Hand(getHierachy(jnts), side)
+        hands.append(hand)
+
+    print(hands)
+
     # Connections
-    for arm, clavicle in zip(arms, clavicles):
+    for arm, clavicle, hand in zip(arms, clavicles, hands):
         arm.connect(clavicle, method='arm')
         clavicle.connect(torso)
+        hand.connect(arm)
 
     for leg in legs:
         leg.connect(torso, method='leg')
