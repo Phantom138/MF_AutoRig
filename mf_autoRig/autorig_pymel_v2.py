@@ -723,4 +723,7 @@ def create_rig():
          foot.connectAttributes(locator, leg)
 
 
+def create_rig_jnts():
+    print('a')
+
 create_rig()
