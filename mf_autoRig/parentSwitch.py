@@ -1,9 +1,8 @@
 import re
-
 import pymel.core as pm
 
 
-def parent_switch(object, drivers, jnt, hasGroup=True):
+def parent_switch(object, drivers, hasGroup=True):
     # Get nice name for object
     object_match = re.search(r'^[a-zA-Z]_*[a-zA-Z]+\d*', object.name())
     object_name = object_match.group(0)
@@ -32,14 +31,14 @@ def parent_switch(object, drivers, jnt, hasGroup=True):
 
         # Create locator and parent it in the right place
         loc = pm.spaceLocator(name=f'{object_name}_{driver_name}_space_loc')
-        pm.matchTransform(loc, jnt)
+        pm.matchTransform(loc, drivers[0])
         pm.parent(loc, driver)
         locators.append(loc)
 
-    # Create enum attributs, enum_names = Root:World:...
+    # Create enum attributes, enum_names = Root:World:...
     pm.addAttr(object, ln='parentSwitch', attributeType='enum', en=enum_names, k=True)
 
-    # Create parent constriant
+    # Create parent constraint
     print(locators)
     constraint = pm.parentConstraint(locators, grp, maintainOffset=True)
     weights = constraint.getWeightAliasList()
@@ -60,8 +59,7 @@ def parent_switch(object, drivers, jnt, hasGroup=True):
         condition.outColorR.connect(weight)
 
 
-obj = pm.PyNode('M_eyeAim_ctrl')
-jnt = pm.PyNode('M_head_skin_jnt')
-drivers = [pm.PyNode("M_head_ctrl"), pm.PyNode("Root_Ctrl"), pm.PyNode("World_Ctrl")]
+obj = pm.PyNode('M_eye_aim_ctrl')
+drivers = [pm.PyNode("M_head_ctrl"), pm.PyNode("Root_Ctrl")]
 
-parent_switch(obj, drivers, jnt)
+parent_switch(obj, drivers)
