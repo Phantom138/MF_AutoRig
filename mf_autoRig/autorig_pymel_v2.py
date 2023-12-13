@@ -651,21 +651,21 @@ def getHierachy(joint):
     return jnts
 
 
-loc = ['L_outerbank_loc', 'L_innerrbank_loc', 'L_heel_loc', 'L_toe_tip_loc', 'L_ball_loc']
-l_locators = []
-
-for locator in loc:
-    l_locators.append(pm.PyNode(locator))
-
-loc = ['R_outerbank_loc', 'R_innerrbank_loc', 'R_heel_loc', 'R_toe_tip_loc', 'R_ball_loc']
-r_locators = []
-
-for locator in loc:
-    r_locators.append(pm.PyNode(locator))
-
-locators = []
-locators.append(l_locators)
-locators.append(r_locators)
+# loc = ['L_outerbank_loc', 'L_innerrbank_loc', 'L_heel_loc', 'L_toe_tip_loc', 'L_ball_loc']
+# l_locators = []
+#
+# for locator in loc:
+#     l_locators.append(pm.PyNode(locator))
+#
+# loc = ['R_outerbank_loc', 'R_innerrbank_loc', 'R_heel_loc', 'R_toe_tip_loc', 'R_ball_loc']
+# r_locators = []
+#
+# for locator in loc:
+#     r_locators.append(pm.PyNode(locator))
+#
+# locators = []
+# locators.append(l_locators)
+# locators.append(r_locators)
 
 
 def search_and_create(name, func):
@@ -726,4 +726,20 @@ def create_rig():
 def create_rig_jnts():
     print('a')
 
-create_rig()
+def create_joints(tmp_joints, name):
+    joints = []
+    for i, tmp in enumerate(tmp_joints):
+        trs = pm.xform(tmp, q=True, t=True, ws=True)
+        jnt = pm.joint(name=f'L_{name}{i+1}_skin_jnt', position=trs)
+
+        joints.append(jnt)
+
+    # Orient joints
+    pm.joint(joints[0], edit=True, orientJoint='yzx', secondaryAxisOrient='zup', children=True)
+    pm.joint(joints[-1], edit=True, orientJoint='none')
+
+    return joints
+
+joints = [pm.PyNode('joint1'), pm.PyNode('joint2'), pm.PyNode('joint3')]
+jnts = create_joints(joints, 'arm')
+arm = Limb(jnts)
