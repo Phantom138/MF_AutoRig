@@ -49,6 +49,19 @@ CTRL_SHAPES = {
 
 CTRL_SCALE = 10
 
+default_pos = {
+    # template: start pos, end pos
+    'arm': [[19.18, 142.85, -0.82], [42.78, 95.32, 3.31]],
+    'leg': [[9.67, 92.28, 2.10], [15.41, 10.46, -4.70]],
+    'hand': [[0, 0, 0], [0, -15, 0]],
+    'torso': [[0.09, 97.15, 0.0], [0.0, 128.61, 0.0]],
+    'foot_ball': [16.84, 3.38, 4.09],
+    'foot_end': [18.37, 1.2, 16.12],
+    'hand_start': [43.59, 92.72, 7.61],
+    'clavicle': [2.65, 143.59, 0.0]
+}
+
+
 
 class CtrlGrp():
     def __init__(self, name, shape, scale=CTRL_SCALE, axis=(0, 1, 0)):
@@ -326,18 +339,164 @@ def create_offset_grp(ctrls):
     return offset_grps
 
 
+def guides_grp():
+    try:
+        guides_grp = pm.PyNode('rig_guides_grp')
+    except pm.MayaNodeError:
+        guides_grp = pm.createNode('transform', name='rig_guides_grp')
+
+    return guides_grp
+
+
+def lock_and_hide(obj, translate=True, rotation=True, scale=True):
+    if translate:
+        for trs in ['tx', 'ty', 'tz']:
+            obj.attr(trs).lock()
+            obj.attr(trs).setKeyable(0)
+    if rotation:
+        for trs in ['rx', 'ry', 'rz']:
+            obj.attr(trs).lock()
+            obj.attr(trs).setKeyable(0)
+    if scale:
+        for trs in ['sx', 'sy', 'sz']:
+            obj.attr(trs).lock()
+            obj.attr(trs).setKeyable(0)
+
+
+def create_joint_chain(jnt_number, name, start_pos, end_pos, rot=None):
+    if rot is None:
+        rot = [0, 0, 0]
+
+    # Create driven grp if not existent
+    try:
+        driven_grp = pm.PyNode('DONOTTOUCH_driven_guides_grp')
+    except pm.MayaNodeError:
+        driven_grp = pm.createNode('transform', name='DONOTTOUCH_driven_guides_grp')
+
+    # Create plane
+    plane = pm.polyPlane(name=f'tmp_{name}_Plane', w=2, h=26, sh=1, sw=1)[0]
+    plane.v.set(0)
+    pm.parent(plane, driven_grp)
+
+    joints = []
+    # Create joints and move them in position
+    startJnt = pm.createNode('joint', name=f'{name}_start')
+    endJnt = pm.createNode('joint', name=f'{name}_end')
+    pm.move(startJnt, (-1, 0, 0))
+    pm.move(endJnt, (1, 0, 0))
+
+    pm.orientConstraint(startJnt, endJnt)
+
+    # Group start and end jnt
+    grp = pm.createNode('transform', name=f'{name}_grp')
+    pm.matchTransform(grp, startJnt)
+    pm.parent(startJnt, endJnt, grp)
+
+    # Parent to rig grp
+    pm.parent(grp, guides_grp())
+
+    lock_and_hide(startJnt, translate=False, rotation=False)
+    lock_and_hide(endJnt, translate=False)
+
+    joints.append(startJnt)
+
+    # Skin plane to jnts
+    influencers = [startJnt, endJnt]
+    skn_cluster = pm.skinCluster(influencers, plane, name=f'tmp_{name}_skinCluster', toSelectedBones=True, bindMethod=0, skinMethod=0, normalizeWeights=1)
+    pm.skinPercent(skn_cluster, plane.vtx[0], transformValue=[(startJnt, 1), (endJnt, 0)])
+    pm.skinPercent(skn_cluster, plane.vtx[2], transformValue=[(startJnt, 1), (endJnt, 0)])
+
+    pm.skinPercent(skn_cluster, plane.vtx[1], transformValue=[(startJnt, 0), (endJnt, 1)])
+    pm.skinPercent(skn_cluster, plane.vtx[3], transformValue=[(startJnt, 0), (endJnt, 1)])
+
+    planeShape = pm.listRelatives(plane)[0]
+    planeOrig = pm.listRelatives(plane)[1]
+
+    # Create middle joints and connect to uv pin
+    for i in range(1, jnt_number-1):
+        # Create uv pin and connect to plane
+        UVpin = pm.createNode('uvPin', name=f'{name}{i}_uvPin')
+        planeShape.worldMesh.connect(UVpin.deformedGeometry)
+        planeOrig.outMesh.connect(UVpin.originalGeometry)
+
+        print(pm.listConnections(UVpin))
+
+        # Create jnt and coords attributes
+        jnt = pm.createNode('joint', name=f'{name}{i}')
+        lock_and_hide(jnt)
+        pm.parent(jnt, driven_grp)
+
+        joints.append(jnt)
+        default_value = 100/(jnt_number-1)*i
+
+        for coord in ['uCoord', 'vCoord']:
+            rv = pm.createNode('remapValue', name=f'{name}{i}_{coord}_RV')
+
+            # Set min and max
+            rv.inputMax.set(100)
+            rv.outputMax.set(1)
+
+            # Connect to coords
+            if coord == 'uCoord':
+                pm.addAttr(jnt, ln=coord, at='float', max=100, min=0, dv=default_value, k=True)
+                jnt.uCoord.connect(rv.inputValue)
+                rv.outValue.connect(UVpin.coordinate[0].coordinateU)
+            elif coord == 'vCoord':
+                pm.addAttr(jnt, ln=coord, at='float', max=100, min=0, dv=50, k=True)
+                jnt.vCoord.connect(rv.inputValue)
+                rv.outValue.connect(UVpin.coordinate[0].coordinateV)
+
+        # Connect matrix from uv pin to jnt
+        pick_mtx = pm.createNode('pickMatrix')
+        pick_mtx.useScale.set(0)
+        pick_mtx.useShear.set(0)
+
+        UVpin.outputMatrix[0].connect(pick_mtx.inputMatrix)
+        pick_mtx.outputMatrix.connect(jnt.offsetParentMatrix)
+
+    startJnt.translate.set(start_pos)
+    startJnt.rx.set(rot[0])
+    startJnt.ry.set(rot[1])
+    startJnt.rx.set(rot[2])
+    endJnt.translate.set(end_pos)
+
+
+    joints.append(endJnt)
+    return joints
+
+
+
+
+
+
 class Limb:
-    def __init__(self, joints):
-        self.joints = joints
-        self.skin_jnts = joints[:-1]
+    def __init__(self, name, startPos, endPos):
+        self.name = name
+        self.guides = create_joint_chain(3, name, startPos, endPos)
+
+
+    def create_joints(self):
+        self.joints = []
+        for i, tmp in enumerate(self.guides):
+            trs = pm.xform(tmp, q=True, t=True, ws=True)
+            jnt = pm.joint(name=f'L_{self.name}{i + 1}_skin_jnt', position=trs)
+
+            self.joints.append(jnt)
+
+        # Orient joints
+        pm.joint(self.joints[0], edit=True, orientJoint='yzx', secondaryAxisOrient='zup', children=True)
+        pm.joint(self.joints[-1], edit=True, orientJoint='none')
+
+
+        self.skin_jnts = self.joints[:-1]
         # IK
-        self.ik_jnts, self.ik_ctrls_grp, self.ikHandle = create_ik(joints)
+        self.ik_jnts, self.ik_ctrls_grp, self.ikHandle = create_ik(self.joints)
         # FK
-        self.fk_jnts = create_fk_jnts(joints)
+        self.fk_jnts = create_fk_jnts(self.joints)
         self.fk_ctrls = create_fk_ctrls(self.fk_jnts)
 
-        self.ikfk_constraints = constraint_ikfk(joints, self.ik_jnts, self.fk_jnts)
-        self.switch = ikfk_switch(self.ik_ctrls_grp, self.fk_ctrls, self.ikfk_constraints, joints[-1])
+        self.ikfk_constraints = constraint_ikfk(self.joints, self.ik_jnts, self.fk_jnts)
+        self.switch = ikfk_switch(self.ik_ctrls_grp, self.fk_ctrls, self.ikfk_constraints, self.joints[-1])
 
         self.clean_up()
 
@@ -740,6 +899,3 @@ def create_joints(tmp_joints, name):
 
     return joints
 
-joints = [pm.PyNode('joint1'), pm.PyNode('joint2'), pm.PyNode('joint3')]
-jnts = create_joints(joints, 'arm')
-arm = Limb(jnts)

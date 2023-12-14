@@ -41,6 +41,7 @@ def guides_grp():
 
     return guides_grp
 
+
 def create_joint_chain(jnt_number, name, start_pos, end_pos, rot=None):
     if rot is None:
         rot = [0, 0, 0]
@@ -278,4 +279,4 @@ def create_rig_guides():
     foot()
     torso(3)
 
-clavicle()
+create_rig_guides()
