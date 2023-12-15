@@ -470,10 +470,14 @@ def create_joint_chain(jnt_number, name, start_pos, end_pos, rot=None):
 
 
 class Limb:
-    def __init__(self, name, startPos, endPos):
+    def __init__(self, name):
         self.name = name
-        self.guides = create_joint_chain(3, name, startPos, endPos)
+        self.skin_jnts = None
 
+    def create_guides(self, startPos, endPos):
+        self.guides = create_joint_chain(3, self.name, startPos, endPos)
+        print(self.guides)
+        pm.select(cl=True)
 
     def create_joints(self):
         self.joints = []
@@ -482,7 +486,7 @@ class Limb:
             jnt = pm.joint(name=f'L_{self.name}{i + 1}_skin_jnt', position=trs)
 
             self.joints.append(jnt)
-
+        print(self.joints)
         # Orient joints
         pm.joint(self.joints[0], edit=True, orientJoint='yzx', secondaryAxisOrient='zup', children=True)
         pm.joint(self.joints[-1], edit=True, orientJoint='none')
@@ -498,7 +502,7 @@ class Limb:
         self.ikfk_constraints = constraint_ikfk(self.joints, self.ik_jnts, self.fk_jnts)
         self.switch = ikfk_switch(self.ik_ctrls_grp, self.fk_ctrls, self.ikfk_constraints, self.joints[-1])
 
-        self.clean_up()
+        #self.clean_up()
 
     def clean_up(self):
         # Get Base Name L_arm01_skin_jnt -> L_arm
@@ -508,8 +512,9 @@ class Limb:
         # Group joints only if group isn't already there
         joint_grp_name = base_name + '_Joint_Grp'
         skin_jnt_parent = self.joints[0].getParent(1)
-        if skin_jnt_parent.name() != joint_grp_name:
-            pm.group(self.fk_jnts[0], self.ik_jnts[0], self.joints[0], name=joint_grp_name)
+        if skin_jnt_parent != None:
+            if skin_jnt_parent.name() != joint_grp_name:
+                pm.group(self.fk_jnts[0], self.ik_jnts[0], self.joints[0], name=joint_grp_name)
 
         # Hide ik fk joints
         self.fk_jnts[0].visibility.set(0)

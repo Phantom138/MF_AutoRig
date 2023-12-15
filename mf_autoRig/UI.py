@@ -1,7 +1,12 @@
+import importlib
 import sys
-sys.path.append(r'C:\Users\332770\Documents\Maya-Scripts\mf_autoRig')
 
-from autorig_pymel_v2 import *
+
+
+sys.path.append(r'C:\Users\332770\Documents\Maya-Scripts')
+import importlib
+from mf_autoRig import autorig_pymel_v2
+
 import maya.cmds as cmds
 from PySide2 import QtCore, QtWidgets
 from functools import partial
@@ -12,6 +17,7 @@ from maya.app.general.mayaMixin import MayaQWidgetDockableMixin
 
 
 
+importlib.reload(autorig_pymel_v2)
 
 def get_maya_win():
     win_ptr = OpenMayaUI.MQtUtil.mainWindow()
@@ -24,43 +30,48 @@ def delete_workspace_control(control):
         cmds.deleteUI(control, control=True)
 
 
-def clicked(self):
-    self.arm = Limb('arm', default_pos['arm'][0], default_pos['arm'][1])
+def guides():
+    arm.create_guides(autorig_pymel_v2.default_pos['arm'][0], autorig_pymel_v2.default_pos['arm'][1])
 
-
-def rig(self):
-    self.arm.create_joints()
+def rig():
+    arm.create_joints()
 
 
 if __name__ == '__main__':
+    arm = autorig_pymel_v2.Limb('arm')
+    print('running')
+    # Check if the window already exists and delete it
+    if cmds.window("myMayaWindow", exists=True):
+        cmds.deleteUI("myMayaWindow", window=True)
 
-    TOOL_NAME="Color Selector"
+    # Create a new Maya window
+    maya_main_window = get_maya_win()
 
-    def __init__(self, parent=None):
-        #____UI____
-        delete_workspace_control(self.TOOL_NAME + 'WorkspaceControl')
-        super(self.__class__, self).__init__(parent=parent)
-        mayaMainWindow = get_maya_win()
-        QtWidgets.QDialog.setObjectName(self.__class__.TOOL_NAME)
-        QtWidgets.QDialog.setWindowFlags(QtCore.Qt.Window)
-        QtWidgets.QDialog.setWindowTitle(self.TOOL_NAME)
+    # Create a PySide2 widget
+    widget = QtWidgets.QWidget(parent=maya_main_window)
+    widget.setWindowFlags(QtCore.Qt.Window)
 
-        #Set layout of window
+    # Set window title
+    widget.setWindowTitle("My Maya PySide2 Window")
+    widget.resize(471, 800)
 
-        mainLayout = QtWidgets.QVBoxLayout(self)
+    # Create widgets
+    button = QtWidgets.QPushButton("Close", widget)
 
-        guidesButton = QtWidgets.QPushButton(self)
-        guidesButton.clicked.connect(self.clicked)
+    # Set layout
+    layout = QtWidgets.QVBoxLayout(widget)
+    layout.addWidget(button)
 
+    # Connect button click signal to close the window
+    button.clicked.connect(widget.close)
 
-        rigButton = QtWidgets.QPushButton(self)
-        rigButton.clicked.connect(self.rig)
+    guidesButton = QtWidgets.QPushButton("create guides", widget)
+    guidesButton.clicked.connect(lambda: arm.create_guides(autorig_pymel_v2.default_pos['arm'][0], autorig_pymel_v2.default_pos['arm'][1]))
 
-        mainLayout.addWidget(guidesButton)
-        mainLayout.addWidget(rigButton)
+    rigButton = QtWidgets.QPushButton("Rig", widget)
+    rigButton.clicked.connect(rig)
 
-
-
-
-mywindow = MyWindow()
-mywindow.show(dockable=True)
+    # Show the window
+    layout.addWidget(guidesButton)
+    layout.addWidget(rigButton)
+    widget.show()
