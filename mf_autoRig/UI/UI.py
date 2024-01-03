@@ -1,23 +1,19 @@
-import importlib
 import sys
-
-
-
-sys.path.append(r'C:\Users\332770\Documents\Maya-Scripts')
 import importlib
-from mf_autoRig import autorig_pymel_v2
+sys.path.append(r'C:\Users\mihai\Documents\Projects\Maya-Scripts')
 
 import maya.cmds as cmds
 from PySide2 import QtCore, QtWidgets
 from functools import partial
-
 import shiboken2
 from maya import OpenMayaUI
 from maya.app.general.mayaMixin import MayaQWidgetDockableMixin
 
+import mf_autoRig.autorig as autorig
+import mf_autoRig.lib.defaults as df
 
-
-importlib.reload(autorig_pymel_v2)
+importlib.reload(autorig)
+importlib.reload(df)
 
 def get_maya_win():
     win_ptr = OpenMayaUI.MQtUtil.mainWindow()
@@ -30,15 +26,11 @@ def delete_workspace_control(control):
         cmds.deleteUI(control, control=True)
 
 
-def guides():
-    arm.create_guides(autorig_pymel_v2.default_pos['arm'][0], autorig_pymel_v2.default_pos['arm'][1])
-
-def rig():
-    arm.create_joints()
-
 
 if __name__ == '__main__':
-    arm = autorig_pymel_v2.Limb('arm')
+
+    arm = autorig.Limb('arm')
+    body = autorig.Body()
     print('running')
     # Check if the window already exists and delete it
     if cmds.window("myMayaWindow", exists=True):
@@ -60,18 +52,19 @@ if __name__ == '__main__':
 
     # Set layout
     layout = QtWidgets.QVBoxLayout(widget)
-    layout.addWidget(button)
+
 
     # Connect button click signal to close the window
     button.clicked.connect(widget.close)
 
     guidesButton = QtWidgets.QPushButton("create guides", widget)
-    guidesButton.clicked.connect(lambda: arm.create_guides(autorig_pymel_v2.default_pos['arm'][0], autorig_pymel_v2.default_pos['arm'][1]))
+    guidesButton.clicked.connect(lambda: body.create_guides(df.default_pos))
 
     rigButton = QtWidgets.QPushButton("Rig", widget)
-    rigButton.clicked.connect(rig)
+    rigButton.clicked.connect(lambda: body.create_joints())
 
     # Show the window
     layout.addWidget(guidesButton)
     layout.addWidget(rigButton)
+    layout.addWidget(button)
     widget.show()

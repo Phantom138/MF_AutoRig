@@ -1,7 +1,6 @@
 import pymel.core as pm
 from PySide2.QtWidgets import QApplication, QWidget, QPushButton, QVBoxLayout
 
-
 default_pos = {
     # template: start pos, end pos
     'arm': [[19.18, 142.85, -0.82], [42.78, 95.32, 3.31]],
@@ -13,8 +12,6 @@ default_pos = {
     'hand_start': [43.59, 92.72, 7.61],
     'clavicle': [2.65, 143.59, 0.0]
 }
-
-
 
 
 
