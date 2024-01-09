@@ -10,7 +10,7 @@ importlib.reload(mf_autoRig.lib.useful_functions)
 from mf_autoRig.lib.useful_functions import *
 
 # Import Modules
-importlib.reload(mf_autoRig.modules.Torso)
+importlib.reload(mf_autoRig.modules.Hand)
 from mf_autoRig.modules.Hand import Hand
 from mf_autoRig.modules.Limb import Limb
 from mf_autoRig.modules.Torso import Spine, Clavicle
@@ -20,6 +20,7 @@ from mf_autoRig.modules.Torso import Spine, Clavicle
 class Body:
     def __init__(self):
         self.arms = [Limb('L_arm'), Limb('R_arm')]
+        self.hands = [Hand('L_hand'), Hand('R_hand')]
         self.legs = [Limb('L_leg'), Limb('R_leg')]
         self.clavicles = [Clavicle('L_clavicle'), Clavicle('R_Clavicle')]
         self.torso = Spine('M_spine', num = 3)
@@ -29,6 +30,11 @@ class Body:
         # Arms
         self.arms[0].create_guides(positions['arm'])
         self.arms[1].create_guides(mirror_pos['arm'])
+        # Hands
+        self.hands[0].create_guides(positions['hand_start'])
+        print(mirror_pos['hand_start'])
+        self.hands[1].create_guides(mirror_pos['hand_start'])
+
         # Legs
         self.legs[0].create_guides(positions['leg'])
         self.legs[1].create_guides(mirror_pos['leg'])
@@ -38,18 +44,26 @@ class Body:
 
         self.torso.create_guides(positions['torso'])
 
+
     def create_joints(self):
+
         # Create joints
-        for arm, leg, clavicle in zip(self.arms, self.legs, self.clavicles):
+        for arm, hand, leg, clavicle in zip(self.arms, self.hands, self.legs, self.clavicles):
             arm.create_joints()
+            # Hands
+            hand.create_joints()
+            hand.create_hand(arm.joints[-1])
+            hand.create_ctrls()
+
             leg.create_joints()
             clavicle.create_joints(arm.joints[0])
 
         self.torso.create_joints()
 
         # Connect modules
-        for arm, leg, clavicle in zip(self.arms, self.legs, self.clavicles):
+        for arm, hand, leg, clavicle in zip(self.arms, self.hands, self.legs, self.clavicles):
             arm.connect(clavicle, method='arm')
+            hand.connect(arm)
             leg.connect(self.torso, method='leg')
             clavicle.connect(self.torso)
 
