@@ -198,9 +198,9 @@ def foot():
 def hand():
     finger_grps = []
     fingers_jnts = []
+
     # initialize constants
     startPos = default_pos['hand_start']
-
     fingers = ['thumb', 'index', 'middle', 'ring', 'pinky']
     zPos = startPos[2]
     zPos_cp = startPos[2]
