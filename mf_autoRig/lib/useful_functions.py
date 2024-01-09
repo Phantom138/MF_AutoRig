@@ -422,6 +422,25 @@ def create_joint_chain(jnt_number, name, start_pos, end_pos, rot=None, defaultVa
     joints.append(endJnt)
     return joints
 
+def create_joints_from_guides(name, guides):
+    pm.select(clear=True)
+    joints = []
+    for i, tmp in enumerate(guides):
+        trs = pm.xform(tmp, q=True, t=True, ws=True)
+        suff = df.skin_sff
+        # Last joint has end suffix
+        if i == len(guides) - 1:
+            suff = df.end_sff
+
+        jnt = pm.joint(name=f'{name}{i + 1:02}{suff}{df.jnt_sff}', position=trs)
+        joints.append(jnt)
+
+    # Orient joints
+    pm.joint(joints[0], edit=True, orientJoint='yzx', secondaryAxisOrient='zup', children=True)
+    pm.joint(joints[-1], edit=True, orientJoint='none')
+
+    pm.select(clear = True)
+    return joints
 
 def getHierachy(joint):
     #jnt = pm.PyNode(joint)

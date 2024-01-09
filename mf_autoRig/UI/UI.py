@@ -1,6 +1,6 @@
 import sys
 import importlib
-sys.path.append(r'C:\Users\mihai\Documents\Projects\Maya-Scripts')
+sys.path.append(r'C:\Users\mihai\Documents\Projects\Maya-Scripts\mf_autoRig')
 
 import maya.cmds as cmds
 from PySide2 import QtCore, QtWidgets
