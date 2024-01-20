@@ -2,13 +2,15 @@ import pymel.core as pm
 
 from mf_autoRig.lib.useful_functions import *
 import mf_autoRig.lib.defaults as df
-
+from mf_autoRig.lib.tools import set_color
 
 class Clavicle:
     def __init__(self, name):
         self.name = name
+        self.side = name.split('_')[0]
         self.joints = None
         self.guides = None
+        self.all_ctrls = []
 
     def create_guides(self, pos):
         """
@@ -46,6 +48,10 @@ class Clavicle:
         pm.joint(self.joints[0], edit=True, orientJoint='yzx', secondaryAxisOrient='zup', children=True)
         pm.joint(self.joints[-1], edit=True, orientJoint='none')
 
+        # Clear Selection
+        pm.select(clear=True)
+
+    def rig(self):
         if len(self.joints) != 2:
             pm.error('Can only create clavicle with 2 joints')
 
@@ -59,6 +65,15 @@ class Clavicle:
         pm.parentConstraint(clav.ctrl, jnt, maintainOffset=True)
 
         self.ctrl = clav.ctrl
+
+        self.all_ctrls.append(self.ctrl)
+        # Color clavicle
+        if self.side == 'R':
+            set_color(self.ctrl, viewport='red')
+        elif self.side == 'L':
+            set_color(self.ctrl, viewport='blue')
+
+
 
         # Parent Joints under Joint_grp
         pm.parent(self.joints[0], get_group(df.joints_grp))
@@ -91,19 +106,24 @@ class Spine:
 
             self.joints.append(jnt)
 
-        pm.select(clear=True)
-
         # Orient joints
         pm.joint(self.joints[0], edit=True, orientJoint='yzx', secondaryAxisOrient='zup', children=True)
         pm.joint(self.joints[-1], edit=True, orientJoint='none')
 
         # Create hip at the beginning of joint chain
-        trs = pm.xform(self.joints[0], q=True, t=True, ws=True)
-        self.hip = pm.joint(name=f'{self.name[0]}_hip{df.skin_sff}{df.jnt_sff}', position=trs)
+        self.hip = pm.createNode('joint', name=f'{self.name[0]}_hip{df.skin_sff}{df.jnt_sff}')
+        pm.matchTransform(self.hip, self.joints[0])
 
+        pm.select(clear=True)
+
+    def rig(self):
         # Create ctrls
         self.fk_ctrls = create_fk_ctrls(self.joints, skipEnd=False, shape='square')
         self.hip_ctrl = create_fk_ctrls(self.hip, shape='circle')
+
+        # Color ctrls
+        set_color(self.fk_ctrls, viewport='yellow')
+        set_color(self.hip_ctrl, viewport='green')
 
         # Parent hip ctrl grp under pelvis ctrl
         pm.parent(self.hip_ctrl.getParent(1), self.fk_ctrls[0])

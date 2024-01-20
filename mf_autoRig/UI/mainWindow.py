@@ -1,19 +1,14 @@
-import sys
-import importlib
-sys.path.append(r'C:\Users\mihai\Documents\Projects\Maya-Scripts\mf_autoRig')
-
-import maya.cmds as cmds
 from PySide2 import QtCore, QtWidgets
-from functools import partial
 import shiboken2
 from maya import OpenMayaUI
 from maya.app.general.mayaMixin import MayaQWidgetDockableMixin
 
-import mf_autoRig.autorig as autorig
+import maya.cmds as cmds
+
+from mf_autoRig.modules.Body import Body
 import mf_autoRig.lib.defaults as df
 
-importlib.reload(autorig)
-importlib.reload(df)
+print(__file__)
 
 def get_maya_win():
     win_ptr = OpenMayaUI.MQtUtil.mainWindow()
@@ -25,12 +20,8 @@ def delete_workspace_control(control):
         cmds.workspaceControl(control, e=True, close=True)
         cmds.deleteUI(control, control=True)
 
-
-
-if __name__ == '__main__':
-
-    arm = autorig.Limb('arm')
-    body = autorig.Body()
+def setup():
+    body = Body()
     print('running')
     # Check if the window already exists and delete it
     if cmds.window("myMayaWindow", exists=True):
@@ -60,11 +51,18 @@ if __name__ == '__main__':
     guidesButton = QtWidgets.QPushButton("create guides", widget)
     guidesButton.clicked.connect(lambda: body.create_guides(df.default_pos))
 
+    jointsButton = QtWidgets.QPushButton("Joints", widget)
+    jointsButton.clicked.connect(lambda: body.create_joints())
+
     rigButton = QtWidgets.QPushButton("Rig", widget)
-    rigButton.clicked.connect(lambda: body.create_joints())
+    rigButton.clicked.connect(lambda: body.rig())
+
+    mirrorButton = QtWidgets.QPushButton("Mirror", widget)
+    mirrorButton.clicked.connect(lambda: body.mirror_ctrls(side='L'))
 
     # Show the window
     layout.addWidget(guidesButton)
+    layout.addWidget(jointsButton)
     layout.addWidget(rigButton)
     layout.addWidget(button)
     widget.show()

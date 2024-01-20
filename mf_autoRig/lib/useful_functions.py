@@ -1,3 +1,5 @@
+import sys
+
 import pymel.core as pm
 import pymel.core.datatypes as dt
 import re
@@ -207,6 +209,7 @@ def create_ik(joints):
     pm.poleVectorConstraint(pole.ctrl, ikHandle[0])
 
     # Clean-Up
+    ik_ctrls = [ik.ctrl, pole.ctrl]
     ik_ctrl_grp = pm.group(ik.grp, pole.grp, name=base_name + df.ik_sff + '_Control_Grp')
 
     pm.parent(ikHandle[0], get_group('ikHandle_grp'))
@@ -214,7 +217,7 @@ def create_ik(joints):
     # Clear selection
     pm.select(clear=True)
 
-    return ik_joints, ik_ctrl_grp, ikHandle[0]
+    return ik_joints, ik_ctrls, ik_ctrl_grp, ikHandle[0]
 
 def constraint_ikfk(joints, ik_joints, fk_joints):
     fkik_constraints = []
@@ -460,3 +463,15 @@ def mirror_default_pos(pos):
 
     #mirrored_pos = {key: [[-pos[0]] + pos[1:] for pos in value] for key, value in default_pos.items()}
     return mirrored_pos
+
+def control_shape_mirror(src, dst):
+    targetCvList = pm.ls(f'{src.name()}.cv[:]', flatten=True)
+    destCvList = pm.ls(f'{dst.name()}.cv[:]', flatten=True)
+
+    if len(targetCvList) != len(destCvList):
+        pm.error('ctrls not matching')
+
+    for tar, des in zip(targetCvList, destCvList):  # zip target and destination list to match data
+        pos = pm.xform(tar, query=True, translation=True, worldSpace=True)
+        pos = [pos[0] * -1.0, pos[1], pos[2]]  # flip x value of position
+        pm.xform(des, translation=pos, worldSpace=True)

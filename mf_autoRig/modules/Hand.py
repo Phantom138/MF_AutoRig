@@ -1,11 +1,9 @@
 import re
-
-from mf_autoRig.lib.defaults import *
 import importlib
 
-import mf_autoRig.lib.useful_functions
-importlib.reload(mf_autoRig.lib.useful_functions)
+import mf_autoRig.lib.defaults as df
 from mf_autoRig.lib.useful_functions import *
+from mf_autoRig.lib.tools import set_color, auto_color
 
 
 class Hand:
@@ -14,6 +12,7 @@ class Hand:
         self.guides = None
         self.finger_jnts = None
         self.hand_jnts = None
+        self.all_ctrls = []
 
     def create_guides(self, start_pos):
         finger_grps = []
@@ -76,29 +75,68 @@ class Hand:
         self.guides = fingers_jnts
         print(fingers_jnts)
 
-    def create_joints(self):
+        # Clear selection
+        pm.select(clear=True)
+
+
+    def create_joints(self, matrices = None):
+        """
+        matrices - None if using joints
+                 - nested list with info for fingers, starting with the thumb
+        """
         print(f"Creating {self.name} joints")
+
+        # List of fingers
+        finger_names = ['thumb', 'index', 'middle', 'ring', 'pinky']
+
+        # Create hand grp
         self.joint_grp = pm.createNode('transform', name=f'{self.name}_{df.joints_grp}')
         pm.parent(self.joint_grp, get_group('Joints_Grp'))
 
-        # Create finger joints
-        self.finger_jnts = []
-        for finger in self.guides:
-            # Get finger name
-            match = re.search('([a-zA-Z]_([a-zA-Z]+))\d*_', finger[0].name())
-            base_name = match.group(1)
+        if matrices is None:
+            # Create finger joints based on guides
+            self.finger_jnts = []
+            for finger in self.guides:
+                # Get finger name
+                match = re.search('([a-zA-Z]_([a-zA-Z]+))\d*_', finger[0].name())
+                base_name = match.group(1)
 
-            jnts = create_joints_from_guides(base_name, finger)
-            pm.parent(jnts[0], self.joint_grp)
-            self.finger_jnts.append(jnts)
+                jnts = create_joints_from_guides(base_name, finger)
+                pm.parent(jnts[0], self.joint_grp)
+                self.finger_jnts.append(jnts)
+        else:
+            # Create based on matrices
+            self.finger_jnts = []
 
+            for i, finger_matrices in enumerate(matrices):
+                finger = []
+                for j, mtx in enumerate(finger_matrices):
+                    sff = df.skin_sff
+                    # Last joint has end suffix
+                    if j == len(matrices) - 1:
+                        sff = df.end_sff
+
+                    side = self.name[0]
+                    # Create joint
+                    jnt = pm.joint(name=f'{side}_{finger_names[i]}{j + 1:02}{sff}{df.jnt_sff}')
+                    finger.append(jnt)
+
+                    # Set position based on matrix
+                    pm.xform(jnt, ws=True, m=mtx)
+
+                pm.parent(finger[0], self.joint_grp)
+                self.finger_jnts.append(finger)
+                # Clear selection
+                pm.select(clear=True)
 
 
     def create_hand(self, wrist):
         self.hand_jnts = []
+
         # Create start jnt where the wrist is
-        pos = pm.xform(wrist, q=True, t=True, ws=True)
-        hand_start = pm.joint(name=f'{self.name}{df.skin_sff}{df.jnt_sff}', position=pos)
+        mtx = pm.xform(wrist, q=True, ws=True, t=True)
+        hand_start = pm.joint(name=f'{self.name}{df.skin_sff}{df.jnt_sff}', p=mtx)
+
         self.hand_jnts.append(hand_start)
 
         # Create end jnt by averaging the knuckles position
@@ -115,30 +153,57 @@ class Hand:
         hand_end = pm.joint(name = f'{self.name}{df.end_sff}{df.jnt_sff}', position=average)
         self.hand_jnts.append(hand_end)
 
+        # Orient Joints
+        pm.joint(self.hand_jnts[0], edit=True, orientJoint='yzx', secondaryAxisOrient='zup', children=True)
+        pm.joint(self.hand_jnts[-1], edit=True, orientJoint='none')
+
         # Parent to joint grp
         pm.parent(self.hand_jnts[0], self.joint_grp)
         print(average)
 
-    def create_ctrls(self, curl=True, spread=True):
+    def create_hand_with_matrix(self, matrices):
+        self.hand_jnts = []
+
+        # Hand start
+        hand_start = pm.joint(name=f'{self.name}{df.skin_sff}{df.jnt_sff}')
+        pm.xform(hand_start, ws=True, m=matrices[0])
+        self.hand_jnts.append(hand_start)
+
+        # Hand end
+        hand_end = pm.joint(name=f'{self.name}{df.end_sff}{df.jnt_sff}')
+        pm.xform(hand_end, ws=True, m=matrices[1])
+        self.hand_jnts.append(hand_end)
+
+        # Clear selection
+        pm.select(clear=True)
+
+    def rig(self, curl=True, spread=True):
         # Create hand ctrl
         self.hand = CtrlGrp(self.name, shape='circle')
         self.handJnt = self.hand_jnts[0]
+
         # Match transforms and parent constrain controller to joint
         pm.matchTransform(self.hand.grp, self.handJnt)
         pm.parentConstraint(self.hand.ctrl, self.handJnt, maintainOffset=True)
-
 
         # Go through each finger
         all_offset_grps = []
         for finger in self.finger_jnts:
             finger_ctrls = create_fk_ctrls(finger, scale=1)
+
+            # Color finger ctrls
+            auto_color(finger_ctrls)
+
             finger_grp = finger_ctrls[0].getParent(1)
 
+            self.all_ctrls.extend(finger_ctrls)
             # Create offset groups
             offset_grps = create_offset_grp(finger_ctrls)
             all_offset_grps.append(offset_grps)
             # Connect finger to hand_ctrl
             pm.parent(finger_grp, self.hand.ctrl)
+
+
 
             # Do curl, spread, etc. switches
             if curl:
@@ -147,6 +212,9 @@ class Hand:
             if spread:
                 self.spread_switch(self.hand.ctrl, offset_grps)
 
+
+
+        self.all_ctrls.extend(self.hand.ctrl)
 
     def curl_switch(self, hand_ctrl, offset_grps):
         match = re.search('([a-zA-Z]_([a-zA-Z]+))\d*_', offset_grps[0].name())
@@ -235,7 +303,7 @@ class Hand:
             reverseNode = pm.listConnections(arm.switch, destination=True, type='reverse')[0]
 
             # Connect Weights accordingly
-            if fk_sff in weight.name():
+            if df.fk_sff in weight.name():
                 ikfkSwitch.connect(weight)
-            elif ik_sff in weight.name():
+            elif df.ik_sff in weight.name():
                 reverseNode.outputX.connect(weight)

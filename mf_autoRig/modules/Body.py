@@ -5,16 +5,15 @@ import re
 from mf_autoRig.lib.defaults import *
 import importlib
 
-import mf_autoRig.lib.useful_functions
-importlib.reload(mf_autoRig.lib.useful_functions)
 from mf_autoRig.lib.useful_functions import *
 
 # Import Modules
-importlib.reload(mf_autoRig.modules.Hand)
+
 from mf_autoRig.modules.Hand import Hand
 from mf_autoRig.modules.Limb import Limb
 from mf_autoRig.modules.Torso import Spine, Clavicle
 
+from mf_autoRig.lib.mirrorJoint import xformMirror
 
 
 class Body:
@@ -23,50 +22,85 @@ class Body:
         self.hands = [Hand('L_hand'), Hand('R_hand')]
         self.legs = [Limb('L_leg'), Limb('R_leg')]
         self.clavicles = [Clavicle('L_clavicle'), Clavicle('R_Clavicle')]
-        self.torso = Spine('M_spine', num = 3)
+        self.spine = Spine('M_spine', num = 3)
 
     def create_guides(self, positions):
         mirror_pos = mirror_default_pos(positions)
-        # Arms
+
         self.arms[0].create_guides(positions['arm'])
-        self.arms[1].create_guides(mirror_pos['arm'])
-        # Hands
-        self.hands[0].create_guides(positions['hand_start'])
-        print(mirror_pos['hand_start'])
-        self.hands[1].create_guides(mirror_pos['hand_start'])
-
-        # Legs
         self.legs[0].create_guides(positions['leg'])
-        self.legs[1].create_guides(mirror_pos['leg'])
-        # Clavicles
+        self.hands[0].create_guides(positions['hand_start'])
         self.clavicles[0].create_guides(positions['clavicle'])
-        self.clavicles[1].create_guides(mirror_pos['clavicle'])
 
-        self.torso.create_guides(positions['torso'])
+        self.spine.create_guides(positions['torso'])
 
 
     def create_joints(self):
+        # Limbs
+        create_pair(self.arms[0], self.arms[1])
+        create_pair(self.legs[0], self.legs[1])
 
-        # Create joints
+        # Hands
+        self.hands[0].create_joints()
+        self.hands[0].create_hand(self.arms[0].joints[-1])
+
+        fingers_mtx = []
+        for finger in self.hands[0].finger_jnts:
+            fingers_mtx.append(xformMirror(finger))
+
+        self.hands[1].create_joints(matrices = fingers_mtx)
+        self.hands[1].create_hand_with_matrix(xformMirror(self.hands[0].hand_jnts))
+
+        # Clavicles
+        self.clavicles[0].create_joints(self.arms[0].joints[0])
+
+        self.clavicles[1].joints = pm.mirrorJoint(self.clavicles[0].joints[0],
+                                                  mirrorYZ=True, mirrorBehavior=True, searchReplace=('L_', 'R_'))
+        pm.select(clear=True)
+
+        # Torso
+        self.spine.create_joints()
+
+        self.rig()
+
+    def rig(self):
+        self.spine.rig()
+
         for arm, hand, leg, clavicle in zip(self.arms, self.hands, self.legs, self.clavicles):
-            arm.create_joints()
-            # Hands
-            hand.create_joints()
-            hand.create_hand(arm.joints[-1])
-            hand.create_ctrls()
+            arm.rig()
+            hand.rig()
+            leg.rig()
+            clavicle.rig()
 
-            leg.create_joints()
-            clavicle.create_joints(arm.joints[0])
-
-        self.torso.create_joints()
-
-        # Connect modules
-        for arm, hand, leg, clavicle in zip(self.arms, self.hands, self.legs, self.clavicles):
             arm.connect(clavicle, method='arm')
             hand.connect(arm)
-            leg.connect(self.torso, method='leg')
-            clavicle.connect(self.torso)
+            leg.connect(self.spine, method='leg')
+            clavicle.connect(self.spine)
 
+        self.mirror_ctrls(side='L')
+
+    def mirror_ctrls(self, side: str):
+        src = 0
+        dst = 1
+
+        if side == 'L':
+            src = 0
+            dst = 1
+        elif side == 'R':
+            src = 1
+            dst = 0
+        else:
+            pm.error("Source should be either R or L")
+
+        src_ctrls = self.arms[src].all_ctrls + self.legs[src].all_ctrls + self.clavicles[src].all_ctrls
+        dst_ctrls = self.arms[dst].all_ctrls + self.legs[dst].all_ctrls + self.clavicles[dst].all_ctrls
+
+        for src, dst in zip(src_ctrls, dst_ctrls):
+            control_shape_mirror(src, dst)
+
+def create_pair(left, right):
+    left.create_joints()
+    right.create_joints(matrices = xformMirror(left.joints))
 ################################
 #### CONNECT METHODS ###########
 ################################
