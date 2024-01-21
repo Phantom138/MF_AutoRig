@@ -5,21 +5,29 @@ import mf_autoRig.lib.defaults as df
 from mf_autoRig.lib.tools import set_color
 
 class Clavicle:
-    def __init__(self, name):
+    def __init__(self, name, meta=True):
         self.name = name
+        self.meta = meta
         self.side = name.split('_')[0]
         self.clavicle_ctrl = None
         self.joints = None
         self.guides = None
         self.all_ctrls = []
 
-        # Create script node
-        node = pm.createNode('script', name = df.tool_prf + self.name)
-        node.addAttr('moduleType', type='string')
-        node.moduleType.set('Clavicle')
-        node.addAttr('joints', at='message')
-        node.addAttr('ik_joints', type='string')
-        node.addAttr('fk_joints', type='string')
+        # Create metadata node
+        if meta:
+            self.metaNode = pm.createNode('network', name = "META_" + self.name)
+            self.metaNode.addAttr('Name', type='string')
+            self.metaNode.Name.set(self.name)
+
+            self.metaNode.addAttr('moduleType', type='string')
+            self.metaNode.moduleType.set('Clavicle')
+
+            self.metaNode.addAttr('info', at='compound', nc=3)
+            self.metaNode.addAttr('guides', at='message', m=True, p='info')
+            self.metaNode.addAttr('joints', at='message', m=True, p='info')
+            self.metaNode.addAttr('clavicle_ctrl', type='message', p='info')
+
 
     def create_guides(self, pos = None):
         """
@@ -40,6 +48,11 @@ class Clavicle:
 
         # Clear Selection
         pm.select(clear=True)
+
+        # Save guides
+        if self.meta and self.guides:
+            for i, guide in enumerate(self.guides):
+                guide.message.connect(self.metaNode.guides[i])
 
     def create_joints(self, shoulder=None):
         """
@@ -70,6 +83,11 @@ class Clavicle:
         # Clear Selection
         pm.select(clear=True)
 
+        #Save joints
+        if self.meta and self.joints:
+            for i, joints in enumerate(self.joints):
+                joints.message.connect(self.metaNode.joints[i])
+
     def rig(self):
         if len(self.joints) != 2:
             pm.error('Can only create clavicle with 2 joints')
@@ -99,8 +117,14 @@ class Clavicle:
 
         pm.select(clear=True)
 
+        if self.meta and self.clavicle_ctrl:
+            self.clavicle_ctrl.message.connect(self.metaNode.clavicle_ctrl)
+
+
     def connect(self, torso):
         pm.parent(self.clavicle_ctrl.getParent(1), torso.fk_ctrls[-1])
+
+
 
 
 class Spine:

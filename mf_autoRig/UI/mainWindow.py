@@ -9,8 +9,6 @@ from mf_autoRig.modules.Body import Body
 import mf_autoRig.lib.defaults as df
 
 
-print(__file__)
-
 def get_maya_win():
     win_ptr = OpenMayaUI.MQtUtil.mainWindow()
     return shiboken2.wrapInstance(int(win_ptr), QtWidgets.QMainWindow)

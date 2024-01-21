@@ -10,10 +10,13 @@ from maya import OpenMayaUI as omui
 from shiboken2 import wrapInstance
 from PySide2 import QtUiTools, QtCore, QtGui, QtWidgets
 from functools import partial  # optional, for passing args during signal function calls
-import sys
+
 import pathlib
 WORK_PATH = pathlib.Path(__file__).parent.resolve()
 from mf_autoRig.modules import Limb, Torso, Foot, Hand
+
+from datetime import datetime
+
 
 class_name_map = {
     'Limb': Limb.Limb,
@@ -35,7 +38,7 @@ class MayaUITemplate(QtWidgets.QWidget):
         super(MayaUITemplate, self).__init__(parent=parent)
         self.setWindowFlags(QtCore.Qt.Window)
         self.widgetPath = f'{WORK_PATH}\mainWidget.ui'
-        print(self.widgetPath)
+        print(f"Started UI, using {self.widgetPath} file")
         self.widget = QtUiTools.QUiLoader().load(self.widgetPath)
         self.widget.setParent(self)
         # set initial window size
@@ -81,7 +84,6 @@ class MayaUITemplate(QtWidgets.QWidget):
 
 
     def nameChanged(self):
-        print("nameChanged")
         name = self.mdl_name.text()
         if not name:
             self.mdl_btn_guides.setEnabled(False)
@@ -89,7 +91,6 @@ class MayaUITemplate(QtWidgets.QWidget):
             return None
 
         self.mdl_btn_guides.setEnabled(True)
-
 
     def mdl_createGuides(self):
         name = self.mdl_name.text()
@@ -111,6 +112,7 @@ class MayaUITemplate(QtWidgets.QWidget):
 
         self.module.create_joints()
         self.module.rig()
+
 
 def openWindow():
     """
