@@ -14,7 +14,7 @@ def unload_packages(silent=True, packages=None):
         for package in packages:
             if i.startswith(package):
                 reloadList.append(i)
-    print(reloadList)
+
     # unload everything
     for i in reloadList:
         try:
