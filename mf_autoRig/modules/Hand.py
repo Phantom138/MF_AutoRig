@@ -10,13 +10,17 @@ class Hand:
     def __init__(self, name):
         self.name = name
         self.guides = None
+        self.wrist = None
         self.finger_jnts = None
         self.hand_jnts = None
         self.all_ctrls = []
 
-    def create_guides(self, start_pos):
+    def create_guides(self, start_pos=None):
         finger_grps = []
         fingers_jnts = []
+
+        if start_pos is None:
+            start_pos = [0,0,0]
 
         # initialize constants
         side = self.name.split('_')[0]
@@ -24,6 +28,7 @@ class Hand:
         zPos = start_pos[2]
         spacing = 1.5
 
+        # Create finger guides
         for index, name in enumerate(fingers):
             jnt_num = 5
             if index == 0:
@@ -37,7 +42,6 @@ class Hand:
             fingerPos = start_pos[0], start_pos[1], zPos
             yPos = fingerPos[1]
 
-            print(fingerPos)
             offset = 4
             finger = []
             for i in range(jnt_num):
@@ -66,14 +70,20 @@ class Hand:
             if index == 0:
                 pm.rotate(finger_grp, (-25, -30, 0))
 
+        self.guides = fingers_jnts
+
         # Group clean-up
         hand_grp = pm.createNode('transform', name=f'{self.name}_grp')
         pm.matchTransform(hand_grp, finger_grps[int(len(fingers) / 2)])
         pm.parent(finger_grps, hand_grp)
         pm.parent(hand_grp, get_group('rig_guides_grp'))
 
-        self.guides = fingers_jnts
-        print(fingers_jnts)
+        # Create Wrist
+        if start_pos == [0,0,0]:
+            self.wrist = pm.createNode('joint', name=f'{self.name}_wrist_{df.jnt_sff}')
+            pm.xform(self.wrist, t=[0,5,0], ws=True)
+            pm.parent(self.wrist, hand_grp)
+
 
         # Clear selection
         pm.select(clear=True)
@@ -130,7 +140,10 @@ class Hand:
                 pm.select(clear=True)
 
 
-    def create_hand(self, wrist):
+    def create_hand(self, wrist=None):
+        if wrist is None:
+            wrist = self.wrist
+
         self.hand_jnts = []
 
         # Create start jnt where the wrist is
@@ -203,16 +216,12 @@ class Hand:
             # Connect finger to hand_ctrl
             pm.parent(finger_grp, self.hand.ctrl)
 
-
-
             # Do curl, spread, etc. switches
             if curl:
                 self.curl_switch(self.hand.ctrl, offset_grps)
 
             if spread:
                 self.spread_switch(self.hand.ctrl, offset_grps)
-
-
 
         self.all_ctrls.extend(self.hand.ctrl)
 

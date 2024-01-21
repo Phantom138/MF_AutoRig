@@ -1,3 +1,4 @@
+tool_prf = 'autoMF_'
 grp_sff = '_grp'
 ctrl_sff = '_ctrl'
 jnt_sff = '_jnt'

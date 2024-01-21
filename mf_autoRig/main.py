@@ -1,9 +1,8 @@
-import importlib
-import sys
-from pprint import pprint
+from unload_packages import unload_packages
+unload_packages(silent=False, packages=["mf_autoRig"])
+import mf_autoRig
 import mf_autoRig.UI.mainWindow as ui
-
+import mf_autoRig.UI.mayaUiTemplate as uiTemplate
 
 if __name__ == '__main__':
-    pprint(sys.path)
-    ui.setup()
+    uiTemplate.openWindow()

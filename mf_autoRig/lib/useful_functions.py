@@ -1,5 +1,3 @@
-import sys
-
 import pymel.core as pm
 import pymel.core.datatypes as dt
 import re

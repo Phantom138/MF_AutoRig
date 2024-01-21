@@ -8,6 +8,7 @@ import maya.cmds as cmds
 from mf_autoRig.modules.Body import Body
 import mf_autoRig.lib.defaults as df
 
+
 print(__file__)
 
 def get_maya_win():

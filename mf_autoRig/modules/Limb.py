@@ -15,11 +15,14 @@ class Limb:
         self.guides = None
         self.all_ctrls = []
 
-    def create_guides(self, pos):
+    def create_guides(self, pos=None):
         """
         Creates guides between pos[0] and pos[1]
         Pos should be a list with two elements!
         """
+        if pos is None:
+            pos = [(0, 10, 0), (0, 0, 0)]
+
         self.guides = create_joint_chain(3, self.name, pos[0], pos[1])
 
         pm.select(cl=True)
