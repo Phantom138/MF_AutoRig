@@ -8,17 +8,32 @@ class Clavicle:
     def __init__(self, name):
         self.name = name
         self.side = name.split('_')[0]
+        self.clavicle_ctrl = None
         self.joints = None
         self.guides = None
         self.all_ctrls = []
 
-    def create_guides(self, pos):
+        # Create script node
+        node = pm.createNode('script', name = df.tool_prf + self.name)
+        node.addAttr('moduleType', type='string')
+        node.moduleType.set('Clavicle')
+        node.addAttr('joints', at='message')
+        node.addAttr('ik_joints', type='string')
+        node.addAttr('fk_joints', type='string')
+
+    def create_guides(self, pos = None):
         """
         Creates clavicle guides at pos, pos should be a list of xyz values
         """
         self.guides = []
-        # Create new joint at pos
-        self.guides.append(pm.joint(name=f'{self.name}', position=pos))
+        # If there are no guides, it means that the class is ran individually, so there is no guide for the shoulder
+        if pos is None:
+            pos = [(0,0,0), (5,0,0)]
+            for p in pos:
+                self.guides.append(pm.joint(name=f'{self.name}', position=p))
+        else:
+            # Create new joint at pos
+            self.guides.append(pm.joint(name=f'{self.name}', position=pos))
         pm.parent(self.guides, get_group('rig_guides_grp'))
 
         print(f'Clavicle guides {self.guides}')
@@ -26,19 +41,23 @@ class Clavicle:
         # Clear Selection
         pm.select(clear=True)
 
-    def create_joints(self, shoulder):
+    def create_joints(self, shoulder=None):
         """
         Create joints from starting guide to shoulder
         """
-        # Add shoulder to guides
-        self.guides.append(shoulder)
+        if shoulder is not None:
+            # Add shoulder to guides
+            self.guides.append(shoulder)
 
         # Create joints
         self.joints = []
         for i, tmp in enumerate(self.guides):
             # Create joints where the guides where
             trs = pm.xform(tmp, q=True, t=True, ws=True)
-            jnt = pm.joint(name=f'{self.name}{i + 1:02}{df.skin_sff}{df.jnt_sff}', position=trs)
+            sff = df.skin_sff
+            if i == len(self.guides):
+                sff = df.end_sff
+            jnt = pm.joint(name=f'{self.name}{i + 1:02}{sff}{df.jnt_sff}', position=trs)
 
             self.joints.append(jnt)
 
@@ -64,15 +83,15 @@ class Clavicle:
         pm.matchTransform(clav.grp, jnt)
         pm.parentConstraint(clav.ctrl, jnt, maintainOffset=True)
 
-        self.ctrl = clav.ctrl
+        self.clavicle_ctrl = clav.ctrl
 
-        self.all_ctrls.append(self.ctrl)
+        self.all_ctrls.append(self.clavicle_ctrl)
+
         # Color clavicle
         if self.side == 'R':
-            set_color(self.ctrl, viewport='red')
+            set_color(self.clavicle_ctrl, viewport='red')
         elif self.side == 'L':
-            set_color(self.ctrl, viewport='blue')
-
+            set_color(self.clavicle_ctrl, viewport='blue')
 
 
         # Parent Joints under Joint_grp
@@ -81,17 +100,19 @@ class Clavicle:
         pm.select(clear=True)
 
     def connect(self, torso):
-        pm.parent(self.ctrl.getParent(1), torso.fk_ctrls[-1])
+        pm.parent(self.clavicle_ctrl.getParent(1), torso.fk_ctrls[-1])
 
 
 class Spine:
-    def __init__(self, name, num):
+    def __init__(self, name, num=4):
         self.name = name
         self.num = num
         self.guides = None
         self.joints = None
 
-    def create_guides(self, pos):
+    def create_guides(self, pos=None):
+        if pos is None:
+            pos = [(0,0,0), (0,10,0)]
         self.guides = create_joint_chain(self.num, self.name, pos[0], pos[1], defaultValue=50)
 
         pm.select(clear=True)
