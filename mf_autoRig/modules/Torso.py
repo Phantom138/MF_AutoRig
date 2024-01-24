@@ -3,7 +3,15 @@ import pymel.core as pm
 from mf_autoRig.lib.useful_functions import *
 import mf_autoRig.lib.defaults as df
 from mf_autoRig.lib.tools import set_color
+import mf_autoRig.modules.meta as mdata
 
+clavicle_meta_args = {
+    'guides': {'attributeType': 'message', 'm': True},
+    'joints': {'attributeType': 'message', 'm': True},
+    'clavicle_ctrl': {'attributeType': 'message', 'm': True},
+}
+
+#TODO: split clavicle and Torso intro dif files
 class Clavicle:
     def __init__(self, name, meta=True):
         self.name = name
@@ -16,17 +24,7 @@ class Clavicle:
 
         # Create metadata node
         if meta:
-            self.metaNode = pm.createNode('network', name = "META_" + self.name)
-            self.metaNode.addAttr('Name', type='string')
-            self.metaNode.Name.set(self.name)
-
-            self.metaNode.addAttr('moduleType', type='string')
-            self.metaNode.moduleType.set('Clavicle')
-
-            self.metaNode.addAttr('info', at='compound', nc=3)
-            self.metaNode.addAttr('guides', at='message', m=True, p='info')
-            self.metaNode.addAttr('joints', at='message', m=True, p='info')
-            self.metaNode.addAttr('clavicle_ctrl', type='message', p='info')
+            self.metaNode = mdata.create_metadata(name, 'Clavicle', clavicle_meta_args)
 
 
     def create_guides(self, pos = None):
@@ -126,13 +124,25 @@ class Clavicle:
 
 
 
+spine_meta_args = {
+    'hip_jnt': {'attributeType': 'message'},
+    'hip_ctrl': {'attributeType': 'message'},
+    'guides': {'attributeType': 'message', 'm': True},
+    'joints': {'attributeType': 'message', 'm': True},
+    'fk_ctrls': {'attributeType': 'message', 'm': True},
+}
 
 class Spine:
-    def __init__(self, name, num=4):
+    def __init__(self, name, meta=True, num=4):
+        self.meta = meta
         self.name = name
         self.num = num
         self.guides = None
         self.joints = None
+
+        # Create metadata node
+        if meta:
+            self.metaNode = mdata.create_metadata(name, 'Spine', spine_meta_args)
 
     def create_guides(self, pos=None):
         if pos is None:
@@ -140,6 +150,9 @@ class Spine:
         self.guides = create_joint_chain(self.num, self.name, pos[0], pos[1], defaultValue=50)
 
         pm.select(clear=True)
+        # Add guides
+        if self.meta:
+            mdata.add(self.guides, self.metaNode.guides)
 
     def create_joints(self):
         self.joints = []
@@ -156,15 +169,20 @@ class Spine:
         pm.joint(self.joints[-1], edit=True, orientJoint='none')
 
         # Create hip at the beginning of joint chain
-        self.hip = pm.createNode('joint', name=f'{self.name[0]}_hip{df.skin_sff}{df.jnt_sff}')
-        pm.matchTransform(self.hip, self.joints[0])
+        self.hip_jnt = pm.createNode('joint', name=f'{self.name[0]}_hip{df.skin_sff}{df.jnt_sff}')
+        pm.matchTransform(self.hip_jnt, self.joints[0])
 
         pm.select(clear=True)
+        # Add joints
+        if self.meta:
+            mdata.add(self.hip_jnt, self.metaNode.hip_jnt)
+            mdata.add(self.joints, self.metaNode.joints)
 
     def rig(self):
-        # Create ctrls
+
+
         self.fk_ctrls = create_fk_ctrls(self.joints, skipEnd=False, shape='square')
-        self.hip_ctrl = create_fk_ctrls(self.hip, shape='circle')
+        self.hip_ctrl = create_fk_ctrls(self.hip_jnt, shape='circle')
 
         # Color ctrls
         set_color(self.fk_ctrls, viewport='yellow')
@@ -177,4 +195,10 @@ class Spine:
         pm.parent(self.fk_ctrls[0].getParent(1), get_group(df.root))
 
         # Parent Joints under Joint_grp
-        pm.parent(self.joints[0], self.hip, get_group(df.joints_grp))
+        pm.parent(self.joints[0], self.hip_jnt, get_group(df.joints_grp))
+
+        # Add joints
+        if self.meta:
+            print(f'Spine fk ctrls: {self.fk_ctrls}')
+            mdata.add(self.fk_ctrls, self.metaNode.fk_ctrls)
+            mdata.add(self.hip_ctrl, self.metaNode.hip_ctrl)

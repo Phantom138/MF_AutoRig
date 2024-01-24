@@ -5,15 +5,41 @@ import mf_autoRig.lib.useful_functions
 importlib.reload(mf_autoRig.lib.useful_functions)
 from mf_autoRig.lib.useful_functions import *
 from mf_autoRig.lib.tools import set_color
+import mf_autoRig.modules.meta as mdata
+
+meta_args = {
+    'switch': {'attributeType': 'message'},
+    'guides': {'attributeType': 'message', 'm': True},
+    'joints': {'attributeType': 'message', 'm': True},
+    'ik_jnts': {'attributeType': 'message', 'm': True},
+    'ik_ctrls': {'attributeType': 'message', 'm': True},
+    'fk_jnts': {'attributeType': 'message', 'm': True},
+    'fk_ctrls': {'attributeType': 'message', 'm': True}
+}
 
 
 class Limb:
-    def __init__(self, name):
+    def __init__(self, name, meta=True):
+        self.meta = meta
         self.name = name
         self.side = name.split('_')[0]
         self.joints = None
         self.guides = None
+        # IK FK stuff
+        self.ik_joints = None
+        self.ik_ctrls = None
+        self.fk_joints = None
+        self.fk_ctrls = None
+        self.switch = None
+
         self.all_ctrls = []
+        self.moduleType = 'Limb'
+
+        if meta == False:
+            pass
+        elif meta == True:
+            self.metaNode = mdata.create_metadata(self.name, self.moduleType, meta_args)
+
 
     def create_guides(self, pos=None):
         """
@@ -27,6 +53,8 @@ class Limb:
 
         pm.select(cl=True)
 
+        if self.meta:
+            mdata.add(self.guides, self.metaNode.guides)
 
     def create_joints(self, matrices = None):
         # Create based on guides
@@ -66,6 +94,9 @@ class Limb:
         # Clear Selection
         pm.select(clear=True)
 
+        if self.meta:
+            mdata.add(self.joints, self.metaNode.joints)
+
     def rig(self):
         self.skin_jnts = self.joints[:-1]
         # IK
@@ -82,6 +113,13 @@ class Limb:
         self.all_ctrls.append(self.switch)
 
         self.clean_up()
+
+        if self.meta:
+            mdata.add(self.ik_jnts, self.metaNode.ik_jnts)
+            mdata.add(self.fk_jnts, self.metaNode.fk_jnts)
+            mdata.add(self.ik_ctrls, self.metaNode.ik_ctrls)
+            mdata.add(self.fk_ctrls, self.metaNode.fk_ctrls)
+            mdata.add(self.switch, self.metaNode.switch)
 
     def clean_up(self):
         # Color ctrls based on side
@@ -119,13 +157,32 @@ class Limb:
         # Clear selection
         pm.select(clear=True)
 
-    def connect(self, dest, method):
+
+
+class Arm(Limb):
+    def __init__(self, name, meta=True):
+        super().__init__(name, meta)
+        if meta:
+            # Set module type
+            self.moduleType = 'Arm'
+            self.metaNode.moduleType.set(self.moduleType)
+
+    def connect(self, dest):
         ctrl_grp = self.fk_ctrls[0].getParent(1)
 
-        if method == 'arm':
-            pm.parent(ctrl_grp, dest.ctrl)
-            pm.parentConstraint(dest.joints[-1], self.ik_jnts[0])
+        pm.parent(ctrl_grp, dest.clavicle_ctrl)
+        pm.parentConstraint(dest.joints[-1], self.ik_jnts[0])
 
-        elif method == 'leg':
-            pm.parent(ctrl_grp, dest.hip_ctrl)
-            pm.parentConstraint(dest.hip_ctrl, self.ik_jnts[0], maintainOffset=True)
+class Leg(Limb):
+    def __init__(self, name, meta=True):
+        super().__init__(name, meta)
+        if meta:
+            # Set module type
+            self.moduleType = 'Leg'
+            self.metaNode.moduleType.set(self.moduleType)
+
+    def connect(self, dest):
+        ctrl_grp = self.fk_ctrls[0].getParent(1)
+
+        pm.parent(ctrl_grp, dest.hip_ctrl)
+        pm.parentConstraint(dest.hip_ctrl, self.ik_jnts[0], maintainOffset=True)

@@ -25,11 +25,10 @@ import mf_autoRig.lib.defaults as df
 # locators.append(r_locators)
 
 
-
 class Foot:
     def __init__(self, joints):
-        self.skin_jnts = joints[:-1]
 
+        self.skin_jnts = joints[:-1]
         self.fk_jnts = create_fk_jnts(joints)
         self.fk_ctrls = create_fk_ctrls(self.fk_jnts)
 

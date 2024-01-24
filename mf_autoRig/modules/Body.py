@@ -17,12 +17,12 @@ from mf_autoRig.lib.mirrorJoint import xformMirror
 
 
 class Body:
-    def __init__(self):
-        self.arms = [Limb('L_arm'), Limb('R_arm')]
-        self.hands = [Hand('L_hand'), Hand('R_hand')]
-        self.legs = [Limb('L_leg'), Limb('R_leg')]
-        self.clavicles = [Clavicle('L_clavicle'), Clavicle('R_Clavicle')]
-        self.spine = Spine('M_spine', num = 3)
+    def __init__(self, meta=True):
+        self.arms = [Limb('L_arm', meta), Limb('R_arm', meta)]
+        self.hands = [Hand('L_hand', meta), Hand('R_hand', meta)]
+        self.legs = [Limb('L_leg', meta), Limb('R_leg', meta)]
+        self.clavicles = [Clavicle('L_clavicle', meta), Clavicle('R_Clavicle', meta)]
+        self.spine = Spine('M_spine', num = 3, meta=meta)
 
     def create_guides(self, positions):
         mirror_pos = mirror_default_pos(positions)
@@ -61,7 +61,6 @@ class Body:
         # Torso
         self.spine.create_joints()
 
-        self.rig()
 
     def rig(self):
         self.spine.rig()

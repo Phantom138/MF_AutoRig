@@ -1,19 +1,33 @@
 import re
 import importlib
+from itertools import chain
 
 import mf_autoRig.lib.defaults as df
 from mf_autoRig.lib.useful_functions import *
 from mf_autoRig.lib.tools import set_color, auto_color
+import mf_autoRig.modules.meta as mdata
 
+meta_args = {
+    'hand_ctrl': {'attributeType': 'message'},
+    'hand_jnts': {'attributeType': 'message', 'm': True},
+    #'guides': {'attributeType': 'message', 'm': True},
+    'finger_jnts': {'attributeType': 'message', 'm': True},
+    'all_ctrls': {'attributeType': 'message', 'm': True}
+}
 
 class Hand:
-    def __init__(self, name):
+    def __init__(self, name, meta=True):
+        self.meta = meta
         self.name = name
         self.guides = None
         self.wrist = None
         self.finger_jnts = None
         self.hand_jnts = None
         self.all_ctrls = []
+
+        # Create metadata node
+        if meta:
+            self.metaNode = mdata.create_metadata(name, 'Hand', meta_args)
 
     def create_guides(self, start_pos=None):
         finger_grps = []
@@ -45,7 +59,7 @@ class Hand:
             offset = 4
             finger = []
             for i in range(jnt_num):
-                jnt = pm.createNode('joint', name=f'{side}_{name}_{i}{df.jnt_sff}')
+                jnt = pm.createNode('joint', name=f'{self.name}_{name}_{i}{df.jnt_sff}')
                 finger.append(jnt)
 
                 # Create more space for the knuckles
@@ -89,6 +103,8 @@ class Hand:
         pm.select(clear=True)
 
 
+
+
     def create_joints(self, matrices = None):
         """
         matrices - None if using joints
@@ -108,9 +124,9 @@ class Hand:
             self.finger_jnts = []
             for finger in self.guides:
                 # Get finger name
-                match = re.search('([a-zA-Z]_([a-zA-Z]+))\d*_', finger[0].name())
+                match = re.search(f'({self.name}_([a-zA-Z]+))\d*_', finger[0].name())
                 base_name = match.group(1)
-
+                print(f'finger base name is {base_name}')
                 jnts = create_joints_from_guides(base_name, finger)
                 pm.parent(jnts[0], self.joint_grp)
                 self.finger_jnts.append(jnts)
@@ -128,7 +144,7 @@ class Hand:
 
                     side = self.name[0]
                     # Create joint
-                    jnt = pm.joint(name=f'{side}_{finger_names[i]}{j + 1:02}{sff}{df.jnt_sff}')
+                    jnt = pm.joint(name=f'{self.name}_{finger_names[i]}{j + 1:02}{sff}{df.jnt_sff}')
                     finger.append(jnt)
 
                     # Set position based on matrix
@@ -138,6 +154,10 @@ class Hand:
                 self.finger_jnts.append(finger)
                 # Clear selection
                 pm.select(clear=True)
+
+        if self.meta:
+            nodes = list(chain(*self.finger_jnts))  # unnest list
+            mdata.add(nodes, self.metaNode.finger_jnts)
 
 
     def create_hand(self, wrist=None):
@@ -174,6 +194,10 @@ class Hand:
         pm.parent(self.hand_jnts[0], self.joint_grp)
         print(average)
 
+        # Add to metadata
+        if self.meta:
+            mdata.add(self.hand_jnts, self.metaNode.hand_jnts)
+
     def create_hand_with_matrix(self, matrices):
         self.hand_jnts = []
 
@@ -190,6 +214,10 @@ class Hand:
         # Clear selection
         pm.select(clear=True)
 
+        # Add to metadata
+        if self.meta:
+            mdata.add(self.hand_jnts, self.metaNode.hand_jnts)
+
     def rig(self, curl=True, spread=True):
         # Create hand ctrl
         self.hand = CtrlGrp(self.name, shape='circle')
@@ -203,6 +231,7 @@ class Hand:
         all_offset_grps = []
         for finger in self.finger_jnts:
             finger_ctrls = create_fk_ctrls(finger, scale=1)
+
 
             # Color finger ctrls
             auto_color(finger_ctrls)
@@ -223,10 +252,17 @@ class Hand:
             if spread:
                 self.spread_switch(self.hand.ctrl, offset_grps)
 
+        # Add to metadata
+        if self.meta:
+            mdata.add(self.hand.ctrl, self.metaNode.hand_ctrl)
+            mdata.add(self.all_ctrls, self.metaNode.all_ctrls)
+
         self.all_ctrls.extend(self.hand.ctrl)
 
+
+
     def curl_switch(self, hand_ctrl, offset_grps):
-        match = re.search('([a-zA-Z]_([a-zA-Z]+))\d*_', offset_grps[0].name())
+        match = re.search(f'({self.name}_([a-zA-Z]+))\d*_', offset_grps[0].name())
         base_name = match.group(1)
         finger_name = match.group(2)
 
@@ -260,7 +296,7 @@ class Hand:
         # values = [(0, 0), (10, 25)]
 
         offset = offset_grps[0]
-        match = re.search('([a-zA-Z]_([a-zA-Z]+))\d*_', offset.name())
+        match = re.search(f'({self.name}_([a-zA-Z]+))\d*_', offset.name())
         base_name = match.group(2)
 
         attr = 'spread'
@@ -276,11 +312,13 @@ class Hand:
                              driverValue=max_spread, value=values[base_name])
 
     def connect(self, arm):
+        self.handJnt = self.hand_jnts[0]
+
         match = re.search('([a-zA-Z]_([a-zA-Z]+))\d*_', self.handJnt.name())
         base_name = match.group(1)
 
         # Point constraint
-        pm.pointConstraint(arm.joints[-1], self.hand.ctrl)
+        pm.pointConstraint(arm.joints[-1], self.hand_ctrl)
 
         # Create locators
         # IK locator
@@ -291,8 +329,9 @@ class Hand:
 
         # Get ik ctrl and parent locator to it
         # TODO: make it so i don't have so many get children
-        ik_ctrl = arm.ik_ctrls_grp.getChildren()[0].getChildren()[0]
-        pm.parent(ik_loc_grp, ik_ctrl)
+        #ik_ctrl = arm.ik_ctrls_grp.getChildren()[0].getChildren()[0]
+
+        pm.parent(ik_loc_grp, arm.ik_ctrls[0])
 
         # FK locator
         fk_loc = pm.spaceLocator(name=base_name + '_fk_space_loc')
@@ -303,7 +342,7 @@ class Hand:
         pm.parent(fk_loc_grp, arm.fk_ctrls[-1])
 
         # Create orient constraint and get weight list
-        constraint = pm.orientConstraint(ik_loc, fk_loc, self.hand.ctrl)
+        constraint = pm.orientConstraint(ik_loc, fk_loc, self.hand_ctrl)
         weights = constraint.getWeightAliasList()
 
         for weight in weights:
