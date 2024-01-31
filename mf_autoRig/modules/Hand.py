@@ -6,6 +6,7 @@ import mf_autoRig.lib.defaults as df
 from mf_autoRig.lib.useful_functions import *
 from mf_autoRig.lib.tools import set_color, auto_color
 import mf_autoRig.modules.meta as mdata
+from mf_autoRig.modules.Module import Module
 
 meta_args = {
     'hand_ctrl': {'attributeType': 'message'},
@@ -15,7 +16,12 @@ meta_args = {
     'all_ctrls': {'attributeType': 'message', 'm': True}
 }
 
-class Hand:
+class Hand(Module):
+
+    @classmethod
+    def create_from_meta(cls, metaNode):
+        pass
+
     def __init__(self, name, meta=True):
         self.meta = meta
         self.name = name
@@ -247,10 +253,10 @@ class Hand:
 
             # Do curl, spread, etc. switches
             if curl:
-                self.curl_switch(self.hand.ctrl, offset_grps)
+                self.__curl_switch(self.hand.ctrl, offset_grps)
 
             if spread:
-                self.spread_switch(self.hand.ctrl, offset_grps)
+                self.__spread_switch(self.hand.ctrl, offset_grps)
 
         # Add to metadata
         if self.meta:
@@ -261,7 +267,7 @@ class Hand:
 
 
 
-    def curl_switch(self, hand_ctrl, offset_grps):
+    def __curl_switch(self, hand_ctrl, offset_grps):
         match = re.search(f'({self.name}_([a-zA-Z]+))\d*_', offset_grps[0].name())
         base_name = match.group(1)
         finger_name = match.group(2)
@@ -282,7 +288,7 @@ class Hand:
             pm.connectAttr(mult + '.output', grp + '.rotateZ')
 
 
-    def spread_switch(self, hand_ctrl, offset_grps):
+    def __spread_switch(self, hand_ctrl, offset_grps):
         values = {
             'thumb': 21,
             'index': 17,

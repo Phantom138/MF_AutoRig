@@ -156,6 +156,7 @@ class MayaUITemplate(QtWidgets.QWidget):
         source_index = self.conn_source.currentRow()
         source = self.modules[source_index]
 
+        return
         # Show only good connections
         moduleType = source.moduleType.get()
         if moduleType == 'Arm':
@@ -192,9 +193,24 @@ class MayaUITemplate(QtWidgets.QWidget):
                 self.dest_modules.append(module)
 
     def connect_selection(self):
+
+        modules = {
+            'Limb': Limb.Limb,
+            'Arm': Limb.Arm,
+            'Clavicle': Torso.Clavicle
+        }
+
+        print("called connect_selection")
         dest_index = self.conn_destination.currentRow()
         source_index = self.conn_source.currentRow()
 
+        metaNode = self.modules[source_index]
+        module = modules[metaNode.moduleType.get()]
+        obj = module.create_from_meta(metaNode)
+        print("from connect", obj.joints)
+
+
+        return
         source = crMod.createModule(self.modules[source_index])
         dest = crMod.createModule(self.dest_modules[dest_index])
         print(f'Connecting {source} -> {dest}')

@@ -1,7 +1,7 @@
+import abc
+from abc import abstractmethod
 import pymel.core as pm
 import pymel.core.nodetypes as nt
-
-
 import mf_autoRig.modules.meta as mdata
 
 
@@ -31,17 +31,39 @@ def createModule(metaNode):
     return cls_object
 
 
-class Module():
+class Module(abc.ABC):
     def __init__(self, name, moduleType, args, meta=True):
-        if meta == False:
-            pass
-        elif meta == True:
-            self.metaModule = mdata.create_metadata(name, moduleType, args)
-        elif isinstance(meta, nt.Network):
-            # Create metadata from module
-            self.create_from_meta(meta)
+        self.name = name
+        self.meta = meta
+        self.args = args
 
-            pass
-    def create_from_meta(self, metaNode):
-        self.name = metaNode.Name.get()
-        self.moduleType = metaNode.moduleType.get()
+        if meta:
+            self.metaModule = mdata.create_metadata(name, moduleType, args)
+
+    @classmethod
+    @abstractmethod
+    def create_from_meta(cls, metaNode):
+        name = metaNode.Name.get()
+        general_obj = cls(name, meta=False)
+
+        general_obj.metaNode = metaNode
+        # Get attributes
+        for attribute in general_obj.meta_args:
+            setattr(general_obj, attribute, general_obj.metaNode.attr(attribute).get())
+
+        general_obj.moduleType = metaNode.moduleType.get()
+
+        return general_obj
+
+    @abstractmethod
+    def create_guides(self):
+        pass
+
+    @abstractmethod
+    def create_joints(self):
+        pass
+
+    @abstractmethod
+    def rig(self):
+        pass
+

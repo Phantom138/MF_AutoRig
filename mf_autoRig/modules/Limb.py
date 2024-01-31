@@ -1,3 +1,5 @@
+from dataclasses import dataclass
+
 import pymel.core as pm
 
 import importlib
@@ -6,25 +8,28 @@ importlib.reload(mf_autoRig.lib.useful_functions)
 from mf_autoRig.lib.useful_functions import *
 from mf_autoRig.lib.tools import set_color
 import mf_autoRig.modules.meta as mdata
-
-meta_args = {
-    'switch': {'attributeType': 'message'},
-    'guides': {'attributeType': 'message', 'm': True},
-    'joints': {'attributeType': 'message', 'm': True},
-    'ik_jnts': {'attributeType': 'message', 'm': True},
-    'ik_ctrls': {'attributeType': 'message', 'm': True},
-    'fk_jnts': {'attributeType': 'message', 'm': True},
-    'fk_ctrls': {'attributeType': 'message', 'm': True}
-}
+from mf_autoRig.modules.Module import Module
 
 
-class Limb:
+class Limb(Module):
+    meta_args = {
+        'switch': {'attributeType': 'message'},
+        'guides': {'attributeType': 'message', 'm': True},
+        'joints': {'attributeType': 'message', 'm': True},
+        'ik_jnts': {'attributeType': 'message', 'm': True},
+        'ik_ctrls': {'attributeType': 'message', 'm': True},
+        'fk_jnts': {'attributeType': 'message', 'm': True},
+        'fk_ctrls': {'attributeType': 'message', 'm': True}
+    }
+
     def __init__(self, name, meta=True):
-        self.meta = meta
         self.name = name
+        self.meta = meta
+
         self.side = name.split('_')[0]
         self.joints = None
         self.guides = None
+
         # IK FK stuff
         self.ik_joints = None
         self.ik_ctrls = None
@@ -33,13 +38,17 @@ class Limb:
         self.switch = None
 
         self.all_ctrls = []
-        self.moduleType = 'Limb'
+        self.moduleType = self.__class__.__name__
 
-        if meta == False:
-            pass
-        elif meta == True:
-            self.metaNode = mdata.create_metadata(self.name, self.moduleType, meta_args)
+        if meta:
+            self.metaNode = mdata.create_metadata(self.name, self.moduleType, self.meta_args)
 
+    @classmethod
+    def create_from_meta(cls, metaNode):
+        obj = super().create_from_meta(metaNode)
+        print(obj.joints)
+
+        return obj
 
     def create_guides(self, pos=None):
         """
@@ -158,31 +167,18 @@ class Limb:
         pm.select(clear=True)
 
 
-
 class Arm(Limb):
-    def __init__(self, name, meta=True):
-        super().__init__(name, meta)
-        if meta:
-            # Set module type
-            self.moduleType = 'Arm'
-            self.metaNode.moduleType.set(self.moduleType)
-
     def connect(self, dest):
         ctrl_grp = self.fk_ctrls[0].getParent(1)
 
         pm.parent(ctrl_grp, dest.clavicle_ctrl)
         pm.parentConstraint(dest.joints[-1], self.ik_jnts[0])
 
-class Leg(Limb):
-    def __init__(self, name, meta=True):
-        super().__init__(name, meta)
-        if meta:
-            # Set module type
-            self.moduleType = 'Leg'
-            self.metaNode.moduleType.set(self.moduleType)
 
+class Leg(Limb):
     def connect(self, dest):
         ctrl_grp = self.fk_ctrls[0].getParent(1)
 
         pm.parent(ctrl_grp, dest.hip_ctrl)
         pm.parentConstraint(dest.hip_ctrl, self.ik_jnts[0], maintainOffset=True)
+

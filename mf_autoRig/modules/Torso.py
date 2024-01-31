@@ -4,15 +4,18 @@ from mf_autoRig.lib.useful_functions import *
 import mf_autoRig.lib.defaults as df
 from mf_autoRig.lib.tools import set_color
 import mf_autoRig.modules.meta as mdata
+from mf_autoRig.modules.Module import Module
 
-clavicle_meta_args = {
-    'guides': {'attributeType': 'message', 'm': True},
-    'joints': {'attributeType': 'message', 'm': True},
-    'clavicle_ctrl': {'attributeType': 'message', 'm': True},
-}
+
 
 #TODO: split clavicle and Torso intro dif files
-class Clavicle:
+class Clavicle(Module):
+    meta_args = {
+        'guides': {'attributeType': 'message', 'm': True},
+        'joints': {'attributeType': 'message', 'm': True},
+        'clavicle_ctrl': {'attributeType': 'message', 'm': True},
+    }
+
     def __init__(self, name, meta=True):
         self.name = name
         self.meta = meta
@@ -24,7 +27,14 @@ class Clavicle:
 
         # Create metadata node
         if meta:
-            self.metaNode = mdata.create_metadata(name, 'Clavicle', clavicle_meta_args)
+            self.metaNode = mdata.create_metadata(name, 'Clavicle', self.meta_args)
+
+
+    @classmethod
+    def create_from_meta(cls, metaNode):
+        clavicle = super().create_from_meta(metaNode)
+
+        return clavicle
 
 
     def create_guides(self, pos = None):
@@ -51,6 +61,8 @@ class Clavicle:
         if self.meta and self.guides:
             for i, guide in enumerate(self.guides):
                 guide.message.connect(self.metaNode.guides[i])
+
+
 
     def create_joints(self, shoulder=None):
         """
