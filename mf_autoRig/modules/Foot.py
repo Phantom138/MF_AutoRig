@@ -1,9 +1,7 @@
 import pymel.core as pm
 
-import importlib
-import mf_autoRig.lib.useful_functions
-importlib.reload(mf_autoRig.lib.useful_functions)
 from mf_autoRig.lib.useful_functions import *
+from mf_autoRig.modules.Module import Module
 
 import mf_autoRig.lib.defaults as df
 
@@ -25,8 +23,92 @@ import mf_autoRig.lib.defaults as df
 # locators.append(r_locators)
 
 
-class Foot:
-    def __init__(self, joints):
+class Foot(Module):
+    args = {}
+    def __init__(self, name, meta=False):
+        super().__init__(name, self.args, meta)
+        self.side = name.split('_')[0]
+        pass
+
+    @classmethod
+    def create_from_meta(cls, metaNode):
+        foot = super().create_from_meta(metaNode)
+        return foot
+
+    def create_guides(self, pos = None):
+        self.guides = []
+        if pos is None:
+            pos = [(0,3,0), (0,1,3), (0,0,7)]
+
+        # Create joint guides at the right pos
+        for i in range(3):
+            jnt = pm.createNode('joint', name=f"{self.name}{i+1:02}_guide{df.jnt_sff}")
+            pm.xform(jnt, translation=pos[i])
+
+            self.guides.append(jnt)
+
+        # Group joint guides
+        guides_grp = pm.createNode('transform', name=f"{self.name}_guide{df.grp_sff}")
+        pm.parent(self.guides, guides_grp)
+        pm.parent(guides_grp, get_group('guides_grp'))
+
+        # Locators
+        self.__create_base_locators()
+
+    def __create_base_locators(self, pos=None):
+        self.locators = []
+        if pos is None:
+            pos = [(2,0,3), (-2,0,3), (0,0,-1)]
+
+        locator_names = ['outer_loc', 'inner_loc', 'heel_loc']
+
+        # Create locators
+        for trs, loc_name in zip(pos, locator_names):
+            loc = pm.spaceLocator(name=f'{self.name}_{loc_name}')
+            pm.xform(loc, t=trs)
+            self.locators.append(loc)
+
+        # Group locator guides
+        locator_grp = pm.createNode('transform', name=f"{self.name}_locator{df.grp_sff}")
+        pm.parent(locator_grp, get_group('guides_grp'))
+        pm.parent(self.locators, locator_grp)
+
+
+    def create_joints(self):
+        self.joints = create_joints_from_guides(self.name, self.guides)
+        self.__create_locators_from_joints()
+
+
+        pm.parent(self.locators, world=True)
+        # Parent locators one under the other
+        for i in range(len(self.locators)-1, 0, -1):
+            pm.parent(self.locators[i], self.locators[i-1])
+
+
+
+
+    def __create_locators_from_joints(self):
+        """function that creates tip and ball locators based on joints"""
+        locator_names=['tip_loc', 'ball_loc']
+
+        # Get joints without start_jnt, and reverse it
+        jnts = self.joints[1:]
+        jnts.reverse()
+
+        # Create locators at the jnt positions, match rotation only for ball_loc
+        for loc_name, jnt in zip(locator_names, jnts):
+            loc = pm.spaceLocator(name=f'{self.name}_{loc_name}')
+            self.locators.append(loc)
+
+            if loc_name == 'ball_loc':
+                pm.matchTransform(loc, jnt)
+            else:
+                pm.matchTransform(loc, jnt, pos=True)
+
+
+    def rig(self):
+        # Create locator hierarchy
+
 
         self.skin_jnts = joints[:-1]
         self.fk_jnts = create_fk_jnts(joints)

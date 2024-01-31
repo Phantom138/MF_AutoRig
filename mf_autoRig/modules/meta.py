@@ -1,8 +1,5 @@
 import pymel.core as pm
 
-
-
-
 def create_metadata(name, moduleType, info_args):
     # Default args
     metaNode = pm.createNode('network', name="META_" + name)

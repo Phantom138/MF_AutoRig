@@ -6,7 +6,7 @@ import importlib
 import mf_autoRig.lib.useful_functions
 importlib.reload(mf_autoRig.lib.useful_functions)
 from mf_autoRig.lib.useful_functions import *
-from mf_autoRig.lib.tools import set_color
+from mf_autoRig.lib.color_tools import set_color
 import mf_autoRig.modules.meta as mdata
 from mf_autoRig.modules.Module import Module
 
