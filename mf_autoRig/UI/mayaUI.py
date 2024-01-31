@@ -5,8 +5,6 @@ original code by isaacoster
 """
 import re
 
-import maya.cmds as cmds
-import maya.mel as mel
 from maya import OpenMayaUI as omui
 from shiboken2 import wrapInstance
 from PySide2 import QtUiTools, QtCore, QtGui, QtWidgets
@@ -15,17 +13,17 @@ from functools import partial  # optional, for passing args during signal functi
 
 import pathlib
 WORK_PATH = pathlib.Path(__file__).parent.resolve()
-from mf_autoRig.modules import Limb, Torso, Foot, Hand, Body
+from mf_autoRig.modules import Limb, Spine, Clavicle, Hand, Body
 
 import mf_autoRig.modules.createModule as crMod
-
+import mf_autoRig.lib.defaults as df
 from datetime import datetime
 
 
 class_name_map = {
     'Limb': Limb.Limb,
-    'Clavicle': Torso.Clavicle,
-    'Spine': Torso.Spine,
+    'Clavicle': Clavicle.Clavicle,
+    'Spine': Spine.Spine,
     'Hand': Hand.Hand,
     'Arm': Limb.Arm,
     'Leg': Limb.Leg
@@ -53,6 +51,10 @@ class MayaUITemplate(QtWidgets.QWidget):
         # locate UI widgets
         self.btn_close = self.widget.findChild(QtWidgets.QPushButton, 'btn_close')
         self.btn_close.clicked.connect(self.closeWindow)
+
+        # Auto rig Tab
+        self.widget.auto_btn_guides.clicked.connect(self.auto_guides)
+        self.widget.auto_btn_rig.clicked.connect(self.auto_rig)
 
         # Modules Tab
         self.mdl_combo = self.widget.findChild(QtWidgets.QComboBox, 'mdl_comboBox')
@@ -95,6 +97,18 @@ class MayaUITemplate(QtWidgets.QWidget):
         """
         print('closing window')
         self.destroy()
+
+    def auto_guides(self):
+        print("Running auto guides")
+        self.body = Body.Body()
+        self.body.create_guides(df.default_pos)
+
+
+
+    def auto_rig(self):
+        print("Running auto rig")
+        self.body.create_joints()
+        self.body.rig()
 
     def moduleIndexChanged(self):
         self.mdl_name.clear()
@@ -193,22 +207,13 @@ class MayaUITemplate(QtWidgets.QWidget):
                 self.dest_modules.append(module)
 
     def connect_selection(self):
-
-        modules = {
-            'Limb': Limb.Limb,
-            'Arm': Limb.Arm,
-            'Clavicle': Torso.Clavicle
-        }
-
         print("called connect_selection")
         dest_index = self.conn_destination.currentRow()
         source_index = self.conn_source.currentRow()
 
         metaNode = self.modules[source_index]
-        module = modules[metaNode.moduleType.get()]
-        obj = module.create_from_meta(metaNode)
-        print("from connect", obj.joints)
-
+        obj = crMod.createModule(metaNode)
+        print(obj)
 
         return
         source = crMod.createModule(self.modules[source_index])

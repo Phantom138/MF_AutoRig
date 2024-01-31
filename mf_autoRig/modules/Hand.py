@@ -8,32 +8,30 @@ from mf_autoRig.lib.tools import set_color, auto_color
 import mf_autoRig.modules.meta as mdata
 from mf_autoRig.modules.Module import Module
 
-meta_args = {
-    'hand_ctrl': {'attributeType': 'message'},
-    'hand_jnts': {'attributeType': 'message', 'm': True},
-    #'guides': {'attributeType': 'message', 'm': True},
-    'finger_jnts': {'attributeType': 'message', 'm': True},
-    'all_ctrls': {'attributeType': 'message', 'm': True}
-}
+
 
 class Hand(Module):
-
-    @classmethod
-    def create_from_meta(cls, metaNode):
-        pass
+    meta_args = {
+        'hand_ctrl': {'attributeType': 'message'},
+        'hand_jnts': {'attributeType': 'message', 'm': True},
+        'finger_jnts': {'attributeType': 'message', 'm': True},
+        'all_ctrls': {'attributeType': 'message', 'm': True}
+    }
 
     def __init__(self, name, meta=True):
-        self.meta = meta
-        self.name = name
+        super().__init__(name, self.meta_args, meta)
+
         self.guides = None
         self.wrist = None
         self.finger_jnts = None
         self.hand_jnts = None
         self.all_ctrls = []
 
-        # Create metadata node
-        if meta:
-            self.metaNode = mdata.create_metadata(name, 'Hand', meta_args)
+    @classmethod
+    def create_from_meta(cls, metaNode):
+        hand = super().create_from_meta(metaNode)
+
+        return hand
 
     def create_guides(self, start_pos=None):
         finger_grps = []
@@ -319,6 +317,7 @@ class Hand(Module):
 
     def connect(self, arm):
         self.handJnt = self.hand_jnts[0]
+        self.hand_ctrl = self.hand.ctrl
 
         match = re.search('([a-zA-Z]_([a-zA-Z]+))\d*_', self.handJnt.name())
         base_name = match.group(1)

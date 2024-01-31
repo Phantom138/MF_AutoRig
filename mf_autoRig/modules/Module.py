@@ -4,6 +4,7 @@ import pymel.core as pm
 import pymel.core.nodetypes as nt
 import mf_autoRig.modules.meta as mdata
 
+from pprint import pprint
 
 def createModule(metaNode):
     """
@@ -32,13 +33,13 @@ def createModule(metaNode):
 
 
 class Module(abc.ABC):
-    def __init__(self, name, moduleType, args, meta=True):
+    def __init__(self, name, args, meta=True):
         self.name = name
         self.meta = meta
-        self.args = args
+        self.moduleType = self.__class__.__name__
 
         if meta:
-            self.metaModule = mdata.create_metadata(name, moduleType, args)
+            self.metaNode = mdata.create_metadata(name, self.moduleType, args)
 
     @classmethod
     @abstractmethod
@@ -47,6 +48,7 @@ class Module(abc.ABC):
         general_obj = cls(name, meta=False)
 
         general_obj.metaNode = metaNode
+        general_obj.meta = True
         # Get attributes
         for attribute in general_obj.meta_args:
             setattr(general_obj, attribute, general_obj.metaNode.attr(attribute).get())
@@ -66,4 +68,7 @@ class Module(abc.ABC):
     @abstractmethod
     def rig(self):
         pass
+
+    def __str__(self):
+        return str(self.__dict__)
 

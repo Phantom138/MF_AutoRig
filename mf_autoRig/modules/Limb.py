@@ -23,8 +23,7 @@ class Limb(Module):
     }
 
     def __init__(self, name, meta=True):
-        self.name = name
-        self.meta = meta
+        super().__init__(name, self.meta_args, meta)
 
         self.side = name.split('_')[0]
         self.joints = None
@@ -38,10 +37,8 @@ class Limb(Module):
         self.switch = None
 
         self.all_ctrls = []
-        self.moduleType = self.__class__.__name__
 
-        if meta:
-            self.metaNode = mdata.create_metadata(self.name, self.moduleType, self.meta_args)
+        self.default_pin_value = 51
 
     @classmethod
     def create_from_meta(cls, metaNode):
@@ -58,7 +55,7 @@ class Limb(Module):
         if pos is None:
             pos = [(0, 10, 0), (0, 0, 0)]
 
-        self.guides = create_joint_chain(3, self.name, pos[0], pos[1])
+        self.guides = create_joint_chain(3, self.name, pos[0], pos[1], defaultValue=self.default_pin_value)
 
         pm.select(cl=True)
 
@@ -168,6 +165,9 @@ class Limb(Module):
 
 
 class Arm(Limb):
+    def __init__(self, name, meta=True):
+        super().__init__(name, meta)
+        self.default_pin_value = 51
     def connect(self, dest):
         ctrl_grp = self.fk_ctrls[0].getParent(1)
 
@@ -176,6 +176,10 @@ class Arm(Limb):
 
 
 class Leg(Limb):
+
+    def __init__(self, name, meta=True):
+        super().__init__(name, meta)
+        self.default_pin_value = 49
     def connect(self, dest):
         ctrl_grp = self.fk_ctrls[0].getParent(1)
 

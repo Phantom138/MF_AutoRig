@@ -10,17 +10,18 @@ from mf_autoRig.lib.useful_functions import *
 # Import Modules
 
 from mf_autoRig.modules.Hand import Hand
-from mf_autoRig.modules.Limb import Limb
-from mf_autoRig.modules.Torso import Spine, Clavicle
+from mf_autoRig.modules.Limb import Arm, Leg
+from mf_autoRig.modules.Spine import Spine
+from mf_autoRig.modules.Clavicle import Clavicle
 
 from mf_autoRig.lib.mirrorJoint import xformMirror
 
 
 class Body:
     def __init__(self, meta=True):
-        self.arms = [Limb('L_arm', meta), Limb('R_arm', meta)]
+        self.arms = [Arm('L_arm', meta), Arm('R_arm', meta)]
         self.hands = [Hand('L_hand', meta), Hand('R_hand', meta)]
-        self.legs = [Limb('L_leg', meta), Limb('R_leg', meta)]
+        self.legs = [Leg('L_leg', meta), Leg('R_leg', meta)]
         self.clavicles = [Clavicle('L_clavicle', meta), Clavicle('R_Clavicle', meta)]
         self.spine = Spine('M_spine', num = 3, meta=meta)
 
@@ -71,9 +72,9 @@ class Body:
             leg.rig()
             clavicle.rig()
 
-            arm.connect(clavicle, method='arm')
+            arm.connect(clavicle)
             hand.connect(arm)
-            leg.connect(self.spine, method='leg')
+            leg.connect(self.spine)
             clavicle.connect(self.spine)
 
         self.mirror_ctrls(side='L')

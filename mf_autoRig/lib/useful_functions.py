@@ -153,7 +153,7 @@ def create_pole_vector(joints):
     TB = AB - T
     # Create pole length
     TB = TB.normal()
-    pole_len = AB.length() * 2
+    pole_len = AB.length() * 1.3
     # Create pole position
     pole = TB * pole_len + T + A
 
