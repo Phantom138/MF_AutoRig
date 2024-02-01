@@ -78,9 +78,8 @@ def get_joint_orientation(firstJnt, secondJnt):
         return (0, 1, 0)
 
 
-def create_fk_ctrls(joints, skipEnd=True, shape='circle', scale=df.CTRL_SCALE):
-
-
+def create_fk_ctrls(joints, skipEnd=True, shape='circle', scale=1):
+    scale *= df.CTRL_SCALE
     # Exception case: only one joint
     if type(joints) == pm.nodetypes.Joint:
         print(f"// Running fk_ctrls for {joints}")
@@ -164,9 +163,8 @@ def create_ik(joints):
         pm.error("Only joint chains of 3 supported")
 
     # Create IK joints by duplicating the joints
-    jnts = pm.duplicate(joints, renameChildren=True)
-    ik_joints = []
-    for jnt in jnts:
+    ik_joints = pm.duplicate(joints, renameChildren=True)
+    for jnt in ik_joints:
         name = jnt.name()
         # Names joints by removing the skin suffix and the jnt suffix
         if df.skin_sff in name:
@@ -175,9 +173,7 @@ def create_ik(joints):
             base_name = name[:-1].replace(df.end_sff + df.jnt_sff, '')
 
         ik_name = base_name + df.ik_sff + df.jnt_sff
-        ik_jnt = pm.rename(jnt, ik_name)
-        # Add joints to ik_joints list
-        ik_joints.append(ik_jnt)
+        pm.rename(jnt, ik_name)
 
     # Get base name of first joint eg. joint1_skin_JNT -> joint1
     match = re.search('([a-zA-Z]_[a-zA-Z]+)\d*_', joints[-1].name())
@@ -352,7 +348,7 @@ def create_joint_chain(jnt_number, name, start_pos, end_pos, rot=None, defaultVa
     pm.parent(startJnt, endJnt, grp)
 
     # Parent to rig grp
-    pm.parent(grp, get_group('rig_guides_grp'))
+    pm.parent(grp, get_group(df.rig_guides_grp))
 
     lock_and_hide(startJnt, translate=False, rotation=False)
     lock_and_hide(endJnt, translate=False)

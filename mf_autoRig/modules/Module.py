@@ -69,6 +69,17 @@ class Module(abc.ABC):
     def rig(self):
         pass
 
+    def connect_metadata(self, dest):
+        # Connect meta nodes
+        if self.meta:
+            dest.metaNode.affects.connect(self.metaNode.affectedBy)
+
+    def check_if_connected(self, dest):
+        if self.meta and pm.isConnected(dest.metaNode.affects, self.metaNode.affectedBy):
+            return True
+        return False
+
+
     def __str__(self):
         return str(self.__dict__)
 

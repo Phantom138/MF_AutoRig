@@ -14,11 +14,6 @@ def xformMirror(transforms=[], across='YZ'):
         transforms = pm.selected(type='transform')
 
     # Check to see all provided objects is an instance of pymel transform node,
-    elif not all(map(lambda x: isinstance(x, pm.nt.Transform), transforms)):
-        raise ValueError("Passed node which wasn't of type: Transform")
-
-
-    # Check to see all provided objects is an instance of pymel transform node,
     if not all(map(lambda x: isinstance(x, pm.nt.Transform), transforms)):
         raise ValueError("Passed node which wasn't of type: Transform")
 
@@ -61,7 +56,10 @@ def xformMirror(transforms=[], across='YZ'):
         flipped_matricies.append(mtx)
 
     return flipped_matricies
-
+    cp = pm.duplicate(transforms)
+    print(cp)
     # Finally set matrix for transform
-    for transform in transforms:
-        pm.xform(transform, ws=True, m=flipped_matricies[transform])
+    for i,transform in enumerate(cp):
+        pm.xform(transform, ws=True, m=flipped_matricies[i])
+
+xformMirror()

@@ -1,7 +1,7 @@
-import math
 from maya import cmds
+from mf_autoRig.lib import useful_functions as uf
 
-def getCurve(curve):
+def getCurve(curve, rounding_val = 2):
     # Degree
     degree = cmds.getAttr(curve+'.degree')
 
@@ -12,14 +12,16 @@ def getCurve(curve):
     for cv in cvs:
         new_pts = ()
         for pt in cv:
-            new_pt = round(pt, 2)
+            new_pt = round(pt, rounding_val)
             new_pts = new_pts + (new_pt,)
         new_cvs.append(new_pts)
 
-    curveInfo = []
-    curveInfo.append(degree)
-    curveInfo.append(new_cvs)
+    curveInfo = [degree, new_cvs]
 
     print(curveInfo)
     return curveInfo
 
+# curve = uf.CtrlGrp(name='test',shape='joint_curve')
+# cube = uf.CtrlGrp(name='test2',shape='cube')
+sl = cmds.ls(sl=True)
+getCurve(sl[0])

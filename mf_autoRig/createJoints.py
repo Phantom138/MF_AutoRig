@@ -30,15 +30,6 @@ def lock_and_hide(obj, translate=True, rotation=True, scale=True):
             obj.attr(trs).setKeyable(0)
 
 
-def guides_grp():
-    try:
-        guides_grp = pm.PyNode('rig_guides_grp')
-    except pm.MayaNodeError:
-        guides_grp = pm.createNode('transform', name='rig_guides_grp')
-
-    return guides_grp
-
-
 def create_joint_chain(jnt_number, name, start_pos, end_pos, rot=None):
     if rot is None:
         rot = [0, 0, 0]

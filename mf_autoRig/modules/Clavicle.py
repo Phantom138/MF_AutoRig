@@ -41,7 +41,9 @@ class Clavicle(Module):
         else:
             # Create new joint at pos
             self.guides.append(pm.joint(name=f'{self.name}', position=pos))
-        pm.parent(self.guides, get_group('rig_guides_grp'))
+            
+        grp = pm.group(self.guides, name=f'{self.name}_guides{df.grp_sff}')
+        pm.parent(grp, get_group(df.rig_guides_grp))
 
         print(f'Clavicle guides {self.guides}')
 
@@ -52,8 +54,6 @@ class Clavicle(Module):
         if self.meta and self.guides:
             for i, guide in enumerate(self.guides):
                 guide.message.connect(self.metaNode.guides[i])
-
-
 
     def create_joints(self, shoulder=None):
         """
@@ -84,6 +84,9 @@ class Clavicle(Module):
         # Clear Selection
         pm.select(clear=True)
 
+        # Parent Joints under Joint_grp
+        pm.parent(self.joints[0], get_group(df.joints_grp))
+
         #Save joints
         if self.meta and self.joints:
             for i, joints in enumerate(self.joints):
@@ -113,9 +116,6 @@ class Clavicle(Module):
             set_color(self.clavicle_ctrl, viewport='blue')
 
 
-        # Parent Joints under Joint_grp
-        pm.parent(self.joints[0], get_group(df.joints_grp))
-
         pm.select(clear=True)
 
         if self.meta and self.clavicle_ctrl:
@@ -123,5 +123,11 @@ class Clavicle(Module):
 
 
     def connect(self, torso):
+        if self.check_if_connected(torso):
+            pm.warning(f"{self.name} already connected to {torso.name}")
+            return
+
         pm.parent(self.clavicle_ctrl.getParent(1), torso.fk_ctrls[-1])
+
+        self.connect_metadata(torso)
 

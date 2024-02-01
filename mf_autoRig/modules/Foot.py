@@ -24,9 +24,15 @@ import mf_autoRig.lib.defaults as df
 
 
 class Foot(Module):
-    args = {}
+    meta_args = {
+        'guides': {'attributeType': 'message', 'm': True},
+        'joints': {'attributeType': 'message', 'm': True},
+        'fk_ctrls': {'attributeType': 'message', 'm': True},
+        'locators': {'attributeType': 'message', 'm': True},
+    }
+
     def __init__(self, name, meta=False):
-        super().__init__(name, self.args, meta)
+        super().__init__(name, self.meta_args, meta)
         self.side = name.split('_')[0]
         pass
 
@@ -35,27 +41,29 @@ class Foot(Module):
         foot = super().create_from_meta(metaNode)
         return foot
 
-    def create_guides(self, pos = None):
+    def create_guides(self, ankle=None, pos=None):
         self.guides = []
         if pos is None:
-            pos = [(0,3,0), (0,1,3), (0,0,7)]
+            pos = [(0,1,3), (0,0,7)]
 
+        offset = ankle.translate.get()
+        pos.insert(0, offset)
+        self.guides.append(ankle)
         # Create joint guides at the right pos
-        for i in range(3):
+        for i in range(2):
             jnt = pm.createNode('joint', name=f"{self.name}{i+1:02}_guide{df.jnt_sff}")
             pm.xform(jnt, translation=pos[i])
 
             self.guides.append(jnt)
 
         # Group joint guides
-        guides_grp = pm.createNode('transform', name=f"{self.name}_guide{df.grp_sff}")
-        pm.parent(self.guides, guides_grp)
-        pm.parent(guides_grp, get_group('guides_grp'))
+        guides_grp = pm.group(self.guides, name=f"{self.name}_guide{df.grp_sff}")
+        pm.parent(guides_grp, get_group(df.rig_guides_grp))
 
         # Locators
-        self.__create_base_locators()
+        self.__create_base_locators(ankle)
 
-    def __create_base_locators(self, pos=None):
+    def __create_base_locators(self, ankle=None, pos=None):
         self.locators = []
         if pos is None:
             pos = [(2,0,3), (-2,0,3), (0,0,-1)]
@@ -69,22 +77,18 @@ class Foot(Module):
             self.locators.append(loc)
 
         # Group locator guides
-        locator_grp = pm.createNode('transform', name=f"{self.name}_locator{df.grp_sff}")
-        pm.parent(locator_grp, get_group('guides_grp'))
-        pm.parent(self.locators, locator_grp)
+        locator_grp = pm.group(self.locators, name=f"{self.name}_locator{df.grp_sff}")
+        pm.parent(locator_grp, get_group(df.rig_guides_grp))
 
 
     def create_joints(self):
         self.joints = create_joints_from_guides(self.name, self.guides)
         self.__create_locators_from_joints()
 
-
         pm.parent(self.locators, world=True)
         # Parent locators one under the other
         for i in range(len(self.locators)-1, 0, -1):
             pm.parent(self.locators[i], self.locators[i-1])
-
-
 
 
     def __create_locators_from_joints(self):
@@ -107,15 +111,14 @@ class Foot(Module):
 
 
     def rig(self):
-        # Create locator hierarchy
+        self.skin_jnts = self.joints[:-1]
 
-
-        self.skin_jnts = joints[:-1]
-        self.fk_jnts = create_fk_jnts(joints)
+        # Create FK
+        self.fk_jnts = create_fk_jnts(self.joints)
         self.fk_ctrls = create_fk_ctrls(self.fk_jnts)
 
         # Create ik joints for foot
-        self.ik_jnts = pm.duplicate(joints)
+        self.ik_jnts = pm.duplicate(self.joints)
         for jnt in self.ik_jnts:
             match = re.search('([a-zA-Z]_[a-zA-Z]+\d*)_', jnt.name())
             name = match.group(1)
@@ -123,9 +126,9 @@ class Foot(Module):
 
             pm.rename(jnt, name)
 
-        self.ikfk_constraints = constraint_ikfk(joints, self.ik_jnts, self.fk_jnts)
-        print(self.ikfk_constraints)
-        match = re.match('(^[A-Za-z]_)\w+', joints[0].name())
+        self.ikfk_constraints = constraint_ikfk(self.joints, self.ik_jnts, self.fk_jnts)
+
+        match = re.match('(^[A-Za-z]_)\w+', self.joints[0].name())
         side = match.group(1)
 
         self.ball_ikHandle = \

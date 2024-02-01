@@ -11,13 +11,14 @@ from mf_autoRig.lib.useful_functions import *
 
 from mf_autoRig.modules.Hand import Hand
 from mf_autoRig.modules.Limb import Arm, Leg
+from mf_autoRig.modules.Module import Module
 from mf_autoRig.modules.Spine import Spine
 from mf_autoRig.modules.Clavicle import Clavicle
 
 from mf_autoRig.lib.mirrorJoint import xformMirror
 
 
-class Body:
+class Body():
     def __init__(self, meta=True):
         self.arms = [Arm('L_arm', meta), Arm('R_arm', meta)]
         self.hands = [Hand('L_hand', meta), Hand('R_hand', meta)]
@@ -43,20 +44,16 @@ class Body:
 
         # Hands
         self.hands[0].create_joints()
-        self.hands[0].create_hand(self.arms[0].joints[-1])
+        self.hands[0].create_hand(wrist = self.arms[0].joints[-1])
 
-        fingers_mtx = []
-        for finger in self.hands[0].finger_jnts:
-            fingers_mtx.append(xformMirror(finger))
-
-        self.hands[1].create_joints(matrices = fingers_mtx)
-        self.hands[1].create_hand_with_matrix(xformMirror(self.hands[0].hand_jnts))
+        self.hands[1].create_joints(mirror_from = self.hands[0].finger_jnts)
+        self.hands[1].create_hand(mirror_from = self.hands[0].hand_jnts)
 
         # Clavicles
         self.clavicles[0].create_joints(self.arms[0].joints[0])
-
-        self.clavicles[1].joints = pm.mirrorJoint(self.clavicles[0].joints[0],
-                                                  mirrorYZ=True, mirrorBehavior=True, searchReplace=('L_', 'R_'))
+        mirrored_jnts = pm.mirrorJoint(self.clavicles[0].joints[0], mirrorYZ=True, mirrorBehavior=True, searchReplace=('L_', 'R_'))
+        self.clavicles[1].joints = list(map(pm.PyNode, mirrored_jnts))
+        print(self.clavicles[1].joints)
         pm.select(clear=True)
 
         # Torso
@@ -100,7 +97,8 @@ class Body:
 
 def create_pair(left, right):
     left.create_joints()
-    right.create_joints(matrices = xformMirror(left.joints))
+    right.create_joints(mirror_from = left.joints)
+    #right.create_joints(matrices = xformMirror(left.joints))
 ################################
 #### CONNECT METHODS ###########
 ################################

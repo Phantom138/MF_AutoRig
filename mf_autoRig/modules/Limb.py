@@ -4,12 +4,13 @@ import pymel.core as pm
 
 import importlib
 import mf_autoRig.lib.useful_functions
+
 importlib.reload(mf_autoRig.lib.useful_functions)
 from mf_autoRig.lib.useful_functions import *
 from mf_autoRig.lib.color_tools import set_color
 import mf_autoRig.modules.meta as mdata
 from mf_autoRig.modules.Module import Module
-
+from mf_autoRig.modules.Foot import Foot
 
 class Limb(Module):
     meta_args = {
@@ -62,10 +63,17 @@ class Limb(Module):
         if self.meta:
             mdata.add(self.guides, self.metaNode.guides)
 
-    def create_joints(self, matrices = None):
-        # Create based on guides
-        if matrices is None:
-            self.joints = []
+    def create_joints(self, mirror_from = None):
+        self.joints = []
+
+        # Create based on other joints
+        if isinstance(mirror_from, list):
+            mirrored_jnts = pm.mirrorJoint(mirror_from[0], mirrorYZ=True, mirrorBehavior=True,
+                                           searchReplace=('L_', 'R_'))
+            self.joints = list(map(pm.PyNode, mirrored_jnts))
+
+        else:
+            # Create based on guides
             for i, tmp in enumerate(self.guides):
                 trs = pm.xform(tmp, q=True, t=True, ws=True)
 
@@ -81,21 +89,6 @@ class Limb(Module):
             # Orient joints
             pm.joint(self.joints[0], edit=True, orientJoint='yzx', secondaryAxisOrient='zup', children=True)
             pm.joint(self.joints[-1], edit=True, orientJoint='none')
-
-        # Create based on mirrored matrices
-        else:
-            self.joints=[]
-            for i, mtx in enumerate(matrices):
-                sff = df.skin_sff
-                # Last joint has end suffix
-                if i == len(matrices) - 1:
-                    sff = df.end_sff
-
-                jnt = pm.joint(name=f'{self.name}{i + 1:02}{sff}{df.jnt_sff}')
-                self.joints.append(jnt)
-
-                # Set position based on matrix
-                pm.xform(jnt, ws=True, m=mtx)
 
         # Clear Selection
         pm.select(clear=True)
@@ -169,20 +162,37 @@ class Arm(Limb):
         super().__init__(name, meta)
         self.default_pin_value = 51
     def connect(self, dest):
+        if self.check_if_connected(dest):
+            pm.warning(f"{self.name} already connected to {dest.name}")
+            return
+
         ctrl_grp = self.fk_ctrls[0].getParent(1)
 
         pm.parent(ctrl_grp, dest.clavicle_ctrl)
         pm.parentConstraint(dest.joints[-1], self.ik_jnts[0])
 
+        self.connect_metadata(dest)
+
 
 class Leg(Limb):
-
     def __init__(self, name, meta=True):
         super().__init__(name, meta)
         self.default_pin_value = 49
+        self.foot = Foot(f'{self.side}_foot', meta)
+
+    def create_guides(self, pos=None):
+        super().create_guides(pos)
+        self.foot.create_guides(ankle=self.guides[-1])
+
+
     def connect(self, dest):
+        if self.check_if_connected(dest):
+            pm.warning(f"{self.name} already connected to {dest.name}")
+            return
+
         ctrl_grp = self.fk_ctrls[0].getParent(1)
 
         pm.parent(ctrl_grp, dest.hip_ctrl)
         pm.parentConstraint(dest.hip_ctrl, self.ik_jnts[0], maintainOffset=True)
 
+        self.connect_metadata(dest)
