@@ -97,7 +97,8 @@ class Body():
 
 def create_pair(left, right):
     left.create_joints()
-    right.create_joints(mirror_from = left.joints)
+    left.mirror(right)
+
     #right.create_joints(matrices = xformMirror(left.joints))
 ################################
 #### CONNECT METHODS ###########

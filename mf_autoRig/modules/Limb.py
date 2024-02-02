@@ -173,17 +173,29 @@ class Arm(Limb):
 
         self.connect_metadata(dest)
 
+    def mirror(self,dst):
+        dst.create_joints(mirror_from=self.joints)
+
 
 class Leg(Limb):
     def __init__(self, name, meta=True):
         super().__init__(name, meta)
         self.default_pin_value = 49
-        self.foot = Foot(f'{self.side}_foot', meta)
+        self.foot = Foot(f'{self.name}_foot', meta)
 
     def create_guides(self, pos=None):
         super().create_guides(pos)
-        self.foot.create_guides(ankle=self.guides[-1])
+        self.foot.create_guides(ankle_guide=self.guides[-1])
 
+    def create_joints(self, mirror_from = None):
+        super().create_joints(mirror_from)
+        if mirror_from is None:
+            self.foot.create_joints()
+
+    def rig(self):
+        super().rig()
+        self.foot.rig()
+        self.foot.connectAttributes(self)
 
     def connect(self, dest):
         if self.check_if_connected(dest):
@@ -196,3 +208,16 @@ class Leg(Limb):
         pm.parentConstraint(dest.hip_ctrl, self.ik_jnts[0], maintainOffset=True)
 
         self.connect_metadata(dest)
+
+    def mirror(self, dst):
+        dst.create_joints(mirror_from=self.joints)
+
+        dst.foot = Foot(f'{self.name}_foot', meta=self.meta)
+        dst.foot.locators = pm.duplicate(self.foot.locators)
+        for loc in dst.foot.locators:
+            pass
+
+        mirrored_jnts = pm.mirrorJoint(self.foot.joints[0], mirrorYZ=True, mirrorBehavior=True,
+                                       searchReplace=('L_', 'R_'))
+        dst.foot.joints = list(map(pm.PyNode, mirrored_jnts))
+        print('mirrored_locators', dst.foot.locators)

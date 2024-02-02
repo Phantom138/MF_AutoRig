@@ -34,6 +34,7 @@ class Foot(Module):
     def __init__(self, name, meta=False):
         super().__init__(name, self.meta_args, meta)
         self.side = name.split('_')[0]
+        self.guides = None
         pass
 
     @classmethod
@@ -41,32 +42,39 @@ class Foot(Module):
         foot = super().create_from_meta(metaNode)
         return foot
 
-    def create_guides(self, ankle=None, pos=None):
+    def create_guides(self, ankle_guide=None, pos=None):
         self.guides = []
         if pos is None:
-            pos = [(0,1,3), (0,0,7)]
+            pos = [(0,0,0), (0,-2,5), (0,-4,10)]
 
-        offset = ankle.translate.get()
-        pos.insert(0, offset)
-        self.guides.append(ankle)
+        if ankle_guide is not None:
+            pos = pos[1:]
+
         # Create joint guides at the right pos
-        for i in range(2):
+        for i,p in enumerate(pos):
             jnt = pm.createNode('joint', name=f"{self.name}{i+1:02}_guide{df.jnt_sff}")
-            pm.xform(jnt, translation=pos[i])
+            pm.xform(jnt, translation=p)
 
             self.guides.append(jnt)
 
-        # Group joint guides
-        guides_grp = pm.group(self.guides, name=f"{self.name}_guide{df.grp_sff}")
+        # Locators
+        locator_grp = self.__create_base_locators()
+
+        # Group guides
+        guides_grp = pm.createNode('transform', name=f"{self.name}_guide{df.grp_sff}")
+        pm.parent(self.guides, guides_grp)
+        pm.parent(locator_grp, guides_grp)
         pm.parent(guides_grp, get_group(df.rig_guides_grp))
 
-        # Locators
-        self.__create_base_locators(ankle)
+        # Constraint to ankle if there
+        if ankle_guide is not None:
+            pm.parentConstraint(ankle_guide, guides_grp, skipRotate=['x', 'y', 'z'], maintainOffset=False)
+            self.guides.insert(0,ankle_guide)
 
-    def __create_base_locators(self, ankle=None, pos=None):
+
+    def __create_base_locators(self):
         self.locators = []
-        if pos is None:
-            pos = [(2,0,3), (-2,0,3), (0,0,-1)]
+        pos = [(2,-3,5), (-2,-3,5), (0,-3,-3)]
 
         locator_names = ['outer_loc', 'inner_loc', 'heel_loc']
 
@@ -78,18 +86,8 @@ class Foot(Module):
 
         # Group locator guides
         locator_grp = pm.group(self.locators, name=f"{self.name}_locator{df.grp_sff}")
-        pm.parent(locator_grp, get_group(df.rig_guides_grp))
 
-
-    def create_joints(self):
-        self.joints = create_joints_from_guides(self.name, self.guides)
-        self.__create_locators_from_joints()
-
-        pm.parent(self.locators, world=True)
-        # Parent locators one under the other
-        for i in range(len(self.locators)-1, 0, -1):
-            pm.parent(self.locators[i], self.locators[i-1])
-
+        return locator_grp
 
     def __create_locators_from_joints(self):
         """function that creates tip and ball locators based on joints"""
@@ -103,12 +101,16 @@ class Foot(Module):
         for loc_name, jnt in zip(locator_names, jnts):
             loc = pm.spaceLocator(name=f'{self.name}_{loc_name}')
             self.locators.append(loc)
+            pm.matchTransform(loc, jnt, pos=True)
 
-            if loc_name == 'ball_loc':
-                pm.matchTransform(loc, jnt)
-            else:
-                pm.matchTransform(loc, jnt, pos=True)
+    def create_joints(self):
+        self.joints = create_joints_from_guides(self.name, self.guides)
+        self.__create_locators_from_joints()
 
+        pm.parent(self.locators, world=True)
+        # Parent locators one under the other
+        for i in range(len(self.locators)-1, 0, -1):
+            pm.parent(self.locators[i], self.locators[i-1])
 
     def rig(self):
         self.skin_jnts = self.joints[:-1]
@@ -119,12 +121,8 @@ class Foot(Module):
 
         # Create ik joints for foot
         self.ik_jnts = pm.duplicate(self.joints)
-        for jnt in self.ik_jnts:
-            match = re.search('([a-zA-Z]_[a-zA-Z]+\d*)_', jnt.name())
-            name = match.group(1)
-            name += df.ik_sff + df.jnt_sff
-
-            pm.rename(jnt, name)
+        for i,jnt in enumerate(self.ik_jnts):
+            pm.rename(jnt,f'{self.name}{i+1:02}{df.ik_sff}{df.jnt_sff}')
 
         self.ikfk_constraints = constraint_ikfk(self.joints, self.ik_jnts, self.fk_jnts)
 
@@ -142,7 +140,19 @@ class Foot(Module):
         self.ik_jnts[0].visibility.set(0)
         self.fk_jnts[0].visibility.set(0)
 
-    def connectAttributes(self, locators, leg):
+        # Group joints
+        jnt_grp = pm.group(self.ik_jnts[0], self.fk_jnts[0], self.joints[0], name=f'{self.name}_{df.joints_grp}')
+        pm.parent(jnt_grp, get_group(df.joints_grp))
+
+    def connectAttributes(self, leg):
+        # Get ik_ctrl
+        ik_ctrl = leg.ik_ctrls_grp.getChildren()[0].getChildren()[0]
+
+        # Create tidy group for locators
+        locator_grp = pm.createNode('transform', name=f'{self.name}_loc{df.grp_sff}')
+        pm.matchTransform(locator_grp, ik_ctrl, position=True)
+        pm.parent(self.locators[0], locator_grp)
+
         # Remove leg parent constraint for the ikHandle
         for constraint in pm.listRelatives(leg.ikHandle):
             if isinstance(constraint, pm.nodetypes.ParentConstraint):
@@ -168,21 +178,18 @@ class Foot(Module):
 
         # Parent ik handles under locators
         # Locators order : outerbank, innerbank, heel, toe_tip, ball !!
-        pm.parent(self.ball_ikHandle, locators[3])
-        pm.parent(self.toe_ikHandle, locators[2])
-        pm.parent(leg.ikHandle, locators[4])
-
-        # Connect to ik_ctrl
-        ik_ctrl = leg.ik_ctrls_grp.getChildren()[0].getChildren()[0]
+        pm.parent(self.ball_ikHandle, self.locators[3])
+        pm.parent(self.toe_ikHandle, self.locators[2])
+        pm.parent(leg.ikHandle, self.locators[4])
 
         connections = {
-            'outerBank': [locators[0], 'rotateZ', [(-10, 30), (10, -90)]],
-            'innerBank': [locators[1], 'rotateZ', [(-10, 30), (10, -30)]],
-            'heelLift': [locators[2], 'rotateX', [(-10, -15), (10, 30)]],
-            'heelSwivel': [locators[2], 'rotateY', [(-10, -30), (10, 30)]],
-            'toeLift': [locators[3], 'rotateX', [(-10, -30), (10, 50)]],
-            'toeSwivel': [locators[3], 'rotateY', [(-10, -20), (10, 21)]],
-            'ballRoll': [locators[4], 'rotateX', [(-10, -20), (10, 30)]],
+            'outerBank': [self.locators[0], 'rotateZ', [(-10, 30), (10, -90)]],
+            'innerBank': [self.locators[1], 'rotateZ', [(-10, 30), (10, -30)]],
+            'heelLift': [self.locators[2], 'rotateX', [(-10, -15), (10, 30)]],
+            'heelSwivel': [self.locators[2], 'rotateY', [(-10, -30), (10, 30)]],
+            'toeLift': [self.locators[3], 'rotateX', [(-10, -30), (10, 50)]],
+            'toeSwivel': [self.locators[3], 'rotateY', [(-10, -20), (10, 21)]],
+            'ballRoll': [self.locators[4], 'rotateX', [(-10, -20), (10, 30)]],
         }
 
         # Create driven keys and attributes
@@ -201,9 +208,22 @@ class Foot(Module):
                 pm.setDrivenKeyframe(locator + rotation, currentDriver=ik_ctrl + f'.{attr}', driverValue=value[0],
                                      value=value[1])
 
+
         # Constraint leg ik_jnt to foot ik_jnt start
         pm.parentConstraint(leg.ik_jnts[-1], self.ik_jnts[0])
 
         # Constraint ik_ctrl to locator grp
-        locator_grp = locators[0].getParent(1)
         pm.parentConstraint(ik_ctrl, locator_grp, maintainOffset=True)
+
+    def mirror(self):
+        if self.side == 'L':
+            name = self.name.replace('L_', 'R_')
+        elif self.side == 'R':
+            name = self.name.replace('R_', 'L_')
+
+        mir_module=Foot(name, meta=self.meta)
+
+        # Mirror locators
+        mir_module.locators = pm.duplicate(self.locators, parentOnly=True)
+        print('mirrored_locators', mir_module.locators)
+        return mir_module
