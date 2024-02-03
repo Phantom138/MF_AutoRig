@@ -221,9 +221,39 @@ class Foot(Module):
         elif self.side == 'R':
             name = self.name.replace('R_', 'L_')
 
+
+
         mir_module=Foot(name, meta=self.meta)
 
         # Mirror locators
         mir_module.locators = pm.duplicate(self.locators, parentOnly=True)
         print('mirrored_locators', mir_module.locators)
+
+        # Mirror locators
+        import pymel.core as pm
+
+        sl = pm.selected()
+
+        dup = pm.duplicate(sl[0], renameChildren=True)
+
+        print(dup)
+
+        lst = pm.listRelatives(dup[0], ad=True)
+        print(lst)
+        lst.append(dup[0])
+
+        res = []
+
+        for d in lst:
+            try:
+                sh = d.getShape()
+                if isinstance(sh, pm.nt.Locator):
+                    res.append(d)
+                else:
+                    pm.delete(d)
+            except:
+                pass
+
+        mir_grp = pm.createNode('transform')
+
         return mir_module
