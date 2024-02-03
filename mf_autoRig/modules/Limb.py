@@ -111,7 +111,7 @@ class Limb(Module):
         self.all_ctrls.extend(self.ik_ctrls)
         self.all_ctrls.append(self.switch)
 
-        self.clean_up()
+        self.__clean_up()
 
         if self.meta:
             mdata.add(self.ik_jnts, self.metaNode.ik_jnts)
@@ -120,7 +120,7 @@ class Limb(Module):
             mdata.add(self.fk_ctrls, self.metaNode.fk_ctrls)
             mdata.add(self.switch, self.metaNode.switch)
 
-    def clean_up(self):
+    def __clean_up(self):
         # Color ctrls based on side
         if self.side == 'R':
             set_color(self.fk_ctrls, viewport='red')
