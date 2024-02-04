@@ -22,13 +22,16 @@ def create_metadata(name, moduleType, info_args):
 
     return metaNode
 
-def add(nodes, destination):
+def add(nodes, dst):
     if nodes:
         if isinstance(nodes, list):
-            for i, guide in enumerate(nodes):
-                guide.message.connect(destination[i])
+            for i, node in enumerate(nodes):
+                # Check if it isn't already connected
+                if not pm.isConnected(node.message, dst[i]):
+                    node.message.connect(dst[i])
         else:
-            nodes.message.connect(destination)
+            if not pm.isConnected(nodes.message, dst):
+                nodes.message.connect(dst)
 
 
 

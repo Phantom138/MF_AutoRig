@@ -12,8 +12,9 @@ from PySide2.QtCore import Qt
 from functools import partial  # optional, for passing args during signal function calls
 
 import pathlib
+
 WORK_PATH = pathlib.Path(__file__).parent.resolve()
-from mf_autoRig.modules import Limb, Spine, Clavicle, Hand, Body
+from mf_autoRig.modules import Limb, Spine, Clavicle, Hand, Body, Foot
 
 import mf_autoRig.modules.createModule as crMod
 import mf_autoRig.lib.defaults as df
@@ -26,7 +27,8 @@ class_name_map = {
     'Spine': Spine.Spine,
     'Hand': Hand.Hand,
     'Arm': Limb.Arm,
-    'Leg': Limb.Leg
+    'Leg': Limb.Leg,
+    'Foot': Foot.Foot
 }
 
 class MayaUITemplate(QtWidgets.QWidget):
@@ -214,7 +216,7 @@ class MayaUITemplate(QtWidgets.QWidget):
         metaNode = self.modules[source_index]
         obj = crMod.createModule(metaNode)
         print(obj)
-
+        obj.mirror()
         return
         source = crMod.createModule(self.modules[source_index])
         dest = crMod.createModule(self.dest_modules[dest_index])

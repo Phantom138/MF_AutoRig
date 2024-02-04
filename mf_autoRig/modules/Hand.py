@@ -119,7 +119,7 @@ class Hand(Module):
             self.finger_jnts = []
             for finger in mirror_from:
                 mirrored_jnts = pm.mirrorJoint(finger[0], mirrorYZ=True, mirrorBehavior=True,
-                                           searchReplace=('L_', 'R_'))
+                                           searchReplace=(f'{self.side}_', f'{self.side.opposite}'))
                 jnts = list(map(pm.PyNode, mirrored_jnts))
                 pm.parent(jnts[0], self.joint_grp)
 

@@ -177,7 +177,7 @@ def create_rig():
         leg.connect(torso, method='leg')
 
     for foot, locator, leg in zip(feet, locators, legs):
-         foot.connectAttributes(locator, leg)
+         foot.connect(locator, leg)
 
 
 def create_rig_jnts():

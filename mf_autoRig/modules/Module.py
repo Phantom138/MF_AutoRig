@@ -3,40 +3,17 @@ from abc import abstractmethod
 import pymel.core as pm
 import pymel.core.nodetypes as nt
 import mf_autoRig.modules.meta as mdata
+from mf_autoRig.utils.Side import Side
 
 from pprint import pprint
 
-def createModule(metaNode):
-    """
-    Function to create corresponding class from metadata node
-    """
-    name = metaNode.Name.get()
-    moduleType = metaNode.moduleType.get()
-
-    # Create corresponding class based on moduleType
-    cls_object = modules_mapping[moduleType][0]
-    if cls_object:
-        cls_object = cls_object(name, meta=False)
-
-    # Get attrs
-    meta_args = modules_mapping[moduleType][1]
-    attrs = list(meta_args.keys())
-
-    for attr in attrs:
-        value = getattr(metaNode, attr).get()
-        if not value:
-            pm.warning(f"Warning,{metaNode}.{attr} is empty!")
-        setattr(cls_object, attr, value)
-
-    print(f"Created {moduleType} from {metaNode}")
-    return cls_object
-
-
 class Module(abc.ABC):
-    def __init__(self, name, args, meta=True):
+    def __init__(self, name, args, meta):
         self.name = name
         self.meta = meta
+        self.meta_args = args
         self.moduleType = self.__class__.__name__
+        self.side = Side(name.split('_')[0])
 
         if meta:
             self.metaNode = mdata.create_metadata(name, self.moduleType, args)
@@ -68,6 +45,17 @@ class Module(abc.ABC):
     @abstractmethod
     def rig(self):
         pass
+
+    def save_metadata(self):
+        """
+        Do the appropriate connections to the metaNode, based on the meta_args
+        Skip connections that already made to avoid warnings
+        """
+        for attribute in self.meta_args:
+            src = getattr(self, attribute)
+            if src is not None:
+                dst = self.metaNode.attr(attribute)
+                mdata.add(src, dst)
 
     def connect_metadata(self, dest):
         # Connect meta nodes

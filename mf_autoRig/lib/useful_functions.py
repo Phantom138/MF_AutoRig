@@ -158,7 +158,7 @@ def create_pole_vector(joints):
 
     return pole
 
-def create_ik(joints):
+def create_ik(joints, translation=False):
     if len(joints) > 3:
         pm.error("Only joint chains of 3 supported")
 
@@ -188,7 +188,13 @@ def create_ik(joints):
     ik = CtrlGrp(base_name + df.ik_sff, 'cube')
 
     # TODO: orient grp the right way
-    pm.matchTransform(ik.grp, ik_joints[-1])
+    # if translation is True, only match translation
+    if translation:
+        pm.matchTransform(ik.grp, ik_joints[-1], pos=True)
+    else:
+        pm.matchTransform(ik.grp, ik_joints[-1], pos=True)
+
+
     pm.parentConstraint(ik.ctrl, ikHandle[0], maintainOffset=True)
 
     # Pole Vector

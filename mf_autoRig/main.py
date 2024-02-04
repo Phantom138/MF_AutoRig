@@ -6,7 +6,7 @@ import mf_autoRig.UI.mayaUI as uiTemplate
 from mf_autoRig.modules.Foot import Foot
 
 if __name__ == '__main__':
-    cmds.file(new=True, f=True)
+    #cmds.file(new=True, f=True)
     # foot = Foot("L_foot")
     # foot.create_guides()
     # foot.create_joints()

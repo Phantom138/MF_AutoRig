@@ -1,3 +1,5 @@
+from pprint import pprint
+
 import pymel.core as pm
 
 from mf_autoRig.lib.useful_functions import *
@@ -33,13 +35,15 @@ class Foot(Module):
 
     def __init__(self, name, meta=False):
         super().__init__(name, self.meta_args, meta)
-        self.side = name.split('_')[0]
         self.guides = None
-        pass
+        self.joints = None
+        self.fk_ctrls = None
+        self.locators = None
 
     @classmethod
     def create_from_meta(cls, metaNode):
         foot = super().create_from_meta(metaNode)
+        foot.locator_grp = foot.locators[0].getParent()
         return foot
 
     def create_guides(self, ankle_guide=None, pos=None):
@@ -71,6 +75,8 @@ class Foot(Module):
             pm.parentConstraint(ankle_guide, guides_grp, skipRotate=['x', 'y', 'z'], maintainOffset=False)
             self.guides.insert(0,ankle_guide)
 
+        if self.meta:
+            self.save_metadata()
 
     def __create_base_locators(self):
         self.locators = []
@@ -103,6 +109,7 @@ class Foot(Module):
             self.locators.append(loc)
             pm.matchTransform(loc, jnt, pos=True)
 
+
     def create_joints(self):
         self.joints = create_joints_from_guides(self.name, self.guides)
         self.__create_locators_from_joints()
@@ -111,6 +118,14 @@ class Foot(Module):
         # Parent locators one under the other
         for i in range(len(self.locators)-1, 0, -1):
             pm.parent(self.locators[i], self.locators[i-1])
+
+        # Create tidy group for locators
+        self.locator_grp = pm.createNode('transform', name=f'{self.name}_loc{df.grp_sff}')
+        pm.matchTransform(self.locator_grp, self.joints[0], position=True)
+        pm.parent(self.locators[0], self.locator_grp)
+
+        if self.meta:
+            self.save_metadata()
 
     def rig(self):
         self.skin_jnts = self.joints[:-1]
@@ -144,14 +159,44 @@ class Foot(Module):
         jnt_grp = pm.group(self.ik_jnts[0], self.fk_jnts[0], self.joints[0], name=f'{self.name}_{df.joints_grp}')
         pm.parent(jnt_grp, get_group(df.joints_grp))
 
-    def connectAttributes(self, leg):
-        # Get ik_ctrl
-        ik_ctrl = leg.ik_ctrls_grp.getChildren()[0].getChildren()[0]
+        if self.meta:
+            self.save_metadata()
 
-        # Create tidy group for locators
-        locator_grp = pm.createNode('transform', name=f'{self.name}_loc{df.grp_sff}')
-        pm.matchTransform(locator_grp, ik_ctrl, position=True)
-        pm.parent(self.locators[0], locator_grp)
+    def __create_driven_keys(self, ik_ctrl):
+        connections = {
+            'outerBank': [self.locators[0], 'rotateZ', [(-10, 30), (10, -90)]],
+            'innerBank': [self.locators[1], 'rotateZ', [(-10, 30), (10, -30)]],
+            'heelLift': [self.locators[2], 'rotateX', [(-10, -15), (10, 30)]],
+            'heelSwivel': [self.locators[2], 'rotateY', [(-10, -30), (10, 30)]],
+            'toeLift': [self.locators[3], 'rotateX', [(-10, -30), (10, 50)]],
+            'toeSwivel': [self.locators[3], 'rotateY', [(-10, -20), (10, 21)]],
+            'ballRoll': [self.locators[4], 'rotateX', [(-10, -20), (10, 30)]],
+        }
+
+        # Create driven keys and attributes
+        for attr in connections:
+            pm.addAttr(ik_ctrl, longName=attr, min=-10, max=10, keyable=True)
+
+            # Get rotation and values from dictionary
+            locator = connections[attr][0]
+            rotation = f'.{connections[attr][1]}'
+            values = connections[attr][2]
+
+            # Set 0 driven key
+            pm.setDrivenKeyframe(locator + rotation, currentDriver=ik_ctrl + f'.{attr}', driverValue=0, value=0)
+            # Set the rest
+            for value in values:
+                pm.setDrivenKeyframe(locator + rotation, currentDriver=ik_ctrl + f'.{attr}', driverValue=value[0],
+                                     value=value[1])
+
+
+    def connect(self, leg):
+        if self.check_if_connected(leg):
+            pm.warning(f"{self.name} already connected to {leg.name}")
+            return
+
+        # Get ik_ctrl
+        ik_ctrl = leg.ik_ctrls[0]
 
         # Remove leg parent constraint for the ikHandle
         for constraint in pm.listRelatives(leg.ikHandle):
@@ -182,78 +227,77 @@ class Foot(Module):
         pm.parent(self.toe_ikHandle, self.locators[2])
         pm.parent(leg.ikHandle, self.locators[4])
 
-        connections = {
-            'outerBank': [self.locators[0], 'rotateZ', [(-10, 30), (10, -90)]],
-            'innerBank': [self.locators[1], 'rotateZ', [(-10, 30), (10, -30)]],
-            'heelLift': [self.locators[2], 'rotateX', [(-10, -15), (10, 30)]],
-            'heelSwivel': [self.locators[2], 'rotateY', [(-10, -30), (10, 30)]],
-            'toeLift': [self.locators[3], 'rotateX', [(-10, -30), (10, 50)]],
-            'toeSwivel': [self.locators[3], 'rotateY', [(-10, -20), (10, 21)]],
-            'ballRoll': [self.locators[4], 'rotateX', [(-10, -20), (10, 30)]],
-        }
-
-        # Create driven keys and attributes
-        for attr in connections:
-            pm.addAttr(ik_ctrl, longName=attr, min=-10, max=10, keyable=True)
-
-            # Get rotation and values from dictionary
-            locator = connections[attr][0]
-            rotation = f'.{connections[attr][1]}'
-            values = connections[attr][2]
-
-            # Set 0 driven key
-            pm.setDrivenKeyframe(locator + rotation, currentDriver=ik_ctrl + f'.{attr}', driverValue=0, value=0)
-            # Set the rest
-            for value in values:
-                pm.setDrivenKeyframe(locator + rotation, currentDriver=ik_ctrl + f'.{attr}', driverValue=value[0],
-                                     value=value[1])
-
+        self.__create_driven_keys(ik_ctrl)
 
         # Constraint leg ik_jnt to foot ik_jnt start
-        pm.parentConstraint(leg.ik_jnts[-1], self.ik_jnts[0])
+        pm.parentConstraint(leg.ik_joints[-1], self.ik_jnts[0])
 
         # Constraint ik_ctrl to locator grp
-        pm.parentConstraint(ik_ctrl, locator_grp, maintainOffset=True)
+        pm.parentConstraint(ik_ctrl, self.locator_grp, maintainOffset=True)
 
-    def mirror(self):
-        if self.side == 'L':
-            name = self.name.replace('L_', 'R_')
-        elif self.side == 'R':
-            name = self.name.replace('R_', 'L_')
+        self.connect_metadata(leg)
 
+    def __mirror_locators(self):
+        grp_name = self.locator_grp.replace(f'{self.side}_', f'{self.side.opposite}_')
+        mir_locator_grp = pm.duplicate(self.locator_grp, renameChildren=True, n=grp_name)[0]
+        lst = pm.listRelatives(mir_locator_grp, ad=True)
 
-
-        mir_module=Foot(name, meta=self.meta)
-
-        # Mirror locators
-        mir_module.locators = pm.duplicate(self.locators, parentOnly=True)
-        print('mirrored_locators', mir_module.locators)
-
-        # Mirror locators
-        import pymel.core as pm
-
-        sl = pm.selected()
-
-        dup = pm.duplicate(sl[0], renameChildren=True)
-
-        print(dup)
-
-        lst = pm.listRelatives(dup[0], ad=True)
+        # Add first element back to list
         print(lst)
-        lst.append(dup[0])
 
-        res = []
-
-        for d in lst:
+        mir_locators = []
+        # Keep just the locators
+        for obj in lst:
             try:
-                sh = d.getShape()
+                sh = obj.getShape()
                 if isinstance(sh, pm.nt.Locator):
-                    res.append(d)
+                    mir_locators.append(obj)
                 else:
-                    pm.delete(d)
+                    pm.delete(obj)
             except:
+                # Skip shapes
                 pass
 
+        # Rename with proper prefix
+        for obj in mir_locators:
+            new_name = obj.name()[:-1].replace(f'{self.side}_', f'{self.side.opposite}_')
+            pm.rename(obj, new_name)
+
+        # Reverse locators to get original order back
+        mir_locators.reverse()
+
+        # Mirror by creating group and changing scale to -x
         mir_grp = pm.createNode('transform')
+        pm.parent(mir_locator_grp, mir_grp)
+        mir_grp.scaleX.set(-1)
+
+        # Parent to world
+        pm.parent(mir_locator_grp, None)
+
+        # Delete mir_grp
+        pm.delete(mir_grp)
+        return mir_locators, mir_locator_grp
+
+    def mirror(self):
+        # Get flipped name
+        name = self.name.replace(f'{self.side}_', f'{self.side.opposite}_')
+        print(name)
+        mir_module=Foot(name, meta=self.meta)
+
+        # Mirror Locators
+        mir_module.locators, mir_module.locator_grp = self.__mirror_locators()
+
+        # Mirror joints
+        mirrored_jnts = pm.mirrorJoint(self.joints[0], mirrorYZ=True, mirrorBehavior=True, searchReplace=(f'{self.side}_', f'{self.side.opposite}_'))
+        mir_joints = list(map(pm.PyNode, mirrored_jnts))
+
+        mir_module.joints = []
+        for obj in mir_joints:
+            if isinstance(obj, pm.nt.Joint):
+                mir_module.joints.append(obj)
+            else:
+                pm.delete(obj)
+
+        mir_module.rig()
 
         return mir_module
