@@ -8,13 +8,12 @@ class Clavicle(Module):
     meta_args = {
         'guides': {'attributeType': 'message', 'm': True},
         'joints': {'attributeType': 'message', 'm': True},
-        'clavicle_ctrl': {'attributeType': 'message', 'm': True},
+        'clavicle_ctrl': {'attributeType': 'message'},
     }
 
     def __init__(self, name, meta=True):
         super().__init__(name, self.meta_args, meta)
 
-        self.side = name.split('_')[0]
         self.clavicle_ctrl = None
         self.joints = None
         self.guides = None
@@ -24,6 +23,7 @@ class Clavicle(Module):
     @classmethod
     def create_from_meta(cls, metaNode):
         clavicle = super().create_from_meta(metaNode)
+        clavicle.all_ctrls.append(clavicle.clavicle_ctrl)
 
         return clavicle
 
@@ -45,15 +45,14 @@ class Clavicle(Module):
         grp = pm.group(self.guides, name=f'{self.name}_guides{df.grp_sff}')
         pm.parent(grp, get_group(df.rig_guides_grp))
 
-        print(f'Clavicle guides {self.guides}')
+        print(f'Created clavicle guides {self.guides}')
 
         # Clear Selection
         pm.select(clear=True)
 
         # Save guides
-        if self.meta and self.guides:
-            for i, guide in enumerate(self.guides):
-                guide.message.connect(self.metaNode.guides[i])
+        if self.meta:
+            self.save_metadata()
 
     def create_joints(self, shoulder=None):
         """
@@ -64,33 +63,16 @@ class Clavicle(Module):
             self.guides.append(shoulder)
 
         # Create joints
-        self.joints = []
-        for i, tmp in enumerate(self.guides):
-            # Create joints where the guides where
-            trs = pm.xform(tmp, q=True, t=True, ws=True)
-            sff = df.skin_sff
-            if i == len(self.guides):
-                sff = df.end_sff
-            jnt = pm.joint(name=f'{self.name}{i + 1:02}{sff}{df.jnt_sff}', position=trs)
-
-            self.joints.append(jnt)
-
-        print(f'Created {self.joints} for Clavicle')
-
-        # Orient joints
-        pm.joint(self.joints[0], edit=True, orientJoint='yzx', secondaryAxisOrient='zup', children=True)
-        pm.joint(self.joints[-1], edit=True, orientJoint='none')
-
-        # Clear Selection
-        pm.select(clear=True)
+        self.joints = create_joints_from_guides(self.name, self.guides)
 
         # Parent Joints under Joint_grp
         pm.parent(self.joints[0], get_group(df.joints_grp))
 
+        print(f'Created clavicle joints {self.joints}')
+
         #Save joints
-        if self.meta and self.joints:
-            for i, joints in enumerate(self.joints):
-                joints.message.connect(self.metaNode.joints[i])
+        if self.meta:
+            self.save_metadata()
 
     def rig(self):
         if len(self.joints) != 2:
@@ -106,7 +88,6 @@ class Clavicle(Module):
         pm.parentConstraint(clav.ctrl, jnt, maintainOffset=True)
 
         self.clavicle_ctrl = clav.ctrl
-
         self.all_ctrls.append(self.clavicle_ctrl)
 
         # Color clavicle
@@ -115,11 +96,10 @@ class Clavicle(Module):
         elif self.side == 'L':
             set_color(self.clavicle_ctrl, viewport='blue')
 
-
         pm.select(clear=True)
 
-        if self.meta and self.clavicle_ctrl:
-            self.clavicle_ctrl.message.connect(self.metaNode.clavicle_ctrl)
+        if self.meta:
+            self.save_metadata()
 
 
     def connect(self, torso):
@@ -130,4 +110,30 @@ class Clavicle(Module):
         pm.parent(self.clavicle_ctrl.getParent(1), torso.fk_ctrls[-1])
 
         self.connect_metadata(torso)
+    def mirror(self):
+        """
+        Return a class of the same type that is mirrored on the YZ plane
+        """
+        name = self.name.replace(f'{self.side}_', f'{self.side.opposite}_')
+        mir_module = self.__class__(name)
+
+        # Mirror Joints
+        mirrored_jnts = pm.mirrorJoint(self.joints[0], mirrorYZ=True, mirrorBehavior=True,
+                                       searchReplace=(self.side, self.side.opposite))
+        mir_joints = list(map(pm.PyNode, mirrored_jnts))
+        mir_module.joints = []
+        for obj in mir_joints:
+            if isinstance(obj, pm.nt.Joint):
+                mir_module.joints.append(obj)
+            else:
+                pm.delete(obj)
+
+        mir_module.rig()
+
+        # Mirror Ctrls
+        for src, dst in zip(self.all_ctrls, mir_module.all_ctrls):
+            print(src, dst)
+            control_shape_mirror(src, dst)
+
+        return mir_module
 

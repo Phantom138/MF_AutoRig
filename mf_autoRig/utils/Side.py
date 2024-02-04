@@ -17,3 +17,6 @@ class Side:
 
     def __str__(self):
         return self.side
+
+    def __eq__(self, other):
+        return self.side == other

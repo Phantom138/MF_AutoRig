@@ -160,7 +160,7 @@ class Limb(Module):
         Return a class of the same type that is mirrored on the YZ plane
         """
         name = self.name.replace(f'{self.side}_', f'{self.side.opposite}_')
-        mir_module = Limb(name)
+        mir_module = self.__class__(name)
 
         # Mirror Joints
         mirrored_jnts = pm.mirrorJoint(self.joints[0], mirrorYZ=True, mirrorBehavior=True,
