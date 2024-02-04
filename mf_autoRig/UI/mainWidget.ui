@@ -131,6 +131,11 @@
            <string>Hand</string>
           </property>
          </item>
+         <item>
+          <property name="text">
+           <string>Foot</string>
+          </property>
+         </item>
         </widget>
        </item>
        <item>
