@@ -1,8 +1,3 @@
-"""
-Maya/QT UI template
-Maya 2023
-original code by isaacoster
-"""
 import re
 
 from maya import OpenMayaUI as omui
