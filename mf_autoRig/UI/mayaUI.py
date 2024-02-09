@@ -1,14 +1,11 @@
 import re
 
-from maya import OpenMayaUI as omui
-from shiboken2 import wrapInstance
-from PySide2 import QtUiTools, QtCore, QtGui, QtWidgets
-from PySide2.QtCore import Qt
-from functools import partial  # optional, for passing args during signal function calls
+from PySide2 import QtWidgets
 
 import pathlib
 
-from mf_autoRig.UI.UI_Template import UITemplate, delete_workspace_control
+from mf_autoRig.UI.modulePage import ModulePage
+from mf_autoRig.UI.utils.UI_Template import UITemplate, delete_workspace_control
 from mf_autoRig.modules import Limb, Spine, Clavicle, Hand, Body, Foot
 import mf_autoRig.modules.createModule as crMod
 import mf_autoRig.lib.defaults as df
@@ -35,6 +32,10 @@ class MayaUI(UITemplate):
 
         self.connect_widgets()
 
+        limb_tab = ModulePage()
+        help(limb_tab)
+        self.ui.mdl_stackedTabs.insertWidget(0, limb_tab)
+
     def connect_widgets(self):
         # locate UI widgets
         self.btn_close = self.ui.findChild(QtWidgets.QPushButton, 'btn_close')
@@ -44,18 +45,18 @@ class MayaUI(UITemplate):
         self.ui.auto_btn_guides.clicked.connect(self.auto_guides)
         self.ui.auto_btn_rig.clicked.connect(self.auto_rig)
 
-        # Modules Tab
-        self.mdl_combo = self.ui.findChild(QtWidgets.QComboBox, 'mdl_comboBox')
-        self.mdl_combo.currentIndexChanged.connect(self.moduleIndexChanged)
-
-        self.mdl_name = self.ui.findChild(QtWidgets.QLineEdit, 'mdl_name')
-        self.mdl_name.textChanged.connect(self.nameChanged)
-
-        self.mdl_btn_guides = self.ui.findChild(QtWidgets.QPushButton, 'mdl_btn_guides')
-        self.mdl_btn_guides.clicked.connect(self.mdl_createGuides)
-
-        self.mdl_btn_rig = self.ui.findChild(QtWidgets.QPushButton, 'mdl_btn_rig')
-        self.mdl_btn_rig.clicked.connect(self.mdl_createRig)
+        # # Modules Tab
+        # self.mdl_combo = self.ui.findChild(QtWidgets.QComboBox, 'mdl_comboBox')
+        # self.mdl_combo.currentIndexChanged.connect(self.moduleIndexChanged)
+        #
+        # self.mdl_name = self.ui.findChild(QtWidgets.QLineEdit, 'mdl_name')
+        # self.mdl_name.textChanged.connect(self.nameChanged)
+        #
+        # self.mdl_btn_guides = self.ui.findChild(QtWidgets.QPushButton, 'mdl_btn_guides')
+        # self.mdl_btn_guides.clicked.connect(self.mdl_createGuides)
+        #
+        # self.mdl_btn_rig = self.ui.findChild(QtWidgets.QPushButton, 'mdl_btn_rig')
+        # self.mdl_btn_rig.clicked.connect(self.mdl_createRig)
 
         # Connect Tab
         self.btn_updateLists = self.ui.findChild(QtWidgets.QPushButton, 'btn_updateLists')

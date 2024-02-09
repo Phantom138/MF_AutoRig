@@ -139,45 +139,7 @@
         </widget>
        </item>
        <item>
-        <layout class="QHBoxLayout" name="horizontalLayout">
-         <item>
-          <widget class="QLabel" name="label_2">
-           <property name="text">
-            <string>Name</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QLineEdit" name="mdl_name"/>
-         </item>
-        </layout>
-       </item>
-       <item>
-        <widget class="QPushButton" name="mdl_btn_guides">
-         <property name="text">
-          <string>Create Guides</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QPushButton" name="mdl_btn_rig">
-         <property name="text">
-          <string>Create Rig</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <spacer name="verticalSpacer_2">
-         <property name="orientation">
-          <enum>Qt::Vertical</enum>
-         </property>
-         <property name="sizeHint" stdset="0">
-          <size>
-           <width>20</width>
-           <height>40</height>
-          </size>
-         </property>
-        </spacer>
+        <widget class="QStackedWidget" name="mdl_stackedTabs"/>
        </item>
       </layout>
      </widget>
