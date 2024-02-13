@@ -15,11 +15,11 @@ WORK_PATH = pathlib.Path(__file__).parent.resolve()
 
 class_name_map = {
     'Limb': Limb.Limb,
+    'Arm': Limb.Arm,
+    'Leg': Limb.Leg,
     'Clavicle': Clavicle.Clavicle,
     'Spine': Spine.Spine,
     'Hand': Hand.Hand,
-    'Arm': Limb.Arm,
-    'Leg': Limb.Leg,
     'Foot': Foot.Foot
 }
 
@@ -32,9 +32,8 @@ class MayaUI(UITemplate):
 
         self.connect_widgets()
 
-        limb_tab = ModulePage()
-        help(limb_tab)
-        self.ui.mdl_stackedTabs.insertWidget(0, limb_tab)
+        self.create_module_tabs()
+
 
     def connect_widgets(self):
         # locate UI widgets
@@ -45,18 +44,8 @@ class MayaUI(UITemplate):
         self.ui.auto_btn_guides.clicked.connect(self.auto_guides)
         self.ui.auto_btn_rig.clicked.connect(self.auto_rig)
 
-        # # Modules Tab
-        # self.mdl_combo = self.ui.findChild(QtWidgets.QComboBox, 'mdl_comboBox')
-        # self.mdl_combo.currentIndexChanged.connect(self.moduleIndexChanged)
-        #
-        # self.mdl_name = self.ui.findChild(QtWidgets.QLineEdit, 'mdl_name')
-        # self.mdl_name.textChanged.connect(self.nameChanged)
-        #
-        # self.mdl_btn_guides = self.ui.findChild(QtWidgets.QPushButton, 'mdl_btn_guides')
-        # self.mdl_btn_guides.clicked.connect(self.mdl_createGuides)
-        #
-        # self.mdl_btn_rig = self.ui.findChild(QtWidgets.QPushButton, 'mdl_btn_rig')
-        # self.mdl_btn_rig.clicked.connect(self.mdl_createRig)
+        # Modules Tab
+        self.mdl_combo = self.ui.findChild(QtWidgets.QComboBox, 'mdl_comboBox')
 
         # Connect Tab
         self.btn_updateLists = self.ui.findChild(QtWidgets.QPushButton, 'btn_updateLists')
@@ -69,9 +58,16 @@ class MayaUI(UITemplate):
         self.btn_connect = self.ui.findChild(QtWidgets.QPushButton, 'btn_connect')
         self.btn_connect.clicked.connect(self.connect_selection)
 
-        # Disable Buttons
-        self.mdl_btn_guides.setEnabled(False)
-        self.mdl_btn_rig.setEnabled(False)
+    def create_module_tabs(self):
+        for module in class_name_map:
+            self.mdl_combo.addItem(module)
+
+            module_tab = ModulePage(class_name_map.get(module))
+
+
+            self.ui.mdl_stackedTabs.addWidget(module_tab)
+
+        self.mdl_combo.activated.connect(self.ui.mdl_stackedTabs.setCurrentIndex)
 
     def closeWindow(self):
         """
@@ -90,40 +86,6 @@ class MayaUI(UITemplate):
         self.body.create_joints()
         self.body.rig()
 
-    def moduleIndexChanged(self):
-        self.mdl_name.clear()
-        self.mdl_btn_guides.setEnabled(False)
-        self.mdl_btn_rig.setEnabled(False)
-
-    def nameChanged(self):
-        name = self.mdl_name.text()
-        if not name:
-            self.mdl_btn_guides.setEnabled(False)
-            self.mdl_btn_rig.setEnabled(False)
-            return None
-
-        self.mdl_btn_guides.setEnabled(True)
-
-    def mdl_createGuides(self):
-        name = self.mdl_name.text()
-        option = self.mdl_combo.currentText()
-
-        # init class
-        selected_class = class_name_map.get(option)
-        self.module = selected_class(name)
-
-        self.module.create_guides()
-        self.mdl_btn_rig.setEnabled(True)
-
-    def mdl_createRig(self):
-        if self.mdl_combo.currentText() == 'Hand':
-            self.module.create_joints()
-            self.module.create_hand()
-            self.module.rig()
-            return None
-
-        self.module.create_joints()
-        self.module.rig()
 
     def updateLists(self):
         self.conn_destination.clear()

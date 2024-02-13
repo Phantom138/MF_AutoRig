@@ -100,43 +100,7 @@
         </widget>
        </item>
        <item>
-        <widget class="QComboBox" name="mdl_comboBox">
-         <item>
-          <property name="text">
-           <string>Limb</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>Arm</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>Leg</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>Clavicle</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>Spine</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>Hand</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>Foot</string>
-          </property>
-         </item>
-        </widget>
+        <widget class="QComboBox" name="mdl_comboBox"/>
        </item>
        <item>
         <widget class="QStackedWidget" name="mdl_stackedTabs"/>
