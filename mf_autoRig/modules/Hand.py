@@ -35,7 +35,6 @@ class Hand(Module):
 
     def create_guides(self, start_pos=None):
         # TODO: better default placement for wrist guide
-        # TODO: create guide for orientation
         finger_grps = []
         fingers_jnts = []
 
