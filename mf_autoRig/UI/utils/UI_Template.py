@@ -7,7 +7,7 @@ from shiboken2 import wrapInstance
 from PySide2 import QtGui, QtCore, QtUiTools, QtWidgets
 import maya.OpenMayaUI as omui
 from maya.app.general.mayaMixin import MayaQWidgetDockableMixin
-
+from mf_autoRig.UI.utils.loadUI import loadUi
 
 def maya_main_window():
     """
@@ -20,10 +20,11 @@ def maya_main_window():
 def delete_workspace_control(name):
     control = name + 'WorkspaceControl'
     if cmds.workspaceControl(control, q=True, exists=True):
+        print("Deleting workspace Control")
         cmds.workspaceControl(control, e=True, close=True)
         cmds.deleteUI(control, control=True)
 
-class UITemplate(MayaQWidgetDockableMixin, QtWidgets.QWidget):
+class UITemplate(MayaQWidgetDockableMixin, QtWidgets.QDialog):
     def __init__(self, widget_title, ui_path):
         """
         Init method for the UI class.
@@ -37,6 +38,8 @@ class UITemplate(MayaQWidgetDockableMixin, QtWidgets.QWidget):
         self.widget_title = widget_title
         self.ui_path = ui_path
 
+        # loadUi(ui_path, self)
+
         uifile = QtCore.QFile(ui_path)
         uifile.open(QtCore.QFile.ReadOnly)
         self.ui = QtUiTools.QUiLoader().load(uifile, parentWidget=self)
@@ -44,9 +47,12 @@ class UITemplate(MayaQWidgetDockableMixin, QtWidgets.QWidget):
 
         self.resize(400, 500)
 
-        main_grid_layout = QtWidgets.QHBoxLayout()
-        main_grid_layout.addWidget(self.ui)
-        self.setLayout(main_grid_layout)
+        self.centralLayout = QtWidgets.QVBoxLayout()
+        self.centralLayout.setContentsMargins(0, 0, 0, 0)
+        self.centralLayout.addWidget(self.ui)
+        self.setLayout(self.centralLayout)
+
+
         self.setObjectName(widget_title)
         self.setWindowTitle(widget_title)
 

@@ -55,6 +55,7 @@ class Module(abc.ABC):
             src = getattr(self, attribute)
             if src is not None:
                 dst = self.metaNode.attr(attribute)
+                print(src, dst)
                 mdata.add(src, dst)
 
     def connect_metadata(self, dest):

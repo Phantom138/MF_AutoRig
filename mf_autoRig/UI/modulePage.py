@@ -8,13 +8,17 @@ class ModulePage(QtWidgets.QWidget):
     def __init__(self, base_module, parent=None):
         path = pathlib.Path(__file__).parent.resolve()
         QtWidgets.QWidget.__init__(self, parent)
+        # TODO: proper path joining
         loadUi(rf"{path}\modulePage.ui", self)
 
+        self.base_module = base_module
         # number = QtWidgets.QLabel()
         # number.setText("Number")
         # self.verticalLayout.insertWidget(1, number)
 
-        self.base_module = base_module
+        self.__create_connections()
+
+    def __create_connections(self):
 
         self.btn_guides.clicked.connect(self.mdl_createGuides)
         self.btn_rig.clicked.connect(self.mdl_rig)
@@ -33,7 +37,7 @@ class ModulePage(QtWidgets.QWidget):
 
     def mdl_rig(self):
         print(f"//// Running create rig for module {self.module.name}")
-        if self.base_module == 'Hand':
+        if self.module.moduleType == 'Hand':
             self.module.create_joints()
             self.module.create_hand()
             self.module.rig()
@@ -50,3 +54,25 @@ class ModulePage(QtWidgets.QWidget):
             return None
 
         self.btn_guides.setEnabled(True)
+
+class HandPage(ModulePage):
+    def __init__(self, base_module, parent=None):
+        super().__init__(base_module, parent)
+
+        options = QtWidgets.QHBoxLayout()
+        self.spread = QtWidgets.QCheckBox("Spread")
+        self.spread.setChecked(True)
+
+        self.curl = QtWidgets.QCheckBox("Curl")
+        self.curl.setChecked(True)
+
+        options.addWidget(self.spread)
+        options.addWidget(self.curl)
+
+        self.verticalLayout.insertLayout(2, options)
+
+    def mdl_rig(self):
+        print(f"//// Running create rig for module {self.module.name}")
+        self.module.create_joints()
+        self.module.create_hand()
+        self.module.rig(spread = self.spread.isChecked(), curl = self.curl.isChecked())

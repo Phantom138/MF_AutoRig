@@ -445,9 +445,13 @@ def create_joints_from_guides(name, guides):
     pm.select(clear = True)
     return joints
 
-def getHierachy(joint):
+def get_joint_hierarchy(joint):
+    """
+    Returns joint children of the passed object, including it
+    The order is parent -> children
+    """
     #jnt = pm.PyNode(joint)
-    jnts = pm.listRelatives(joint, ad=True)
+    jnts = pm.listRelatives(joint, typ='joint', ad=True)
     jnts.append(joint)
     jnts.reverse()
     return jnts

@@ -159,6 +159,7 @@ class Limb(Module):
         """
         Return a class of the same type that is mirrored on the YZ plane
         """
+        #TODO: add possibility to mirror on different plane
         name = self.name.replace(f'{self.side}_', f'{self.side.opposite}_')
         mir_module = self.__class__(name)
 

@@ -4,12 +4,12 @@ from PySide2 import QtWidgets
 
 import pathlib
 
-from mf_autoRig.UI.modulePage import ModulePage
+import mf_autoRig.UI.modulePage as modPages
 from mf_autoRig.UI.utils.UI_Template import UITemplate, delete_workspace_control
 from mf_autoRig.modules import Limb, Spine, Clavicle, Hand, Body, Foot
 import mf_autoRig.modules.createModule as crMod
 import mf_autoRig.lib.defaults as df
-
+from mf_autoRig.UI.utils.loadUI import loadUi
 
 WORK_PATH = pathlib.Path(__file__).parent.resolve()
 
@@ -32,42 +32,34 @@ class MayaUI(UITemplate):
 
         self.connect_widgets()
 
+
         self.create_module_tabs()
 
 
     def connect_widgets(self):
-        # locate UI widgets
-        self.btn_close = self.ui.findChild(QtWidgets.QPushButton, 'btn_close')
-        self.btn_close.clicked.connect(self.closeWindow)
+        self.ui.btn_close.clicked.connect(self.closeWindow)
 
         # Auto rig Tab
         self.ui.auto_btn_guides.clicked.connect(self.auto_guides)
         self.ui.auto_btn_rig.clicked.connect(self.auto_rig)
 
-        # Modules Tab
-        self.mdl_combo = self.ui.findChild(QtWidgets.QComboBox, 'mdl_comboBox')
-
         # Connect Tab
-        self.btn_updateLists = self.ui.findChild(QtWidgets.QPushButton, 'btn_updateLists')
-        self.btn_updateLists.clicked.connect(self.updateLists)
-
-        self.conn_source = self.ui.findChild(QtWidgets.QListWidget, 'conn_source')
-        self.conn_source.itemSelectionChanged.connect(self.show_destinations)
-        self.conn_destination = self.ui.findChild(QtWidgets.QListWidget, 'conn_destination')
-
-        self.btn_connect = self.ui.findChild(QtWidgets.QPushButton, 'btn_connect')
-        self.btn_connect.clicked.connect(self.connect_selection)
+        self.ui.btn_updateLists.clicked.connect(self.updateLists)
+        self.ui.conn_source.itemSelectionChanged.connect(self.show_destinations)
+        self.ui.btn_connect.clicked.connect(self.connect_selection)
 
     def create_module_tabs(self):
         for module in class_name_map:
-            self.mdl_combo.addItem(module)
+            self.ui.mdl_comboBox.addItem(module)
 
-            module_tab = ModulePage(class_name_map.get(module))
-
+            if module == 'Hand':
+                module_tab = modPages.HandPage(class_name_map.get(module))
+            else:
+                module_tab = modPages.ModulePage(class_name_map.get(module))
 
             self.ui.mdl_stackedTabs.addWidget(module_tab)
 
-        self.mdl_combo.activated.connect(self.ui.mdl_stackedTabs.setCurrentIndex)
+        self.ui.mdl_comboBox.activated.connect(self.ui.mdl_stackedTabs.setCurrentIndex)
 
     def closeWindow(self):
         """
@@ -86,10 +78,10 @@ class MayaUI(UITemplate):
         self.body.create_joints()
         self.body.rig()
 
-
     def updateLists(self):
-        self.conn_destination.clear()
-        self.conn_source.clear()
+        self.ui.conn_source.clear()
+        self.ui.conn_destination.clear()
+
 
         self.modules = crMod.get_all_modules()
         if self.modules is not None:
@@ -103,8 +95,8 @@ class MayaUI(UITemplate):
 
                 # Add item to list
                 item = f'{base_name} <{moduleType}>'
-                self.conn_source.addItem(item)
-                self.conn_destination.addItem(item)
+                self.ui.conn_source.addItem(item)
+                self.ui.conn_destination.addItem(item)
 
     def show_destinations(self):
         # Get source from modules list
@@ -149,8 +141,8 @@ class MayaUI(UITemplate):
 
     def connect_selection(self):
         print("called connect_selection")
-        dest_index = self.conn_destination.currentRow()
-        source_index = self.conn_source.currentRow()
+        dest_index = self.ui.conn_destination.currentRow()
+        source_index = self.ui.conn_source.currentRow()
 
         metaNode = self.modules[source_index]
         obj = crMod.createModule(metaNode)
@@ -163,7 +155,7 @@ class MayaUI(UITemplate):
         source.connect(dest)
 
 def showWindow():
-    title = 'Auto Rig'
+    title = 'Auto Rig 2'
 
     delete_workspace_control(title)
 
