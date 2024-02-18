@@ -104,9 +104,25 @@ class Hand(Module):
             pm.xform(self.wrist_guide, t=[0, 5, 0], ws=True)
             pm.parent(self.wrist_guide, hand_grp)
 
+        self.__create_orient_guides()
 
         # Clear selection
         pm.select(clear=True)
+
+    def __create_orient_guides(self):
+        self.orient_guides = []
+        for finger_guide in self.guides:
+            orient_guide = pm.nurbsPlane(name=f'{finger_guide[1].name()}_orient',lengthRatio=3)[0]
+
+            set_color(orient_guide, viewport='red')
+
+            # Move where and parent where knuckles are
+            pm.matchTransform(orient_guide, finger_guide[1], pos=True, rot=True, scale=False)
+            pm.rotate(orient_guide, [90, -90, 0], objectSpace=True, relative=True)
+
+            pm.parent(orient_guide, finger_guide[1])
+
+            self.orient_guides.append(orient_guide)
 
     def create_joints(self, mirror_from = None):
         """
@@ -119,11 +135,41 @@ class Hand(Module):
 
         # Create finger joints based on guides
         self.finger_jnts = []
-        for finger in self.guides:
+        for i, finger_guide in enumerate(self.guides):
             # Get finger name
-            match = re.search(f'({self.name}_([a-zA-Z]+))\d*_', finger[0].name())
+            match = re.search(f'({self.name}_([a-zA-Z]+))\d*_', finger_guide[0].name())
             base_name = match.group(1)
-            jnts = create_joints_from_guides(base_name, finger)
+            #jnts = create_joints_from_guides(base_name, finger)
+
+            # Create joints for guides
+            jnts = []
+
+            for k, guide in enumerate(finger_guide):
+                # Suffix is end if k is last
+                suff = df.skin_sff
+                if k == len(finger_guide) - 1:
+                    suff = df.end_sff
+
+                jnt = pm.createNode('joint', name=f'{base_name}{k + 1:02}{suff}{df.jnt_sff}')
+
+                pm.matchTransform(jnt, guide, pos=True, rot=False, scale=False)
+                jnts.append(jnt)
+
+            # Orient joints based on orient guide
+            for j in range(len(jnts)-1):
+                jnt = jnts[j]
+                next_jnt = jnts[j+1]
+                print("Doing orient constraint", jnt, next_jnt)
+
+                # Set right orientation
+                constraint = pm.aimConstraint(next_jnt, jnt, aim = [0,1,0], upVector=[1,0,0], worldUpObject=self.orient_guides[i], worldUpType="objectrotation", worldUpVector=[0,1,0])
+                pm.delete(constraint)
+
+                # Parent
+                pm.parent(next_jnt, jnt)
+
+            # Orient last joint
+            pm.joint(jnts[-1], edit=True, orientJoint='none')
 
             self.finger_jnts.append(jnts[0])
 
