@@ -15,6 +15,44 @@ import mf_autoRig.lib.mirrorJoint as mirrorUtils
 
 
 class Limb(Module):
+    """
+    Class representing a limb module for character rigging.
+
+    Attributes:
+        meta_args (dict): Metadata attributes for the limb.
+        joints (list): List of joint objects for the limb.
+        guides (list): List of guide objects for the limb.
+        ik_joints (list): List of joints for the inverse kinematics (IK) setup.
+        ik_ctrls (list): List of controls for the IK setup.
+        fk_joints (list): List of joints for the forward kinematics (FK) setup.
+        fk_ctrls (list): List of controls for the FK setup.
+        switch (pymel.core.PyNode): Control used for switching between IK and FK setups.
+        all_ctrls (list): List of all controls in the limb.
+        default_pin_value (int): Default pin value for joint creation.
+
+    Methods:
+        __init__(self, name, meta=True):
+            Initializes a Limb instance.
+
+        create_from_meta(cls, metaNode):
+            Creates a Limb instance from existing metadata node.
+
+        create_guides(self, pos=None):
+            Creates guides for the limb based on the specified positions.
+
+        create_joints(self, mirror_from=None):
+            Creates joints for the limb based on the guides.
+
+        rig(self, ik_ctrl_trans=False):
+            Sets up the rigging for the limb, including IK and FK setups.
+
+        __clean_up(self):
+            Performs clean-up operations for the limb rigging.
+
+        mirror(self, rig=True):
+            Creates a mirrored instance of the Limb class.
+
+    """
     meta_args = {
         'switch': {'attributeType': 'message'},
         'guides': {'attributeType': 'message', 'm': True},
@@ -198,6 +236,34 @@ class Arm(Limb):
 
 
 class Leg(Limb):
+    """
+    Class representing a leg module for character rigging, inheriting from Limb.
+
+    Attributes:
+        foot (Foot): Instance of the Foot class associated with the leg.
+
+    Methods:
+        __init__(self, name, meta=True):
+            Initializes a Leg instance.
+
+        create_from_meta(cls, metaNode):
+            Creates a Leg instance from existing metadata node.
+
+        create_guides(self, pos=None):
+            Creates guides for the leg, including the foot guide.
+
+        create_joints(self, mirror_from=None):
+            Creates joints for the leg, including the foot joints.
+
+        rig(self):
+            Sets up the rigging for the leg, including the foot rigging.
+
+        connect(self, dest):
+            Connects the leg to the specified destination module.
+
+        mirror(self):
+            Creates a mirrored instance of the Leg class.
+    """
     def __init__(self, name, meta=True):
         super().__init__(name, meta)
         self.default_pin_value = 49

@@ -9,6 +9,42 @@ from pprint import pprint
 
 class Module(abc.ABC):
     # TODO: add delete method that also cleans up the groups
+    """
+    Abstract base class for creating rigging modules.
+
+    Attributes:
+        name (str): The name of the module.
+        meta (bool): Flag indicating whether the module has associated metadata.
+        meta_args (list): List of attributes to be stored in metadata.
+        moduleType (str): The type of the module.
+        side (Side): The side of the module (e.g., Left, Right, Center).
+        metaNode (pymel.core.PyNode): Metadata node associated with the module if meta is True.
+
+    Methods:
+        create_from_meta(cls, metaNode):
+            Creates a Module instance from existing metadata node.
+
+        create_guides(self):
+            Abstract method to create guide objects for the rigging module.
+
+        create_joints(self):
+            Abstract method to create joints for the rigging module.
+
+        rig(self):
+            Abstract method to perform the rigging process for the module.
+
+        save_metadata(self):
+            Saves attribute values to the associated metadata node.
+
+        connect_metadata(self, dest):
+            Connects the metadata node to another destination metadata node.
+
+        check_if_connected(self, dest):
+            Checks if the metadata node is connected to the destination metadata node.
+
+        __str__(self):
+            Returns a string representation of the Module instance.
+    """
     def __init__(self, name, args, meta):
         self.name = name
         self.meta = meta
@@ -23,6 +59,16 @@ class Module(abc.ABC):
     @classmethod
     @abstractmethod
     def create_from_meta(cls, metaNode):
+        """
+        Creates a Module instance from existing metadata node.
+
+        Args:
+            metaNode (pymel.core.PyNode): The metadata node to create the module from.
+
+        Returns:
+            Module: An instance of the Module class.
+        """
+
         name = metaNode.Name.get()
         general_obj = cls(name, meta=False)
 
