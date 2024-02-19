@@ -155,7 +155,7 @@ class Limb(Module):
         # Clear selection
         pm.select(clear=True)
 
-    def mirror(self):
+    def mirror(self, rig=True):
         """
         Return a class of the same type that is mirrored on the YZ plane
         """
@@ -173,8 +173,8 @@ class Limb(Module):
                 mir_module.joints.append(obj)
             else:
                 pm.delete(obj)
-
-        mir_module.rig()
+        if rig:
+            mir_module.rig()
 
         # Mirror Ctrls
         for src, dst in zip(self.all_ctrls, mir_module.all_ctrls):
@@ -245,8 +245,8 @@ class Leg(Limb):
         self.connect_metadata(dest)
 
     def mirror(self):
-        mir_module = super().mirror()
-        mir_module.foot = self.foot.mirror()
-        mir_module.foot.connect(mir_module)
+        mir_module = super().mirror(rig=False)
+        mir_module.foot = self.foot.mirror(rig=False)
+        mir_module.rig()
 
         return mir_module

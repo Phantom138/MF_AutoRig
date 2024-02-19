@@ -6,23 +6,7 @@ from mf_autoRig.lib.useful_functions import *
 from mf_autoRig.modules.Module import Module
 
 import mf_autoRig.lib.defaults as df
-
-
-# loc = ['L_outerbank_loc', 'L_innerrbank_loc', 'L_heel_loc', 'L_toe_tip_loc', 'L_ball_loc']
-# l_locators = []
-#
-# for locator in loc:
-#     l_locators.append(pm.PyNode(locator))
-#
-# loc = ['R_outerbank_loc', 'R_innerrbank_loc', 'R_heel_loc', 'R_toe_tip_loc', 'R_ball_loc']
-# r_locators = []
-#
-# for locator in loc:
-#     r_locators.append(pm.PyNode(locator))
-#
-# locators = []
-# locators.append(l_locators)
-# locators.append(r_locators)
+import mf_autoRig.lib.mirrorJoint as mirrorUtils
 
 
 class Foot(Module):
@@ -278,7 +262,7 @@ class Foot(Module):
         pm.delete(mir_grp)
         return mir_locators, mir_locator_grp
 
-    def mirror(self):
+    def mirror(self, rig=True):
         # Get flipped name
         name = self.name.replace(f'{self.side}_', f'{self.side.opposite}_')
         print(name)
@@ -288,16 +272,9 @@ class Foot(Module):
         mir_module.locators, mir_module.locator_grp = self.__mirror_locators()
 
         # Mirror joints
-        mirrored_jnts = pm.mirrorJoint(self.joints[0], mirrorYZ=True, mirrorBehavior=True, searchReplace=(f'{self.side}_', f'{self.side.opposite}_'))
-        mir_joints = list(map(pm.PyNode, mirrored_jnts))
+        mir_module.joints = mirrorUtils.mirrorJoints(self.joints[0], searchReplace=(f'{self.side}_', f'{self.side.opposite}_'))
 
-        mir_module.joints = []
-        for obj in mir_joints:
-            if isinstance(obj, pm.nt.Joint):
-                mir_module.joints.append(obj)
-            else:
-                pm.delete(obj)
-
-        mir_module.rig()
+        if rig:
+            mir_module.rig()
 
         return mir_module
