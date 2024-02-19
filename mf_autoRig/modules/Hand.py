@@ -288,8 +288,9 @@ class Hand(Module):
         self.all_ctrls.append(self.hand.ctrl)
 
         # Delete guides
-        pm.delete(self.guides)
-        pm.delete(self.wrist_guide)
+        if self.guides:
+            pm.delete(self.guides)
+            pm.delete(self.wrist_guide)
 
     def __curl_switch(self, hand_ctrl, offset_grps):
         match = re.search(f'({self.name}_([a-zA-Z]+))\d*_', offset_grps[0].name())
@@ -368,7 +369,7 @@ class Hand(Module):
         if mir_module.meta:
             mir_module.save_metadata()
 
-        print(mir_module)
+        return mir_module
 
     def connect(self, arm):
         if self.check_if_connected(arm):

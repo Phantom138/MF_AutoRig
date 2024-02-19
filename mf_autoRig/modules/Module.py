@@ -8,6 +8,7 @@ from mf_autoRig.utils.Side import Side
 from pprint import pprint
 
 class Module(abc.ABC):
+    # TODO: add delete method that also cleans up the groups
     def __init__(self, name, args, meta):
         self.name = name
         self.meta = meta
@@ -16,6 +17,7 @@ class Module(abc.ABC):
         self.side = Side(name.split('_')[0])
 
         if meta:
+            print(f"|||||||||||creating metadata for {name}")
             self.metaNode = mdata.create_metadata(name, self.moduleType, args)
 
     @classmethod
@@ -53,9 +55,13 @@ class Module(abc.ABC):
         """
         for attribute in self.meta_args:
             src = getattr(self, attribute)
+            if isinstance(src, list) and not src:
+                # Skip if list is empty
+                continue
+
             if src is not None:
                 dst = self.metaNode.attr(attribute)
-                print(src, dst)
+                #print(src, dst)
                 mdata.add(src, dst)
 
     def connect_metadata(self, dest):

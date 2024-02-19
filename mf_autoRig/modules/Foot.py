@@ -262,11 +262,17 @@ class Foot(Module):
         pm.delete(mir_grp)
         return mir_locators, mir_locator_grp
 
-    def mirror(self, rig=True):
-        # Get flipped name
-        name = self.name.replace(f'{self.side}_', f'{self.side.opposite}_')
-        print(name)
-        mir_module=Foot(name, meta=self.meta)
+    def mirror(self, rig=True, outputModule = None):
+        """
+        if output module is None, it creates a new class and returns it
+        """
+        #TODO: make this a bit less hacky, also in Limb.Leg
+        if outputModule is None:
+            # Get flipped name
+            name = self.name.replace(f'{self.side}_', f'{self.side.opposite}_')
+            mir_module=Foot(name, meta=self.meta)
+        else:
+            mir_module = outputModule
 
         # Mirror Locators
         mir_module.locators, mir_module.locator_grp = self.__mirror_locators()

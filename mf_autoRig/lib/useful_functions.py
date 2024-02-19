@@ -190,9 +190,9 @@ def create_ik(joints, translation=False):
     # TODO: orient grp the right way
     # if translation is True, only match translation
     if translation:
-        pm.matchTransform(ik.grp, ik_joints[-1], pos=True)
+        pm.matchTransform(ik.grp, ik_joints[-1], pos=True, rot=False, scale=True)
     else:
-        pm.matchTransform(ik.grp, ik_joints[-1], pos=True)
+        pm.matchTransform(ik.grp, ik_joints[-1])
 
 
     pm.parentConstraint(ik.ctrl, ikHandle[0], maintainOffset=True)

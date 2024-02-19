@@ -13,6 +13,8 @@ from mf_autoRig.UI.utils.loadUI import loadUi
 
 WORK_PATH = pathlib.Path(__file__).parent.resolve()
 
+#TODO: create separate window for module management
+
 class_name_map = {
     'Limb': Limb.Limb,
     'Arm': Limb.Arm,

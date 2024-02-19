@@ -11,6 +11,8 @@ from mf_autoRig.lib.color_tools import set_color
 import mf_autoRig.modules.meta as mdata
 from mf_autoRig.modules.Module import Module
 from mf_autoRig.modules.Foot import Foot
+import mf_autoRig.lib.mirrorJoint as mirrorUtils
+
 
 class Limb(Module):
     meta_args = {
@@ -164,15 +166,8 @@ class Limb(Module):
         mir_module = self.__class__(name)
 
         # Mirror Joints
-        mirrored_jnts = pm.mirrorJoint(self.joints[0], mirrorYZ=True, mirrorBehavior=True,
-                                       searchReplace=(self.side, self.side.opposite))
-        mir_joints = list(map(pm.PyNode, mirrored_jnts))
-        mir_module.joints = []
-        for obj in mir_joints:
-            if isinstance(obj, pm.nt.Joint):
-                mir_module.joints.append(obj)
-            else:
-                pm.delete(obj)
+        mir_module.joints = mirrorUtils.mirrorJoints(self.joints[0], (self.side, self.side.opposite))
+
         if rig:
             mir_module.rig()
 
@@ -246,7 +241,7 @@ class Leg(Limb):
 
     def mirror(self):
         mir_module = super().mirror(rig=False)
-        mir_module.foot = self.foot.mirror(rig=False)
+        self.foot.mirror(rig=False, outputModule=mir_module.foot)
         mir_module.rig()
 
         return mir_module
