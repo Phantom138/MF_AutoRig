@@ -57,7 +57,6 @@ class Module(abc.ABC):
             self.metaNode = mdata.create_metadata(name, self.moduleType, args)
 
     @classmethod
-    @abstractmethod
     def create_from_meta(cls, metaNode):
         """
         Creates a Module instance from existing metadata node.
