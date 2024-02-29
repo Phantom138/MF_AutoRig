@@ -8,6 +8,8 @@ Supports saving metadata to scene for further editing
   Limb
   Foot
   Hand
+  Clavicle
+	Spine
 
 **Facials modules:**
   EyeAim
