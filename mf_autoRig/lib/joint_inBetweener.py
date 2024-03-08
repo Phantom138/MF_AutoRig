@@ -4,7 +4,7 @@ import pymel.core.datatypes as dt
 import maya.cmds as cmds
 
 
-def joint_inBetweener(start_jnt, end_jnt, num):
+def inBetweener(start_jnt, end_jnt, num):
     joints = []
     pm.select(clear=True)
 
@@ -33,6 +33,3 @@ def joint_inBetweener(start_jnt, end_jnt, num):
     pm.parent(end_jnt, joints[-1])
 
     return joints
-
-
-joint_inBetweener(pm.selected()[0], pm.selected()[1], 5)
