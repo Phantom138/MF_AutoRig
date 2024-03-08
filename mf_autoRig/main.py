@@ -7,7 +7,7 @@ from mf_autoRig.modules.Body import Body
 import mf_autoRig.lib.defaults as df
 
 if __name__ == '__main__':
-    cmds.file(new=True, f=True)
+    # cmds.file(new=True, f=True)
     # foot = Foot("L_foot")
     # foot.create_guides()
     # foot.create_joints()
