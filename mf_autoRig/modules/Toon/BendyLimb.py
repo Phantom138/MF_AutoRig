@@ -34,67 +34,61 @@ class BendyLimb(Module):
     def create_joints(self):
         self.main_joints = create_joints_from_guides(f"{self.name}", self.guides)
 
-        # Create joint where shoulder and elbow are
-        first_part = [pm.joint(), pm.joint()]
-        pm.matchTransform(first_part[0], self.main_joints[0])
-        pm.matchTransform(first_part[1], self.main_joints[1])
-        self.jnt_chain = inBetweener(first_part[0], first_part[1], 5)
-
-        set_color(self.main_joints, viewport='cyan')
-        set_color(self.jnt_chain, viewport='magenta')
-
-        for obj in first_part:
-            obj.radius.set(0.2)
-
         #inBetweener(first_part[0], first_part[1], 5)
         #inBetweener(second_part[0], second_part[1], 5)
 
     def rig(self):
+        ik_joints, ik_ctrls, ik_ctrl_grp, ikHandle = create_ik(self.main_joints, create_new=False)
+        pm.addAttr(ik_ctrls[0], ln="bendyWeight", at="double", min=0, max=1, dv=0.5, k=True)
+        self.__create_splineIK_setup(self.name, self.main_joints, ik_ctrls[0].bendyWeight)
+        main_joints_rev = self.main_joints
+        main_joints_rev.reverse()
+        self.__create_splineIK_setup(self.name, main_joints_rev, ik_ctrls[0].bendyWeight)
+
+    @staticmethod
+    def __create_splineIK_setup(name, joints, ik_attr):
         # Create locators for joints
-        self.locators = []
-        for jnt in self.main_joints:
+        locators = []
+        for jnt in joints:
             loc = pm.spaceLocator()
-            self.locators.append(loc)
+            locators.append(loc)
             pm.matchTransform(loc, jnt)
-            pm.parentConstraint(jnt, loc)
+            pm.pointConstraint(jnt, loc)
 
+        pm.select(cl=True)
+        # Create joint chain
+        first_part = [pm.joint(), pm.joint()]
+        pm.matchTransform(first_part[0], joints[0])
+        pm.matchTransform(first_part[1], joints[1])
+        jnt_chain = inBetweener(first_part[0], first_part[1], 7)
 
-        # Make Stretchy Ik spline
-        splineHandle = pm.ikHandle(sj = self.jnt_chain[0], ee = self.jnt_chain[-1], solver = "ikSplineSolver",
-                                    parentCurve=False, rootOnCurve = True, simplifyCurve=True, ns = 1, createCurve = True)
-        curve = splineHandle[2]
+        for obj in jnt_chain:
+            obj.radius.set(0.2)
+        set_color(jnt_chain, viewport='magenta')
 
-        # Get curve distance
-        curveInfo = pm.createNode('curveInfo')
-        curveShape = curve.getShape()
-        curveShape.worldSpace[0].connect(curveInfo.inputCurve)
-        curveLength = curveInfo.arcLength.get()
-
-        # Divide arc length by curveLength
-        multDiv = pm.createNode('multiplyDivide')
-        multDiv.operation.set(2)
-        curveInfo.arcLength.connect(multDiv.input1X)
-        multDiv.input2X.set(curveLength)
-
-        # Set scale for each joint based on the curve length
-        # Joints are oriented in the Y axis
-        for jnt in self.jnt_chain:
-            multDiv.outputX.connect(jnt.scaleY)
+        curve = stretchy_splineIK(jnt_chain)
 
         # Create Clusters for the curve
         clusters = [pm.cluster(curve.cv[0])[1],
-                    pm.cluster(curve.cv[1:2])[1],
-                    pm.cluster(curve.cv[3])[1]]
-
+                    pm.cluster(curve.cv[1])[1],
+                    pm.cluster(curve.cv[2])[1]]
 
         # Get position for mid cluster with vector nodes
-        A = VectorNodes(self.locators[0].translate)
-        B = VectorNodes(self.locators[1].translate)
-        C = VectorNodes(self.locators[2].translate)
+        A = VectorNodes(locators[0].translate)
+        B = VectorNodes(locators[1].translate)
+        C = VectorNodes(locators[2].translate)
 
         CA = A - C
         BA = A - B
-        BD = BA * (0.5, 0.5, 0.5)
+
+        multDiv = pm.createNode('multiplyDivide')
+        ik_attr.connect(multDiv.input2X)
+        ik_attr.connect(multDiv.input2Y)
+        ik_attr.connect(multDiv.input2Z)
+        BA.attr.connect(multDiv.input1)
+
+        BD = VectorNodes(multDiv.output)
+
         CA_norm = CA.norm()
 
         dotProd = VectorNodes.dotProduct(BD, CA_norm)
@@ -111,18 +105,17 @@ class BendyLimb(Module):
         pm.matchTransform(clusters[1], mid_loc)
         pm.parent(clusters[1], mid_loc)
 
-        pm.matchTransform(clusters[0], self.locators[0])
-        pm.parent(clusters[0], self.locators[0])
+        pm.matchTransform(clusters[0], locators[0])
+        pm.parent(clusters[0], locators[0])
 
-        pm.matchTransform(clusters[2], self.locators[1])
-        pm.parent(clusters[2], self.locators[1])
+        pm.matchTransform(clusters[2], locators[1])
+        pm.parent(clusters[2], locators[1])
 
-        pm.orientConstraint(self.locators[0], mid_loc, maintainOffset = False)
+        #pm.orientConstraint(locators[0], mid_loc, maintainOffset=False)
 
-        print(splineHandle)
+        return locators
 
-
-cmds.file(new=True, force=True)
+cmds.file(new=True, f=True)
 test = BendyLimb("L_arm")
 test.create_guides()
 test.create_joints()

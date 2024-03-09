@@ -158,12 +158,16 @@ def create_pole_vector(joints):
 
     return pole
 
-def create_ik(joints, translation=False):
+def create_ik(joints, translation=False, create_new=True):
     if len(joints) > 3:
         pm.error("Only joint chains of 3 supported")
 
-    # Create IK joints by duplicating the joints
-    ik_joints = pm.duplicate(joints, renameChildren=True)
+    if create_new:
+        # Create IK joints by duplicating the joints
+        ik_joints = pm.duplicate(joints, renameChildren=True)
+    else:
+        ik_joints = joints
+
     for jnt in ik_joints:
         name = jnt.name()
         # Names joints by removing the skin suffix and the jnt suffix
@@ -479,3 +483,42 @@ def control_shape_mirror(src, dst):
         pos = pm.xform(tar, query=True, translation=True, worldSpace=True)
         pos = [pos[0] * -1.0, pos[1], pos[2]]  # flip x value of position
         pm.xform(des, translation=pos, worldSpace=True)
+
+
+def stretchy_splineIK(joints):
+    # Create 2 degree curve
+    start_trs = joints[0].getTranslation(space='world')
+    end_trs = joints[-1].getTranslation(space='world')
+
+    mid_trs = [(start_trs[0]+end_trs[0])/2, (start_trs[1]+end_trs[1])/2, (start_trs[2]+end_trs[2])/2]
+
+    curve = pm.curve(d=2, p=[start_trs, mid_trs, end_trs])
+
+    # Make Stretchy Ik spline
+    splineHandle = pm.ikHandle(sj=joints[0], ee=joints[-1], solver="ikSplineSolver",
+                               parentCurve=False, rootOnCurve=True, c=curve, ccv=False)
+
+    # Get curve distance
+    curveInfo = pm.createNode('curveInfo')
+    curveShape = curve.getShape()
+    curveShape.worldSpace[0].connect(curveInfo.inputCurve)
+    curveLength = curveInfo.arcLength.get()
+
+    # Divide arc length by curveLength
+    multDiv = pm.createNode('multiplyDivide')
+    multDiv.operation.set(2)
+    curveInfo.arcLength.connect(multDiv.input1X)
+    multDiv.input2X.set(curveLength)
+
+    trans_div = pm.createNode('multiplyDivide')
+    trans_div.operation.set(1)
+    multDiv.outputX.connect(trans_div.input1X)
+    trans_div.input2X.set(joints[1].translateY.get())
+
+
+    # Set scale for each joint based on the curve length
+    # Joints are oriented in the Y axis
+    for jnt in joints[1:]:
+        trans_div.outputX.connect(jnt.translateY)
+
+    return curve
