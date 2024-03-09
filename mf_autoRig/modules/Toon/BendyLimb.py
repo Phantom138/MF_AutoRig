@@ -7,6 +7,53 @@ from mf_autoRig.lib.joint_inBetweener import inBetweener
 
 from mf_autoRig.lib.color_tools import set_color
 
+
+def stretchy_splineIK(joints, name=None):
+    # Create 2 degree curve
+    start_trs = joints[0].getTranslation(space='world')
+    end_trs = joints[-1].getTranslation(space='world')
+
+    mid_trs = [(start_trs[0]+end_trs[0])/2, (start_trs[1]+end_trs[1])/2, (start_trs[2]+end_trs[2])/2]
+
+    # Make Stretchy Ik spline
+    if name is None:
+        handle_name='ikHandle'
+        crv_name='curve'
+    else:
+        crv_name = name + '_crv'
+        handle_name = name + '_ikHandle'
+
+    curve = pm.curve(n=crv_name, d=2, p=[start_trs, mid_trs, end_trs])
+
+    splineHandle = pm.ikHandle(n=handle_name, sj=joints[0], ee=joints[-1], solver="ikSplineSolver",
+                               parentCurve=False, rootOnCurve=True, c=curve, ccv=False)
+
+    # Get curve distance
+    curveInfo = pm.createNode('curveInfo')
+    curveShape = curve.getShape()
+    curveShape.worldSpace[0].connect(curveInfo.inputCurve)
+    curveLength = curveInfo.arcLength.get()
+
+    # Divide arc length by curveLength
+    multDiv = pm.createNode('multiplyDivide')
+    multDiv.operation.set(2)
+    curveInfo.arcLength.connect(multDiv.input1X)
+    multDiv.input2X.set(curveLength)
+
+    trans_div = pm.createNode('multiplyDivide')
+    trans_div.operation.set(1)
+    multDiv.outputX.connect(trans_div.input1X)
+    trans_div.input2X.set(joints[1].translateY.get())
+
+
+    # Set scale for each joint based on the curve length
+    # Joints are oriented in the Y axis
+    for jnt in joints[1:]:
+        trans_div.outputX.connect(jnt.translateY)
+
+    return curve
+
+
 class BendyLimb(Module):
     meta_args = {
         'switch': {'attributeType': 'message'},
