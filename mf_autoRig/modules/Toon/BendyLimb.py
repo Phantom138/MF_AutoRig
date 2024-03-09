@@ -32,88 +32,91 @@ class BendyLimb(Module):
         pm.select(cl=True)
 
     def create_joints(self):
-        self.main_joints = create_joints_from_guides(f"{self.name}", self.guides)
+        self.main_joints = create_joints_from_guides(f"{self.name}", self.guides, suffix='_driver')
 
         #inBetweener(first_part[0], first_part[1], 5)
         #inBetweener(second_part[0], second_part[1], 5)
 
     def rig(self):
         ik_joints, ik_ctrls, ik_ctrl_grp, ikHandle = create_ik(self.main_joints, create_new=False)
-        pm.addAttr(ik_ctrls[0], ln="bendyWeight", at="double", min=0, max=1, dv=0.5, k=True)
-        self.__create_splineIK_setup(self.name, self.main_joints, ik_ctrls[0].bendyWeight)
-        main_joints_rev = self.main_joints
-        main_joints_rev.reverse()
-        self.__create_splineIK_setup(self.name, main_joints_rev, ik_ctrls[0].bendyWeight)
 
-    @staticmethod
-    def __create_splineIK_setup(name, joints, ik_attr):
-        # Create locators for joints
-        locators = []
-        for jnt in joints:
-            loc = pm.spaceLocator()
-            locators.append(loc)
+        # Add bendy attribute to the ik_ctrl
+        pm.addAttr(ik_ctrls[0], ln="bendyWeight", at="double", min=0, max=1, dv=0.5, k=True)
+        self.bendy_attr =  ik_ctrls[0].bendyWeight
+
+        self.__create_splineIK_setup(self.main_joints)
+
+
+    def __create_splineIK_setup(self, joints):
+        # Create locators for main joints
+        self.main_locators = []
+        for i,jnt in enumerate(joints):
+            loc = pm.spaceLocator(n=f"{self.name}{i+1:02}{df.loc_sff}")
+            self.main_locators.append(loc)
             pm.matchTransform(loc, jnt)
             pm.pointConstraint(jnt, loc)
 
         pm.select(cl=True)
-        # Create joint chain
-        first_part = [pm.joint(), pm.joint()]
-        pm.matchTransform(first_part[0], joints[0])
-        pm.matchTransform(first_part[1], joints[1])
-        jnt_chain = inBetweener(first_part[0], first_part[1], 7)
 
-        for obj in jnt_chain:
+        # Create joint chain between Shoulder and Elbow
+        shoulder_chain = inBetweener(joints[0], joints[1], 7, name=f"{self.name}", suffix='_bendy01'+df.skin_sff+df.jnt_sff)
+        wrist_chain = inBetweener(joints[1], joints[2], 7, name=f"{self.name}", suffix='_bendy02'+df.skin_sff+df.jnt_sff)
+
+        # Set color and radius
+        for obj in shoulder_chain + wrist_chain:
             obj.radius.set(0.2)
-        set_color(jnt_chain, viewport='magenta')
+            set_color(obj, viewport='magenta')
 
-        curve = stretchy_splineIK(jnt_chain)
+        shoulder_curve = stretchy_splineIK(shoulder_chain)
+        wrist_curve = stretchy_splineIK(wrist_chain)
 
-        # Create Clusters for the curve
-        clusters = [pm.cluster(curve.cv[0])[1],
-                    pm.cluster(curve.cv[1])[1],
-                    pm.cluster(curve.cv[2])[1]]
+        shoulder_mid_loc, elbow_mid_loc = self.__get_mid_position()
 
-        # Get position for mid cluster with vector nodes
-        A = VectorNodes(locators[0].translate)
-        B = VectorNodes(locators[1].translate)
-        C = VectorNodes(locators[2].translate)
+        self.bendy_locators = [self.main_locators[0], shoulder_mid_loc, self.main_locators[1],
+                               elbow_mid_loc, self.main_locators[2]]
 
-        CA = A - C
+        # Create clusters for the curves
+        for i in range(shoulder_curve.numCVs()):
+            loc = self.bendy_locators[i]
+            cluster = pm.cluster(shoulder_curve.cv[i])[1]
+            pm.matchTransform(cluster, loc)
+            pm.pointConstraint(loc, cluster)
+
+        for i in range(wrist_curve.numCVs()):
+            loc = self.bendy_locators[i+2]
+            cluster = pm.cluster(wrist_curve.cv[i])[1]
+            pm.matchTransform(cluster, loc)
+            pm.pointConstraint(loc, cluster)
+
+
+    def __get_mid_position(self):
+        # Get position for mid clusters with vector nodes
+        A = VectorNodes(self.main_locators[0].translate)
+        B = VectorNodes(self.main_locators[1].translate)
+        C = VectorNodes(self.main_locators[2].translate)
+
         BA = A - B
+        BC = C - B
+        CA_norm = (A - C).norm()
 
-        multDiv = pm.createNode('multiplyDivide')
-        ik_attr.connect(multDiv.input2X)
-        ik_attr.connect(multDiv.input2Y)
-        ik_attr.connect(multDiv.input2Z)
-        BA.attr.connect(multDiv.input1)
-
-        BD = VectorNodes(multDiv.output)
-
-        CA_norm = CA.norm()
-
+        # Shoulder side
+        BD = BA * (self.bendy_attr, self.bendy_attr, self.bendy_attr)
         dotProd = VectorNodes.dotProduct(BD, CA_norm)
-        BM = CA_norm * dotProd
-        DM = BM - BD
+        M = CA_norm * dotProd + B
 
-        D = BD + B
-        M = DM + D
+        # Wrist side
+        BE = BC * (self.bendy_attr, self.bendy_attr, self.bendy_attr)
+        dotProd = VectorNodes.dotProduct(BE, CA_norm)
+        N = CA_norm * dotProd + B
 
-        mid_loc = pm.spaceLocator()
-        M.attr.connect(mid_loc.translate)
+        # Apply transformations to new locators
+        shoulder_mid_loc = pm.spaceLocator()
+        M.attr.connect(shoulder_mid_loc.translate)
 
-        # Get the cluster in position and parent it to the locator
-        pm.matchTransform(clusters[1], mid_loc)
-        pm.parent(clusters[1], mid_loc)
+        elbow_mid_loc = pm.spaceLocator()
+        N.attr.connect(elbow_mid_loc.translate)
 
-        pm.matchTransform(clusters[0], locators[0])
-        pm.parent(clusters[0], locators[0])
-
-        pm.matchTransform(clusters[2], locators[1])
-        pm.parent(clusters[2], locators[1])
-
-        #pm.orientConstraint(locators[0], mid_loc, maintainOffset=False)
-
-        return locators
+        return shoulder_mid_loc, elbow_mid_loc
 
 cmds.file(new=True, f=True)
 test = BendyLimb("L_arm")

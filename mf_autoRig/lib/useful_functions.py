@@ -168,16 +168,17 @@ def create_ik(joints, translation=False, create_new=True):
     else:
         ik_joints = joints
 
-    for jnt in ik_joints:
-        name = jnt.name()
-        # Names joints by removing the skin suffix and the jnt suffix
-        if df.skin_sff in name:
-            base_name = name[:-1].replace(df.skin_sff + df.jnt_sff, '')
-        else:
-            base_name = name[:-1].replace(df.end_sff + df.jnt_sff, '')
+    if create_new:
+        for jnt in ik_joints:
+            name = jnt.name()
+            # Names joints by removing the skin suffix and the jnt suffix
+            if df.skin_sff in name:
+                base_name = name[:-1].replace(df.skin_sff + df.jnt_sff, '')
+            else:
+                base_name = name[:-1].replace(df.end_sff + df.jnt_sff, '')
 
-        ik_name = base_name + df.ik_sff + df.jnt_sff
-        pm.rename(jnt, ik_name)
+            ik_name = base_name + df.ik_sff + df.jnt_sff
+            pm.rename(jnt, ik_name)
 
     # Get base name of first joint eg. joint1_skin_JNT -> joint1
     match = re.search('([a-zA-Z]_[a-zA-Z]+)\d*_', joints[-1].name())
@@ -429,17 +430,19 @@ def create_joint_chain(jnt_number, name, start_pos, end_pos, rot=None, defaultVa
     joints.append(endJnt)
     return joints
 
-def create_joints_from_guides(name, guides):
+def create_joints_from_guides(name, guides, suffix=None):
     pm.select(clear=True)
     joints = []
     for i, tmp in enumerate(guides):
         trs = pm.xform(tmp, q=True, t=True, ws=True)
-        suff = df.skin_sff
-        # Last joint has end suffix
-        if i == len(guides) - 1:
-            suff = df.end_sff
 
-        jnt = pm.joint(name=f'{name}{i + 1:02}{suff}{df.jnt_sff}', position=trs)
+        if suffix is None:
+            suffix = df.skin_sff
+            # Last joint has end suffix
+            if i == len(guides) - 1:
+                suffix = df.end_sff
+
+        jnt = pm.joint(name=f'{name}{i + 1:02}{suffix}{df.jnt_sff}', position=trs)
         joints.append(jnt)
 
     # Orient joints

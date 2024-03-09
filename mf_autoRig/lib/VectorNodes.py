@@ -46,7 +46,14 @@ class VectorNodes:
         self.attr.connect(multDivide.input1)
 
         if isinstance(other, tuple):
-            multDivide.input2.set(other)
+            is_tuple_of_attributes = all(isinstance(o, pm.Attribute) for o in other)
+            if is_tuple_of_attributes:
+                other[0].connect(multDivide.input2X)
+                other[1].connect(multDivide.input2Y)
+                other[2].connect(multDivide.input2Z)
+
+            else:
+                multDivide.input2.set(other)
             return VectorNodes(multDivide.output)
 
         elif isinstance(other.attr, pm.Attribute):
