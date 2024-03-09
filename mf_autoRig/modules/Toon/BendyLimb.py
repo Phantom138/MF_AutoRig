@@ -67,8 +67,8 @@ class BendyLimb(Module):
             obj.radius.set(0.2)
             set_color(obj, viewport='magenta')
 
-        shoulder_curve = stretchy_splineIK(shoulder_chain)
-        wrist_curve = stretchy_splineIK(wrist_chain)
+        shoulder_curve = stretchy_splineIK(shoulder_chain, name=f"{self.name}_bendy01")
+        wrist_curve = stretchy_splineIK(wrist_chain, name=f"{self.name}_bendy02")
 
         shoulder_mid_loc, elbow_mid_loc = self.__get_mid_position()
 
@@ -80,14 +80,22 @@ class BendyLimb(Module):
             loc = self.bendy_locators[i]
             cluster = pm.cluster(shoulder_curve.cv[i])[1]
             pm.matchTransform(cluster, loc)
-            pm.pointConstraint(loc, cluster)
+            pm.parent(cluster, loc)
 
         for i in range(wrist_curve.numCVs()):
             loc = self.bendy_locators[i+2]
             cluster = pm.cluster(wrist_curve.cv[i])[1]
             pm.matchTransform(cluster, loc)
-            pm.pointConstraint(loc, cluster)
+            pm.parent(cluster, loc)
 
+        # Clean-up
+        # Create Locator grp
+        loc_grp = pm.group(em=True, n=f"{self.name}_Locators{df.grp_sff}")
+        pm.parent(self.bendy_locators, loc_grp)
+
+        # Create Joint Grp
+        jnt_grp = pm.group(em=True, n=f"{self.name}_Joints{df.grp_sff}")
+        pm.parent(self.main_joints[0], shoulder_chain[0], wrist_chain[0], jnt_grp)
 
     def __get_mid_position(self):
         # Get position for mid clusters with vector nodes
@@ -110,10 +118,10 @@ class BendyLimb(Module):
         N = CA_norm * dotProd + B
 
         # Apply transformations to new locators
-        shoulder_mid_loc = pm.spaceLocator()
+        shoulder_mid_loc = pm.spaceLocator(n=f'{self.name}_bendy01{df.loc_sff}')
         M.attr.connect(shoulder_mid_loc.translate)
 
-        elbow_mid_loc = pm.spaceLocator()
+        elbow_mid_loc = pm.spaceLocator(n=f'{self.name}_bendy02{df.loc_sff}')
         N.attr.connect(elbow_mid_loc.translate)
 
         return shoulder_mid_loc, elbow_mid_loc

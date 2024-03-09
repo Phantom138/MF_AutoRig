@@ -488,17 +488,24 @@ def control_shape_mirror(src, dst):
         pm.xform(des, translation=pos, worldSpace=True)
 
 
-def stretchy_splineIK(joints):
+def stretchy_splineIK(joints, name=None):
     # Create 2 degree curve
     start_trs = joints[0].getTranslation(space='world')
     end_trs = joints[-1].getTranslation(space='world')
 
     mid_trs = [(start_trs[0]+end_trs[0])/2, (start_trs[1]+end_trs[1])/2, (start_trs[2]+end_trs[2])/2]
 
-    curve = pm.curve(d=2, p=[start_trs, mid_trs, end_trs])
-
     # Make Stretchy Ik spline
-    splineHandle = pm.ikHandle(sj=joints[0], ee=joints[-1], solver="ikSplineSolver",
+    if name is None:
+        handle_name='ikHandle'
+        crv_name='curve'
+    else:
+        crv_name = name + '_crv'
+        handle_name = name + '_ikHandle'
+
+    curve = pm.curve(n=crv_name, d=2, p=[start_trs, mid_trs, end_trs])
+
+    splineHandle = pm.ikHandle(n=handle_name, sj=joints[0], ee=joints[-1], solver="ikSplineSolver",
                                parentCurve=False, rootOnCurve=True, c=curve, ccv=False)
 
     # Get curve distance
