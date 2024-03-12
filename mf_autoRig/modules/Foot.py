@@ -227,8 +227,6 @@ class Foot(Module):
         lst = pm.listRelatives(mir_locator_grp, ad=True)
 
         # Add first element back to list
-        print(lst)
-
         mir_locators = []
         # Keep just the locators
         for obj in lst:

@@ -29,14 +29,12 @@ class ModulePage(QtWidgets.QWidget):
 
     def mdl_createGuides(self):
         name = self.mdl_name.text()
-        print(f"//// Running create guides for {self.base_module} with name {name}")
 
         self.module = self.base_module(name)
         self.module.create_guides()
         self.btn_rig.setEnabled(True)
 
     def mdl_rig(self):
-        print(f"//// Running create rig for module {self.module.name}")
         if self.module.moduleType == 'Hand':
             self.module.create_joints()
             self.module.create_hand()
@@ -72,7 +70,6 @@ class HandPage(ModulePage):
         self.verticalLayout.insertLayout(2, options)
 
     def mdl_rig(self):
-        print(f"//// Running create rig for module {self.module.name}")
         self.module.create_joints()
         self.module.create_hand()
         self.module.rig(spread = self.spread.isChecked(), curl = self.curl.isChecked())

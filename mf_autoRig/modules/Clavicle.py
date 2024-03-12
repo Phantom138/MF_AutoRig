@@ -45,8 +45,6 @@ class Clavicle(Module):
         grp = pm.group(self.guides, name=f'{self.name}_guides{df.grp_sff}')
         pm.parent(grp, get_group(df.rig_guides_grp))
 
-        print(f'Created clavicle guides {self.guides}')
-
         # Clear Selection
         pm.select(clear=True)
 
@@ -67,8 +65,6 @@ class Clavicle(Module):
 
         # Parent Joints under Joint_grp
         pm.parent(self.joints[0], get_group(df.joints_grp))
-
-        print(f'Created clavicle joints {self.joints}')
 
         #Save joints
         if self.meta:
@@ -132,7 +128,6 @@ class Clavicle(Module):
 
         # Mirror Ctrls
         for src, dst in zip(self.all_ctrls, mir_module.all_ctrls):
-            print(src, dst)
             control_shape_mirror(src, dst)
 
         return mir_module

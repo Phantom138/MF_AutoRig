@@ -1,3 +1,5 @@
+import logging
+
 import pymel.core as pm
 import pymel.core.datatypes as dt
 import re
@@ -8,7 +10,6 @@ import importlib
 from mf_autoRig.lib.useful_functions import *
 
 # Import Modules
-
 from mf_autoRig.modules.Hand import Hand
 from mf_autoRig.modules.Limb import Arm, Leg
 from mf_autoRig.modules.Module import Module
@@ -17,6 +18,7 @@ from mf_autoRig.modules.Clavicle import Clavicle
 
 from mf_autoRig.lib.mirrorJoint import xformMirror
 
+from mf_autoRig import log
 
 class Body():
     meta_args = {
@@ -34,6 +36,7 @@ class Body():
         self.spine = Spine('M_spine', num = 3, meta=meta)
 
     def create_guides(self, positions):
+        log.info("Creating Guides")
         mirror_pos = mirror_default_pos(positions)
 
         self.arms[0].create_guides(positions['arm'])
@@ -50,6 +53,7 @@ class Body():
 
 
     def create_joints(self):
+        log.info("Creating Joints")
         self.spine.create_joints()
 
         self.arms[0].create_joints()
@@ -61,6 +65,7 @@ class Body():
 
 
     def rig(self):
+        log.info("Rigging Body")
         self.spine.rig()
 
         self.arms[0].rig()
@@ -82,6 +87,8 @@ class Body():
         self.clavicles.insert(1, self.clavicles[0].mirror())
 
     def mirror_ctrls(self, side: str):
+        log.info("Mirroring ctrls")
+
         src = 0
         dst = 1
 

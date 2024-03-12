@@ -3,6 +3,7 @@ from abc import abstractmethod
 import pymel.core as pm
 import pymel.core.nodetypes as nt
 import mf_autoRig.modules.meta as mdata
+from mf_autoRig import log
 from mf_autoRig.utils.Side import Side
 
 from pprint import pprint
@@ -53,7 +54,7 @@ class Module(abc.ABC):
         self.side = Side(name.split('_')[0])
 
         if meta:
-            print(f"|||||||||||creating metadata for {name}")
+            log.debug(f"Creating metadata for {name}")
             self.metaNode = mdata.create_metadata(name, self.moduleType, args)
 
     @classmethod

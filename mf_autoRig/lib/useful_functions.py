@@ -100,7 +100,6 @@ def create_fk_ctrls(joints, skipEnd=True, shape='circle', scale=1):
     if skipEnd:
         joints = joints[:-1]
 
-    print(f"// Running fk_ctrls for {joints}")
 
     # Get joint orientation and create circle controller accordingly
     # Ex. if orientation = X, circle is pointing in X
@@ -385,7 +384,6 @@ def create_joint_chain(jnt_number, name, start_pos, end_pos, rot=None, defaultVa
         planeShape.worldMesh.connect(UVpin.deformedGeometry)
         planeOrig.outMesh.connect(UVpin.originalGeometry)
 
-        print(pm.listConnections(UVpin))
 
         # Create jnt and coords attributes
         jnt = pm.createNode('joint', name=f'{name}{i}')

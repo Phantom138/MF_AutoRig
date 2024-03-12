@@ -158,7 +158,6 @@ class Hand(Module):
             for j in range(len(jnts)-1):
                 jnt = jnts[j]
                 next_jnt = jnts[j+1]
-                print("Doing orient constraint", jnt, next_jnt)
 
                 # Set right orientation
                 constraint = pm.aimConstraint(next_jnt, jnt, aim = [0,1,0], upVector=[1,0,0], worldUpObject=self.orient_guides[i], worldUpType="objectrotation", worldUpVector=[0,1,0])
@@ -174,7 +173,6 @@ class Hand(Module):
 
         self.__clean_up()
 
-        print("Finger values", self.finger_jnts)
 
         if self.meta:
             self.save_metadata()

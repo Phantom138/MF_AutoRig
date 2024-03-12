@@ -5,6 +5,7 @@ from PySide2 import QtWidgets
 import pathlib
 
 import mf_autoRig.UI.modulePage as modPages
+from mf_autoRig import log
 from mf_autoRig.UI.utils.UI_Template import UITemplate, delete_workspace_control
 from mf_autoRig.modules import Limb, Spine, Clavicle, Hand, Body, Foot
 import mf_autoRig.modules.createModule as crMod
@@ -67,16 +68,14 @@ class MayaUI(UITemplate):
         """
         Close window.
         """
-        print('closing window')
+        log.info('Closing window')
         self.destroy()
 
     def auto_guides(self):
-        print("Running auto guides")
         self.body = Body.Body()
         self.body.create_guides(df.default_pos)
 
     def auto_rig(self):
-        print("Running auto rig")
         self.body.create_joints()
         self.body.rig()
 
@@ -128,7 +127,6 @@ class MayaUI(UITemplate):
         for module in self.modules:
             moduleType = module.moduleType.get()
             if moduleType == mtype:
-                print(module)
                 # Get base name for adding to item
                 name = module.name()
                 search = re.search('META_(.*)', name)
@@ -142,7 +140,6 @@ class MayaUI(UITemplate):
                 self.dest_modules.append(module)
 
     def connect_selection(self):
-        print("called connect_selection")
         dest_index = self.ui.conn_destination.currentRow()
         source_index = self.ui.conn_source.currentRow()
 

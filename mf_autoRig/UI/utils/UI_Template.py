@@ -7,6 +7,8 @@ from shiboken2 import wrapInstance
 from PySide2 import QtGui, QtCore, QtUiTools, QtWidgets
 import maya.OpenMayaUI as omui
 from maya.app.general.mayaMixin import MayaQWidgetDockableMixin
+
+from mf_autoRig import log
 from mf_autoRig.UI.utils.loadUI import loadUi
 
 def maya_main_window():
@@ -20,7 +22,7 @@ def maya_main_window():
 def delete_workspace_control(name):
     control = name + 'WorkspaceControl'
     if cmds.workspaceControl(control, q=True, exists=True):
-        print("Deleting workspace Control")
+        log.info("Deleting workspace Control")
         cmds.workspaceControl(control, e=True, close=True)
         cmds.deleteUI(control, control=True)
 

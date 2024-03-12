@@ -81,6 +81,5 @@ class Spine(Module):
 
         # Add joints
         if self.meta:
-            print(f'Spine fk ctrls: {self.fk_ctrls}')
             mdata.add(self.fk_ctrls, self.metaNode.fk_ctrls)
             mdata.add(self.hip_ctrl, self.metaNode.hip_ctrl)

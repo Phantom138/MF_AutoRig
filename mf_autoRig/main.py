@@ -1,3 +1,4 @@
+import logging
 from unload_packages import unload_packages
 unload_packages(silent=True, packages=["mf_autoRig"])
 import mf_autoRig
@@ -16,4 +17,5 @@ if __name__ == '__main__':
     # body.create_guides(df.default_pos)
     # body.create_joints()
     # body.rig()
+
     UI.showWindow()
