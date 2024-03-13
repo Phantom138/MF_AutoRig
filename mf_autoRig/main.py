@@ -1,11 +1,7 @@
-import logging
 from unload_packages import unload_packages
 unload_packages(silent=True, packages=["mf_autoRig"])
-import mf_autoRig
-import maya.cmds as cmds
-import mf_autoRig.UI.mayaUI as UI
-from mf_autoRig.modules.Body import Body
-import mf_autoRig.lib.defaults as df
+import mf_autoRig.UI.modifyWindow.modifyWindowUI as editModulesUI
+import mf_autoRig.UI.createWindow.mayaUI as createModulesUI
 
 if __name__ == '__main__':
     # cmds.file(new=True, f=True)
@@ -17,5 +13,4 @@ if __name__ == '__main__':
     # body.create_guides(df.default_pos)
     # body.create_joints()
     # body.rig()
-
-    UI.showWindow()
+    editModulesUI.showWindow()
