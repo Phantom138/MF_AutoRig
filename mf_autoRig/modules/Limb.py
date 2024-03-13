@@ -1,5 +1,3 @@
-from dataclasses import dataclass
-
 import pymel.core as pm
 from mf_autoRig.lib.useful_functions import *
 from mf_autoRig.lib.color_tools import set_color
@@ -210,7 +208,27 @@ class Limb(Module):
 
         return mir_module
 
+    def delete(self, preview=False):
+        """
+        Deletes the limb and its associated objects.
+        """
+        # Get ikfk_switch group
+        switch_grp = self.switch.getParent(1)
 
+        # Get ik control group
+        ik_control_grp = self.ik_ctrls[0].getParent(2)
+
+        # Get fk control group
+        fk_ctrl_grp = self.fk_ctrls[0].getParent(1)
+
+        # Get joint group
+        joint_grp = self.joints[0].getParent(1)
+
+        to_delete = [switch_grp, ik_control_grp, fk_ctrl_grp, joint_grp]
+        if preview is False:
+            pm.delete(to_delete)
+        else:
+            print(to_delete)
 
 class Arm(Limb):
     def __init__(self, name, meta=True):

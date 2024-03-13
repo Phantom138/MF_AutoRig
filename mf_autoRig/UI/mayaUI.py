@@ -149,7 +149,8 @@ class MayaUI(UITemplate):
         metaNode = self.modules[source_index]
         obj = crMod.createModule(metaNode)
         print(obj)
-        obj.mirror()
+        obj.delete()
+
         return
         source = crMod.createModule(self.modules[source_index])
         dest = crMod.createModule(self.dest_modules[dest_index])
