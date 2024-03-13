@@ -357,7 +357,6 @@ class Hand(Module):
             mir_finger = mirrorUtils.mirrorJoints(finger, (self.side, self.side.opposite))
             mir_module.finger_jnts.append(mir_finger[0])
 
-        print(mir_module.finger_jnts)
         mir_module.__clean_up()
         # Mirror hand_jnts
         mir_module.hand_jnts = mirrorUtils.mirrorJoints(self.hand_jnts[0], (self.side, self.side.opposite))
@@ -401,7 +400,6 @@ class Hand(Module):
         fk_loc_grp = pm.createNode('transform', name=base_name + '_ik_loc_grp')
         pm.parent(fk_loc, fk_loc_grp)
         pm.matchTransform(fk_loc_grp, self.handJnt)
-        print(arm.fk_ctrls[-1])
         pm.parent(fk_loc_grp, arm.fk_ctrls[-1])
 
         # Create orient constraint and get weight list

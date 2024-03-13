@@ -66,7 +66,7 @@ def get_joint_orientation(firstJnt, secondJnt):
             axis = 'xyz'[i]
 
     if axis:
-        print(f'Joint orientation between {firstJnt} and {secondJnt} is {axis}')
+        #print(f'Joint orientation between {firstJnt} and {secondJnt} is {axis}')
         if axis == 'y':
             return (0, 1, 0)
         elif axis == 'z':
