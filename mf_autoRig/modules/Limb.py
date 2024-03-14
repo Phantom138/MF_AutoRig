@@ -257,7 +257,7 @@ class Limb(Module):
             self.metaNode.deleteAttr('TEMP_NODE')
 
     def edit(self):
-        # TODO: Make sure all controls are zeored out!!
+        # TODO: Make sure all controls are zeroed out!!
         self.edit_mode = True
         # Save edited curves
         self.curves_info = save_curve_info(self.all_ctrls)
