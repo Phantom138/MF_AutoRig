@@ -256,43 +256,6 @@ class Limb(Module):
             pm.delete(tmp)
             self.metaNode.deleteAttr('TEMP_NODE')
 
-    def edit(self):
-        # TODO: Make sure all controls are zeroed out!!
-        self.edit_mode = True
-        # Save edited curves
-        self.curves_info = save_curve_info(self.all_ctrls)
-
-        # Create guides where joints are
-        edit_locators = []
-        for jnt in self.joints:
-            loc = pm.spaceLocator(name='temp_loc')
-            pm.matchTransform(loc, jnt)
-            edit_locators.append(loc)
-
-        for i in range(len(edit_locators) - 1, 0, -1):
-            pm.parent(edit_locators[i], edit_locators[i - 1])
-
-        # Destroy rig
-        self.delete(keep_meta_node=True)
-
-        # Recreates class
-        self.__init__(self.name, meta=self.metaNode)
-
-        # Create guides
-        self.guides = edit_locators
-
-    def apply_edit(self):
-        if self.edit_mode is False:
-            log.warning(f"{self.name} not in edit mode!")
-            return
-
-        self.create_joints()
-        self.rig()
-        apply_curve_info(self.all_ctrls, self.curves_info)
-        # Delete guides
-        pm.delete(self.guides)
-        self.guides = []
-
 
 class Arm(Limb):
 
