@@ -1,11 +1,16 @@
+from pprint import pprint
+
 import pymel.core as pm
+
+from mf_autoRig.lib.get_curve_info import save_curve_info, apply_curve_info
 from mf_autoRig.lib.useful_functions import *
 from mf_autoRig.lib.color_tools import set_color
 import mf_autoRig.modules.meta as mdata
+from mf_autoRig.modules import module_tools
 from mf_autoRig.modules.Module import Module
 from mf_autoRig.modules.Foot import Foot
 import mf_autoRig.lib.mirrorJoint as mirrorUtils
-
+from mf_autoRig import log
 
 class Limb(Module):
     """
@@ -208,10 +213,11 @@ class Limb(Module):
 
         return mir_module
 
-    def delete(self, preview=False):
+    def delete(self, preview=False, keep_meta_node=False):
         """
         Deletes the limb and its associated objects.
         """
+        # TODO: make sure that it doesn't delete extra stuff that is parented to the ctrls
         # Get ikfk_switch group
         switch_grp = self.switch.getParent(1)
 
@@ -224,29 +230,99 @@ class Limb(Module):
         # Get joint group
         joint_grp = self.joints[0].getParent(1)
 
-        to_delete = [switch_grp, ik_control_grp, fk_ctrl_grp, joint_grp]
+        # Get guides
+        try:
+            guides = self.guides
+        except:
+            guides = []
+
+        if keep_meta_node:
+            # HACK: Create empty transform and connect it to metaNode so that when deleting the module,
+            #       the metaNode is not deleted
+            tmp = pm.createNode('transform', name=f'{self.name}_TEMP_NODE')
+            self.metaNode.addAttr('TEMP_NODE', at='message')
+            tmp.message.connect(self.metaNode.TEMP_NODE)
+
+        # Delete stuff
+        to_delete = [switch_grp, ik_control_grp, fk_ctrl_grp, joint_grp, guides]
         if preview is False:
             pm.delete(to_delete)
         else:
             print(to_delete)
 
+        if keep_meta_node:
+            # Disconnect tmp from metaNode
+            tmp.message.disconnect(self.metaNode.TEMP_NODE)
+            pm.delete(tmp)
+            self.metaNode.deleteAttr('TEMP_NODE')
+
+    def edit(self):
+        # TODO: Make sure all controls are zeored out!!
+        self.edit_mode = True
+        # Save edited curves
+        self.curves_info = save_curve_info(self.all_ctrls)
+
+        # Create guides where joints are
+        edit_locators = []
+        for jnt in self.joints:
+            loc = pm.spaceLocator(name='temp_loc')
+            pm.matchTransform(loc, jnt)
+            edit_locators.append(loc)
+
+        for i in range(len(edit_locators) - 1, 0, -1):
+            pm.parent(edit_locators[i], edit_locators[i - 1])
+
+        # Destroy rig
+        self.delete(keep_meta_node=True)
+
+        # Recreates class
+        self.__init__(self.name, meta=self.metaNode)
+
+        # Create guides
+        self.guides = edit_locators
+
+    def apply_edit(self):
+        if self.edit_mode is False:
+            log.warning(f"{self.name} not in edit mode!")
+            return
+
+        self.create_joints()
+        self.rig()
+        apply_curve_info(self.all_ctrls, self.curves_info)
+        # Delete guides
+        pm.delete(self.guides)
+        self.guides = []
+
+
 class Arm(Limb):
+
+    connectable_to = ['Clavicle']
     def __init__(self, name, meta=True):
         super().__init__(name, meta)
         self.default_pin_value = 51
 
     def connect(self, dest):
         if self.check_if_connected(dest):
-            pm.warning(f"{self.name} already connected to {dest.name}")
+            log.warning(f"{self.name} already connected to {dest.name}")
             return
 
         ctrl_grp = self.fk_ctrls[0].getParent(1)
-
+        print(ctrl_grp, dest.joints[-1])
+        pm.matchTransform(ctrl_grp, dest.joints[-1], position=True)
         pm.parent(ctrl_grp, dest.clavicle_ctrl)
         pm.parentConstraint(dest.joints[-1], self.ik_joints[0])
 
         self.connect_metadata(dest)
 
+    def apply_edit(self):
+        super().apply_edit()
+        # Re-do connections
+        if len(self.metaNode.affectedBy.get()) != 1:
+            return
+
+        connection = self.metaNode.affectedBy.get()[0]
+        self.metaNode.affectedBy.disconnect()
+        self.connect(module_tools.createModule(connection))
 
 class Leg(Limb):
     """
@@ -277,6 +353,7 @@ class Leg(Limb):
         mirror(self):
             Creates a mirrored instance of the Leg class.
     """
+    connectable_to = ['Spine']
     def __init__(self, name, meta=True):
         super().__init__(name, meta)
         self.default_pin_value = 49

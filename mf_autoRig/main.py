@@ -14,3 +14,4 @@ if __name__ == '__main__':
     # body.create_joints()
     # body.rig()
     editModulesUI.showWindow()
+    createModulesUI.showWindow()

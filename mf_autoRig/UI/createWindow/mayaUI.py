@@ -5,7 +5,7 @@ import pathlib
 import mf_autoRig.UI.createWindow.modulePage as modPages
 from mf_autoRig.UI.utils.UI_Template import UITemplate, delete_workspace_control
 from mf_autoRig.modules import Limb, Spine, Clavicle, Hand, Body, Foot
-import mf_autoRig.modules.createModule as crMod
+import mf_autoRig.modules.module_tools as crMod
 import mf_autoRig.lib.defaults as df
 
 WORK_PATH = pathlib.Path(__file__).parent.resolve()

@@ -53,9 +53,13 @@ class Module(abc.ABC):
         self.moduleType = self.__class__.__name__
         self.side = Side(name.split('_')[0])
 
-        if meta:
+        if meta is True:
             log.debug(f"Creating metadata for {name}")
             self.metaNode = mdata.create_metadata(name, self.moduleType, args)
+        if isinstance(meta, pm.nt.Network):
+            # Using existing metadata node
+            self.metaNode = meta
+            # TODO: Validate metadata
 
     @classmethod
     def create_from_meta(cls, metaNode):

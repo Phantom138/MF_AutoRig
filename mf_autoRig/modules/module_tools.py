@@ -21,11 +21,21 @@ def createModule(metaNode):
 
     return obj
 
-def get_all_modules():
+def get_all_modules(module_types: list[str]=None) -> list[pm.PyNode]:
     metaNodes = pm.ls(regex='META_.*', type='network')
+
     if not metaNodes:
         pm.warning("No metadata nodes found")
         return None
+
+    if module_types is not None:
+        good_nodes = []
+        for node in metaNodes:
+
+            if node.moduleType.get() in module_types:
+                good_nodes.append(node)
+
+        return good_nodes
 
     return metaNodes
 
