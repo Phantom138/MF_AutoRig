@@ -1,6 +1,7 @@
 import pathlib
 
 from PySide2 import QtWidgets
+from PySide2.QtGui import QIntValidator
 from mf_autoRig.UI.utils.loadUI import loadUi
 
 
@@ -73,3 +74,35 @@ class HandPage(ModulePage):
         self.module.create_joints()
         self.module.create_hand()
         self.module.rig(spread = self.spread.isChecked(), curl = self.curl.isChecked())
+
+class BendyLimbPage(ModulePage):
+    def __init__(self, base_module, parent=None):
+        super().__init__(base_module, parent)
+        options = QtWidgets.QHBoxLayout()
+
+        self.input_label = QtWidgets.QLabel("Number of bend joints:")
+        self.bend_joints_input = QtWidgets.QLineEdit()
+
+        self.bend_joints_input.textChanged.connect(self.validate_input)
+
+        options.addWidget(self.input_label)
+        options.addWidget(self.bend_joints_input)
+
+
+        self.verticalLayout.insertLayout(2, options)
+
+    def validate_input(self):
+        text = self.bend_joints_input.text()
+        try:
+            value = int(text)
+            if 2 <= value <= 10:
+                self.bend_joints_input.setStyleSheet("color: white;")
+            else:
+                self.bend_joints_input.setStyleSheet("color: red;")
+        except ValueError:
+            self.bend_joints_input.setStyleSheet("color: red;")
+
+
+    def mdl_rig(self):
+        self.module.create_joints()
+        self.module.rig(bend_joints=int(self.bend_joints_input.text()))

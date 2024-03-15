@@ -84,7 +84,8 @@ class BendyLimb(Module):
         #inBetweener(first_part[0], first_part[1], 5)
         #inBetweener(second_part[0], second_part[1], 5)
 
-    def rig(self):
+    def rig(self, bend_joints=7):
+        self.bend_joints = bend_joints
         ik_joints, ik_ctrls, ik_ctrl_grp, ikHandle = create_ik(self.main_joints, create_new=False)
 
         # Add bendy attribute to the ik_ctrl
@@ -93,7 +94,6 @@ class BendyLimb(Module):
 
         self.__create_splineIK_setup(self.main_joints)
 
-
     def __create_splineIK_setup(self, joints):
         # Create locators for main joints
         self.main_locators = []
@@ -101,13 +101,15 @@ class BendyLimb(Module):
             loc = pm.spaceLocator(n=f"{self.name}{i+1:02}{df.loc_sff}")
             self.main_locators.append(loc)
             pm.matchTransform(loc, jnt)
-            pm.pointConstraint(jnt, loc)
+            pm.parentConstraint(jnt, loc)
 
         pm.select(cl=True)
 
         # Create joint chain between Shoulder and Elbow
-        shoulder_chain = inBetweener(joints[0], joints[1], 7, name=f"{self.name}", suffix='_bendy01'+df.skin_sff+df.jnt_sff)
-        wrist_chain = inBetweener(joints[1], joints[2], 7, name=f"{self.name}", suffix='_bendy02'+df.skin_sff+df.jnt_sff)
+        shoulder_chain = inBetweener(joints[0], joints[1], self.bend_joints, name=f"{self.name}",
+                                     suffix='_bendy01'+df.skin_sff+df.jnt_sff)
+        wrist_chain = inBetweener(joints[1], joints[2], self.bend_joints, name=f"{self.name}",
+                                  suffix='_bendy02'+df.skin_sff+df.jnt_sff)
 
         # Set color and radius
         for obj in shoulder_chain + wrist_chain:
@@ -172,9 +174,3 @@ class BendyLimb(Module):
         N.attr.connect(elbow_mid_loc.translate)
 
         return shoulder_mid_loc, elbow_mid_loc
-
-cmds.file(new=True, f=True)
-test = BendyLimb("L_arm")
-test.create_guides()
-test.create_joints()
-test.rig()

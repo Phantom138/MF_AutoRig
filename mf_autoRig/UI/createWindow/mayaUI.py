@@ -5,6 +5,7 @@ import pathlib
 import mf_autoRig.UI.createWindow.modulePage as modPages
 from mf_autoRig.UI.utils.UI_Template import UITemplate, delete_workspace_control
 from mf_autoRig.modules import Limb, Spine, Clavicle, Hand, Body, Foot
+from mf_autoRig.modules.Toon import BendyLimb
 import mf_autoRig.modules.module_tools as crMod
 import mf_autoRig.lib.defaults as df
 
@@ -16,6 +17,7 @@ class_name_map = {
     'Limb': Limb.Limb,
     'Arm': Limb.Arm,
     'Leg': Limb.Leg,
+    'BendyLimb': BendyLimb.BendyLimb,
     'Clavicle': Clavicle.Clavicle,
     'Spine': Spine.Spine,
     'Hand': Hand.Hand,
@@ -53,9 +55,10 @@ class MayaUI(UITemplate):
 
             if module == 'Hand':
                 module_tab = modPages.HandPage(class_name_map.get(module))
+            elif module == 'BendyLimb':
+                module_tab = modPages.BendyLimbPage(class_name_map.get(module))
             else:
                 module_tab = modPages.ModulePage(class_name_map.get(module))
-
             self.ui.mdl_stackedTabs.addWidget(module_tab)
 
         self.ui.mdl_comboBox.activated.connect(self.ui.mdl_stackedTabs.setCurrentIndex)
