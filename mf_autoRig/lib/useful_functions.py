@@ -1,6 +1,7 @@
 import pymel.core as pm
 import pymel.core.datatypes as dt
 import re
+import maya.cmds as cmds
 
 import mf_autoRig.lib.defaults as df
 
@@ -41,9 +42,10 @@ def create_fk_jnts(joints):
         # Names joints by removing the skin suffix and the jnt suffix
         if df.skin_sff in name:
             base_name = name[:-1].replace(df.skin_sff + df.jnt_sff, '')
-        else:
+        elif df.end_sff in name:
             base_name = name[:-1].replace(df.end_sff + df.jnt_sff, '')
-
+        else:
+            base_name = jnt.name()
         fk_name = base_name + df.fk_sff + df.jnt_sff
 
         pm.rename(jnt, fk_name)
@@ -179,11 +181,10 @@ def create_ik(joints, translation=False, create_new=True):
             ik_name = base_name + df.ik_sff + df.jnt_sff
             pm.rename(jnt, ik_name)
 
-    # Get base name of first joint eg. joint1_skin_JNT -> joint1
-    match = re.search('([a-zA-Z]_[a-zA-Z]+)\d*_', joints[-1].name())
+    else:
+        base_name = get_base_name(ik_joints[-1].name())
 
-    base_name = match.group(1)
-
+    print(base_name)
     # Create ik handle
     handle_name = base_name + '_ikHandle'
     ikHandle = pm.ikHandle(name=handle_name, startJoint=ik_joints[0], endEffector=ik_joints[2], solver='ikRPsolver')
@@ -245,8 +246,7 @@ def ikfk_switch(ik_ctrls_grp, fk_ctrls, ikfk_constraints, endJnt):
     ik Fk Switch * (-1) = ik weight
     """
     # Get base name of the joint (L_arm01_skin_jnt -> L_arm
-    match = re.search('([a-zA-Z]_[a-zA-Z]+)\d*_', endJnt.name())
-    base_name = match.group(1)
+    base_name = get_base_name(endJnt.name())
 
     name = base_name + '_ikfkSwitch'
 
@@ -284,6 +284,27 @@ def ikfk_switch(ik_ctrls_grp, fk_ctrls, ikfk_constraints, endJnt):
     pm.select(clear=True)
     return switch.ctrl
 
+def get_base_name(name):
+    # Get base name of first joint eg. L_joint1_skin_JNT -> L_joint1
+    match = re.search('([a-zA-Z]_[a-zA-Z]+)\d*_', name)
+
+    if match is None:
+        # Joint name is not matching the pattern
+        # Trying to get base_name by removing end_jnt suffix
+        match = re.search(f'(.*){df.end_sff}{df.jnt_sff}', name)
+
+    if match is None:
+        match = re.search(f'(.*){df.skin_sff}{df.jnt_sff}', name)
+
+    if match is None:
+        pm.warning(f"{name} name is not matching the pattern")
+        base_name = name
+    else:
+        base_name = match.group(1)
+
+    #print(f"For {name} base name is {base_name}")
+
+    return base_name
 
 def create_offset_grp(ctrls):
     colors = [0, 255, 0]
@@ -484,4 +505,25 @@ def control_shape_mirror(src, dst):
         pos = pm.xform(tar, query=True, translation=True, worldSpace=True)
         pos = [pos[0] * -1.0, pos[1], pos[2]]  # flip x value of position
         pm.xform(des, translation=pos, worldSpace=True)
+
+def replace_ctrl(src, dst):
+    src_shape = src.getShape()
+    dst_shape = dst.getShape()
+
+    if src_shape.type() != 'nurbsCurve' or dst_shape.type() != 'nurbsCurve':
+        pm.error("Non-curve objects")
+        return
+
+    import mf_autoRig.lib.get_curve_info as curve_info
+
+    deg = cmds.getAttr(f'{src}.degree')
+    form = cmds.getAttr(f'{src}.form')
+    cvs = cmds.getAttr(f'{src}.cv[*]')
+
+
+    pm.curve(dst, r=True, point=cvs, degree=deg, per=False)
+
+    if form == 2:
+        pm.closeCurve(dst, preserveShape=False, replaceOriginal=True)
+
 

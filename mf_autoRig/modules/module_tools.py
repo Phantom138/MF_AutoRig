@@ -21,7 +21,7 @@ def createModule(metaNode):
 
     return obj
 
-def get_all_modules(module_types: list[str]=None) -> list[pm.PyNode]:
+def get_all_modules(module_types=None):
     metaNodes = pm.ls(regex='META_.*', type='network')
 
     if not metaNodes:

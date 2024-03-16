@@ -58,4 +58,3 @@ class UITemplate(MayaQWidgetDockableMixin, QtWidgets.QDialog):
         self.setObjectName(widget_title)
         self.setWindowTitle(widget_title)
 
-

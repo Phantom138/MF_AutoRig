@@ -157,6 +157,7 @@ class MayaUI(UITemplate):
         print(f'Connecting {source} -> {dest}')
         source.connect(dest)
 
+
 def showWindow():
     title = 'Auto Rig 2'
 
