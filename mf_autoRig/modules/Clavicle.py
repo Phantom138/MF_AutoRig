@@ -99,7 +99,6 @@ class Clavicle(Module):
 
 
     def connect(self, torso):
-
         if self.check_if_connected(torso):
             pm.warning(f"{self.name} already connected to {torso.name}")
             return
