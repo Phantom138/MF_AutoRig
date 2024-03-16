@@ -1,0 +1,113 @@
+global proc shelf_MF_Rigging_Tools () {
+    global string $gBuffStr;
+    global string $gBuffStr0;
+    global string $gBuffStr1;
+
+
+    shelfButton
+        -enableCommandRepeat 1
+        -flexibleWidthType 3
+        -flexibleWidthValue 32
+        -enable 1
+        -width 35
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "from unload_packages import unload_packages\nunload_packages(silent=True, packages=[\"mf_autoRig\"])\nimport mf_autoRig.UI.createWindow.mayaUI as createModulesUI\n\ncreateModulesUI.showWindow()" 
+        -enableBackground 0
+        -backgroundColor 0 0 0 
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "Auto Rig Create" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -imageOverlayLabel "RIG" 
+        -overlayLabelColor 1 1 1 
+        -overlayLabelBackColor 0 0 0 1 
+        -image "character.svg" 
+        -image1 "character.svg" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "from unload_packages import unload_packages\nunload_packages(silent=True, packages=[\"mf_autoRig\"])\nimport mf_autoRig.UI.createWindow.mayaUI as createModulesUI\n\ncreateModulesUI.showWindow()" 
+        -sourceType "python" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -flexibleWidthType 3
+        -flexibleWidthValue 32
+        -enable 1
+        -width 35
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "from unload_packages import unload_packages\nunload_packages(silent=True, packages=[\"mf_autoRig\"])\n\nimport mf_autoRig.UI.modifyWindow.modifyWindowUI as modifyWindow\nmodifyWindow.showWindow()    " 
+        -enableBackground 0
+        -backgroundColor 0 0 0 
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "Auto Rig Modify" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -imageOverlayLabel "MOD" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "channelLayers.png" 
+        -image1 "channelLayers.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "from unload_packages import unload_packages\nunload_packages(silent=True, packages=[\"mf_autoRig\"])\n\nimport mf_autoRig.UI.modifyWindow.modifyWindowUI as modifyWindow\nmodifyWindow.showWindow()    " 
+        -sourceType "python" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -flexibleWidthType 1
+        -flexibleWidthValue 32
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "from unload_packages import unload_packages\nunload_packages(silent=True, packages=[\"mf_autoRig\"])\nimport mf_autoRig.UI.toolsWindow.toolsWindow as toolsWindow\ntoolsWindow.showWindow()\n" 
+        -enableBackground 0
+        -backgroundColor 0 0 0 
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "Rigging Tools" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -imageOverlayLabel "TOOLS" 
+        -overlayLabelColor 0 0 0 
+        -overlayLabelBackColor 0 0.581489 0.876 1 
+        -image "advancedSettings_100.png" 
+        -image1 "advancedSettings_100.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "from unload_packages import unload_packages\nunload_packages(silent=True, packages=[\"mf_autoRig\"])\nimport mf_autoRig.UI.toolsWindow.toolsWindow as toolsWindow\ntoolsWindow.showWindow()\n" 
+        -sourceType "python" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+
+} 
