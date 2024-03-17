@@ -365,21 +365,13 @@ def create_joint_chain(jnt_number, name, start_pos, end_pos, rot=None, defaultVa
     pm.parent(plane, driven_grp)
 
     joints = []
-    # Create joints and move them in position
+    # Create joints and move them in position for skinning
     startJnt = pm.createNode('joint', name=f'{name}_start')
     endJnt = pm.createNode('joint', name=f'{name}_end')
     pm.move(startJnt, (-1, 0, 0))
     pm.move(endJnt, (1, 0, 0))
 
     pm.orientConstraint(startJnt, endJnt)
-
-    # Group start and end jnt
-    grp = pm.createNode('transform', name=f'{name}_grp')
-    pm.matchTransform(grp, startJnt)
-    pm.parent(startJnt, endJnt, grp)
-
-    # Parent to rig grp
-    pm.parent(grp, get_group(df.rig_guides_grp))
 
     lock_and_hide(startJnt, translate=False, rotation=False)
     lock_and_hide(endJnt, translate=False)
@@ -445,8 +437,18 @@ def create_joint_chain(jnt_number, name, start_pos, end_pos, rot=None, defaultVa
     startJnt.rx.set(rot[2])
     endJnt.translate.set(end_pos)
 
-
     joints.append(endJnt)
+
+    # Group start and end jnt
+    grp = pm.createNode('transform', name=f'{name}_grp')
+    pm.matchTransform(grp, startJnt)
+    pm.parent(startJnt, endJnt, grp)
+
+    # Parent to rig grp
+    pm.parent(grp, get_group(df.rig_guides_grp))
+
+
+
     return joints
 
 def create_joints_from_guides(name, guides, suffix=None):

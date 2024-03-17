@@ -30,6 +30,7 @@ class Spine(Module):
     def create_guides(self, pos=None):
         if pos is None:
             pos = [(0,0,0), (0,10,0)]
+
         self.guides = create_joint_chain(self.num, self.name, pos[0], pos[1], defaultValue=50)
 
         pm.select(clear=True)
