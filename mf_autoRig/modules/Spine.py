@@ -20,6 +20,12 @@ class Spine(Module):
         self.num = num
         self.guides = None
         self.joints = None
+        self.hip_ctrl = None
+        self.hip_jnt = None
+        self.fk_ctrls = None
+
+        self.control_grp = None
+        self.joints_grp = None
 
     @classmethod
     def create_from_meta(cls, metaNode):
@@ -58,13 +64,14 @@ class Spine(Module):
         pm.matchTransform(self.hip_jnt, self.joints[0])
 
         # Parent Joints under Joint_grp
-        pm.parent(self.joints[0], self.hip_jnt, get_group(df.joints_grp))
-        pm.group(self.joints[0], self.hip_jnt, name=f'{self.name}_{df.joints_grp}')
+        self.joints_grp = pm.createNode('transform', name=f'{self.name}_{df.joints_grp}')
+        pm.parent(self.joints[0], self.hip_jnt, self.joints_grp)
+        pm.parent(self.joints_grp, get_group(df.joints_grp))
+
 
         # Add joints
         if self.meta:
-            mdata.add(self.hip_jnt, self.metaNode.hip_jnt)
-            mdata.add(self.joints, self.metaNode.joints)
+            self.save_metadata()
 
     def rig(self):
         self.fk_ctrls = create_fk_ctrls(self.joints, skipEnd=False, shape='square')
@@ -80,7 +87,8 @@ class Spine(Module):
         # Parent spine ctrl under Root
         pm.parent(self.fk_ctrls[0].getParent(1), get_group(df.root))
 
+        self.control_grp = self.fk_ctrls[0].getParent(1)
+
         # Add joints
         if self.meta:
-            mdata.add(self.fk_ctrls, self.metaNode.fk_ctrls)
-            mdata.add(self.hip_ctrl, self.metaNode.hip_ctrl)
+            self.save_metadata()

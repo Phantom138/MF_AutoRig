@@ -30,7 +30,7 @@ def apply_curve_info(curves, curve_info):
         cvs = curve_info[crv_name]['cvs']
         deg = curve_info[crv_name]['degree']
         form = curve_info[crv_name]['form']
-        log.debug("Applying curve info for", crv_name)
+        log.debug(f"Applying curve info for {crv_name}")
         pm.curve(curve, r=True, point=cvs, degree=deg, per=False)
 
         if form == 2:

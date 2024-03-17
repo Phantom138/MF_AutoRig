@@ -60,8 +60,7 @@ class Body():
         self.legs[0].create_joints()
         self.clavicles[0].create_joints()
 
-        self.hands[0].create_joints()
-        self.hands[0].create_hand(wrist=self.arms[0].joints[-1])
+        self.hands[0].create_joints(wrist=self.arms[0].joints[-1])
 
 
     def rig(self):

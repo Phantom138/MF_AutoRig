@@ -27,6 +27,9 @@ class Hand(Module):
         self.hand_jnts = None
         self.all_ctrls = []
 
+        self.control_grp = None
+        self.joints_grp = None
+
     @classmethod
     def create_from_meta(cls, metaNode):
         hand = super().create_from_meta(metaNode)
@@ -123,7 +126,7 @@ class Hand(Module):
 
             self.orient_guides.append(orient_guide)
 
-    def create_joints(self, mirror_from = None):
+    def create_joints(self, wrist = None):
         """
         mirror_from - nested list with info for fingers, starting with the thumb
         """
@@ -132,6 +135,16 @@ class Hand(Module):
         # List of fingers
         finger_names = ['thumb', 'index', 'middle', 'ring', 'pinky']
 
+        self.__create_fingers()
+        self.__create_hand(wrist=wrist)
+
+        self.__clean_up_joints()
+
+        if self.meta:
+            self.save_metadata()
+
+    def __create_fingers(self):
+        pm.select(clear=True)
         # Create finger joints based on guides
         self.finger_jnts = []
         for i, finger_guide in enumerate(self.guides):
@@ -171,42 +184,9 @@ class Hand(Module):
 
             self.finger_jnts.append(jnts[0])
 
-        self.__clean_up()
-
-
-        if self.meta:
-            self.save_metadata()
-
-    def __clean_up(self):
-        # Create hand grp
-        self.joint_grp = pm.createNode('transform', name=f'{self.name}_{df.joints_grp}')
-        pm.parent(self.joint_grp, get_group('Joints_Grp'))
-
-        # Parent fingers under joint_grp
-        for finger in self.finger_jnts:
-            pm.parent(finger, self.joint_grp)
-
-        pm.select(clear=True)
-
-    def create_hand(self, mirror_from=None, wrist=None):
+    def __create_hand(self, wrist=None):
         if wrist is None:
             wrist = self.wrist_guide
-
-        # Create from other joints
-        if isinstance(mirror_from, list):
-            mirrored_jnts = pm.mirrorJoint(mirror_from[0], mirrorYZ=True, mirrorBehavior=True,
-                                           searchReplace=('L_', 'R_'))
-            self.hand_jnts = list(map(pm.PyNode, mirrored_jnts))
-            pm.select(clear=True)
-
-            # Parent to joint grp
-            pm.parent(self.hand_jnts[0], self.joint_grp)
-
-            # Add to metadata
-            if self.meta:
-                self.save_metadata()
-
-            return
 
         self.hand_jnts = []
 
@@ -235,12 +215,19 @@ class Hand(Module):
         pm.joint(self.hand_jnts[0], edit=True, orientJoint='yzx', secondaryAxisOrient='zup', children=True)
         pm.joint(self.hand_jnts[-1], edit=True, orientJoint='none')
 
-        # Parent to joint grp
-        pm.parent(self.hand_jnts[0], self.joint_grp)
+    def __clean_up_joints(self):
+        # Create hand grp
+        self.joints_grp = pm.createNode('transform', name=f'{self.name}_{df.joints_grp}')
+        pm.parent(self.joints_grp, get_group('Joints_Grp'))
 
-        # Add to metadata
-        if self.meta:
-            self.save_metadata()
+        # Parent fingers under joint_grp
+        for finger in self.finger_jnts:
+            pm.parent(finger, self.joints_grp)
+
+        # Parent hand joints under joint_grp
+        pm.parent(self.hand_jnts[0], self.joints_grp)
+
+        pm.select(clear=True)
 
     def rig(self, curl=True, spread=True):
         # Create hand ctrl
@@ -285,10 +272,17 @@ class Hand(Module):
 
         self.all_ctrls.append(self.hand.ctrl)
 
+        # Parent hand ctrl under root
+        pm.parent(self.hand.grp, get_group(df.root))
+        self.control_grp = self.hand.grp
+
         # Delete guides
         if self.guides:
             pm.delete(self.guides)
             pm.delete(self.wrist_guide)
+
+        if self.meta:
+            self.save_metadata()
 
     def __curl_switch(self, hand_ctrl, offset_grps):
         match = re.search(f'({self.name}_([a-zA-Z]+))\d*_', offset_grps[0].name())
@@ -357,10 +351,10 @@ class Hand(Module):
             mir_finger = mirrorUtils.mirrorJoints(finger, (self.side, self.side.opposite))
             mir_module.finger_jnts.append(mir_finger[0])
 
-        mir_module.__clean_up()
         # Mirror hand_jnts
         mir_module.hand_jnts = mirrorUtils.mirrorJoints(self.hand_jnts[0], (self.side, self.side.opposite))
 
+        mir_module.__clean_up_joints()
         # Rig hand
         mir_module.rig()
         if mir_module.meta:

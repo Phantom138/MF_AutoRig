@@ -47,10 +47,20 @@ class Module(abc.ABC):
         __str__(self):
             Returns a string representation of the Module instance.
     """
+
+    df_meta_args = {
+        'joints_grp': {'attributeType': 'message'},
+        'control_grp': {'attributeType': 'message'},
+    }
+
     def __init__(self, name, args, meta):
         self.name = name
         self.meta = meta
         self.meta_args = args
+
+        # Add default args to meta_args
+        self.meta_args.update(self.df_meta_args)
+
         self.moduleType = self.__class__.__name__
         self.side = Side(name.split('_')[0])
 
@@ -162,6 +172,37 @@ class Module(abc.ABC):
         pm.delete(self.guides)
         self.guides = []
 
+
+    def delete(self, keep_meta_node=False):
+        """
+        Delete Module
+        """
+        if keep_meta_node:
+            # HACK: Create empty transform and connect it to metaNode so that when deleting the module,
+            #       the metaNode is not deleted
+            tmp = pm.createNode('transform', name=f'{self.name}_TEMP_NODE')
+            self.metaNode.addAttr('TEMP_NODE', at='message')
+            tmp.message.connect(self.metaNode.TEMP_NODE)
+
+        # Delete stuff
+        log.debug(f"Deleting {self.joints_grp}")
+        pm.delete(self.joints_grp)
+
+        log.debug(f"Deleting {self.control_grp}")
+        pm.delete(self.control_grp)
+
+        try:
+            pm.delete(self.guides)
+        except:
+            pass
+
+        if keep_meta_node:
+            # Disconnect tmp from metaNode
+            tmp.message.disconnect(self.metaNode.TEMP_NODE)
+            pm.delete(tmp)
+            self.metaNode.deleteAttr('TEMP_NODE')
+        else:
+            pm.delete(self.metaNode)
 
     def __str__(self):
         return str(self.__dict__)

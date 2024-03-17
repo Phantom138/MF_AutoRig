@@ -26,7 +26,7 @@ class Limb(Module):
         fk_ctrls (list): List of controls for the FK setup.
         switch (pymel.core.PyNode): Control used for switching between IK and FK setups.
         all_ctrls (list): List of all controls in the limb.
-        default_pin_value (int): Default pin value for joint creation.
+        default_pin_value (int): Default pin value fo joint creation.
 
     Methods:
         __init__(self, name, meta=True):
@@ -74,6 +74,8 @@ class Limb(Module):
         self.fk_ctrls = None
         self.switch = None
 
+        self.control_grp = None
+        self.joints_grp = None
         self.all_ctrls = []
 
         self.default_pin_value = 51
@@ -171,24 +173,23 @@ class Limb(Module):
 
         # Group joints only if group isn't already there
         joint_grp_name = f'{self.name}_{df.joints_grp}'
-        joint_grp = get_group(joint_grp_name)
-        pm.parent(self.fk_joints[0], self.ik_joints[0], self.joints[0], joint_grp)
+        self.joints_grp = get_group(joint_grp_name)
+        pm.parent(self.fk_joints[0], self.ik_joints[0], self.joints[0], self.joints_grp)
 
         # Group joint grp under Joints grp
-        pm.parent(joint_grp, get_group(df.joints_grp))
+        pm.parent(self.joints_grp, get_group(df.joints_grp))
 
         # Hide ik fk joints
         self.fk_joints[0].visibility.set(0)
         self.ik_joints[0].visibility.set(0)
 
-        # Move ik control grp under root_ctrl
+        # Create Control Group with ik, fk ctrls and switch
+        self.control_grp = pm.createNode('transform', name=f'{self.name}{df.control_grp}')
+        pm.parent(self.ik_ctrls_grp, self.fk_ctrls[0].getParent(1), self.switch.getParent(1), self.control_grp)
+
+        # Parent group under root
         root_ctrl = get_group(df.root)
-        pm.parent(self.ik_ctrls_grp, root_ctrl)
-
-        switch_ctrl_grp = self.switch.getParent(1)
-        pm.parent(switch_ctrl_grp, root_ctrl)
-
-        pm.parent(self.fk_ctrls[0].getParent(1), root_ctrl)
+        pm.parent(self.control_grp, root_ctrl)
 
         # Clear selection
         pm.select(clear=True)
@@ -213,49 +214,6 @@ class Limb(Module):
 
         return mir_module
 
-    def delete(self, preview=False, keep_meta_node=False):
-        """
-        Deletes the limb and its associated objects.
-        """
-        # TODO: make sure that it doesn't delete extra stuff that is parented to the ctrls
-        # Get ikfk_switch group
-        switch_grp = self.switch.getParent(1)
-
-        # Get ik control group
-        ik_control_grp = self.ik_ctrls[0].getParent(2)
-
-        # Get fk control group
-        fk_ctrl_grp = self.fk_ctrls[0].getParent(1)
-
-        # Get joint group
-        joint_grp = self.joints[0].getParent(1)
-
-        # Get guides
-        try:
-            guides = self.guides
-        except:
-            guides = []
-
-        if keep_meta_node:
-            # HACK: Create empty transform and connect it to metaNode so that when deleting the module,
-            #       the metaNode is not deleted
-            tmp = pm.createNode('transform', name=f'{self.name}_TEMP_NODE')
-            self.metaNode.addAttr('TEMP_NODE', at='message')
-            tmp.message.connect(self.metaNode.TEMP_NODE)
-
-        # Delete stuff
-        to_delete = [switch_grp, ik_control_grp, fk_ctrl_grp, joint_grp, guides]
-        if preview is False:
-            pm.delete(to_delete)
-        else:
-            print(to_delete)
-
-        if keep_meta_node:
-            # Disconnect tmp from metaNode
-            tmp.message.disconnect(self.metaNode.TEMP_NODE)
-            pm.delete(tmp)
-            self.metaNode.deleteAttr('TEMP_NODE')
-
 
 class Arm(Limb):
 
@@ -271,8 +229,9 @@ class Arm(Limb):
 
         ctrl_grp = self.fk_ctrls[0].getParent(1)
         print(ctrl_grp, dest.joints[-1])
-        pm.matchTransform(ctrl_grp, dest.joints[-1], position=True)
-        pm.parent(ctrl_grp, dest.clavicle_ctrl)
+
+        #pm.matchTransform(ctrl_grp, dest.joints[-1], position=True)
+        pm.parentConstraint(dest.clavicle_ctrl, ctrl_grp, maintainOffset=True)
         pm.parentConstraint(dest.joints[-1], self.ik_joints[0])
 
         self.connect_metadata(dest)
@@ -353,7 +312,7 @@ class Leg(Limb):
 
         ctrl_grp = self.fk_ctrls[0].getParent(1)
 
-        pm.parent(ctrl_grp, dest.hip_ctrl)
+        pm.parentConstraint(ctrl_grp, dest.hip_ctrl, maintainOffset=True)
         pm.parentConstraint(dest.hip_ctrl, self.ik_joints[0], maintainOffset=True)
 
         self.connect_metadata(dest)

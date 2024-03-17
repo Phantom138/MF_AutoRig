@@ -19,6 +19,8 @@ class Clavicle(Module):
         self.guides = None
         self.all_ctrls = []
 
+        self.control_grp = None
+        self.joints_grp = None
 
     @classmethod
     def create_from_meta(cls, metaNode):
@@ -94,6 +96,15 @@ class Clavicle(Module):
 
         pm.select(clear=True)
 
+        # Create clavicle Control group for the controllers
+        self.control_grp = pm.createNode('transform', name=f'{self.name}{df.control_grp}')
+        pm.parent(clav.grp, self.control_grp)
+
+        # Group control_grp under root
+        pm.parent(self.control_grp, get_group(df.root))
+
+        self.joints_grp = self.joints[0]
+
         if self.meta:
             self.save_metadata()
 
@@ -103,7 +114,7 @@ class Clavicle(Module):
             pm.warning(f"{self.name} already connected to {torso.name}")
             return
 
-        pm.parent(self.clavicle_ctrl.getParent(1), torso.fk_ctrls[-1])
+        pm.parentConstraint(torso.fk_ctrls[-1], self.clavicle_ctrl.getParent(1), maintainOffset=True)
 
         self.connect_metadata(torso)
 
@@ -132,31 +143,4 @@ class Clavicle(Module):
             control_shape_mirror(src, dst)
 
         return mir_module
-
-    def delete(self, keep_meta_node=False):
-        """
-        Delete clavicle module
-        """
-        if keep_meta_node:
-            # HACK: Create empty transform and connect it to metaNode so that when deleting the module,
-            #       the metaNode is not deleted
-            tmp = pm.createNode('transform', name=f'{self.name}_TEMP_NODE')
-            self.metaNode.addAttr('TEMP_NODE', at='message')
-            tmp.message.connect(self.metaNode.TEMP_NODE)
-
-        # Delete stuff
-        pm.delete(self.clavicle_ctrl.getParent(1))
-
-        pm.delete(self.joints[0])
-
-        try:
-            pm.delete(self.guides)
-        except:
-            pass
-
-        if keep_meta_node:
-            # Disconnect tmp from metaNode
-            tmp.message.disconnect(self.metaNode.TEMP_NODE)
-            pm.delete(tmp)
-            self.metaNode.deleteAttr('TEMP_NODE')
 

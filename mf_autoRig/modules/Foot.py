@@ -24,6 +24,9 @@ class Foot(Module):
         self.fk_ctrls = None
         self.locators = None
 
+        self.control_grp = None
+        self.joints_grp = None
+
     @classmethod
     def create_from_meta(cls, metaNode):
         foot = super().create_from_meta(metaNode)
@@ -140,8 +143,13 @@ class Foot(Module):
         self.fk_jnts[0].visibility.set(0)
 
         # Group joints
-        jnt_grp = pm.group(self.ik_jnts[0], self.fk_jnts[0], self.joints[0], name=f'{self.name}_{df.joints_grp}')
-        pm.parent(jnt_grp, get_group(df.joints_grp))
+        self.joints_grp = pm.group(self.ik_jnts[0], self.fk_jnts[0], self.joints[0], name=f'{self.name}_{df.joints_grp}')
+        pm.parent(self.joints_grp, get_group(df.joints_grp))
+
+        # Group locators under root
+        pm.parent(self.locator_grp, get_group(df.root))
+
+        self.control_grp = self.locator_grp
 
         if self.meta:
             self.save_metadata()
