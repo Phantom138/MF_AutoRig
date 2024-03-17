@@ -44,11 +44,9 @@ def onMayaDroppedPythonFile(*args):
         del sys.modules["drag_and_drop_install"]
         return
 
-
     shutil.copy(source_shelf, dest_shelf)
     mel.eval(f'loadNewShelf {shelf}')
     print("Shelf installed.")
-
 
     del sys.modules["drag_and_drop_install"]
 
