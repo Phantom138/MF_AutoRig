@@ -8,6 +8,7 @@ from mf_autoRig.lib.color_tools import set_color, auto_color
 import mf_autoRig.modules.meta as mdata
 from mf_autoRig.modules.Module import Module
 import mf_autoRig.lib.mirrorJoint as mirrorUtils
+from mf_autoRig import log
 
 class Hand(Module):
     meta_args = {
@@ -36,17 +37,29 @@ class Hand(Module):
 
         return hand
 
-    def create_guides(self, start_pos=None):
+    def create_guides(self, start_pos=None, finger_num: int=5):
         # TODO: better default placement for wrist guide
         finger_grps = []
         fingers_jnts = []
+
+        if finger_num > 5:
+            log.warning("Too many fingers, setting to 5")
+            finger_num = 5
+
+        elif finger_num < 1:
+            log.warning("Too few fingers, setting to 1")
+            finger_num = 1
+
+        elif not isinstance(finger_num, int):
+            log.warning("Invalid finger number, setting to 5")
+            finger_num = 5
 
         if start_pos is None:
             start_pos = [0,0,0]
 
         # initialize constants
-        side = self.name.split('_')[0]
         fingers = ['thumb', 'index', 'middle', 'ring', 'pinky']
+        fingers = fingers[:finger_num]
         zPos = start_pos[2]
         spacing = 1.5
 
@@ -82,7 +95,7 @@ class Hand(Module):
             fingers_jnts.append(finger)
 
             # Group fingers
-            finger_grp = pm.createNode('transform', name=f'{side}_{name}_grp')
+            finger_grp = pm.createNode('transform', name=f'{self.side}_{name}_grp')
             finger_grps.append(finger_grp)
 
             pm.matchTransform(finger_grp, finger[0])
@@ -233,6 +246,8 @@ class Hand(Module):
         # Create hand ctrl
         self.hand = CtrlGrp(self.name, shape='circle')
         self.handJnt = self.hand_jnts[0]
+
+        auto_color(self.hand.ctrl)
 
         # Match transforms and parent constrain controller to joint
         pm.matchTransform(self.hand.grp, self.handJnt)
