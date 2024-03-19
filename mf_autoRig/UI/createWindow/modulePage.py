@@ -59,20 +59,34 @@ class HandPage(ModulePage):
         super().__init__(base_module, parent)
 
         options = QtWidgets.QHBoxLayout()
+
+        self.fingers_label = QtWidgets.QLabel("Fingers:")
+        self.fingers = QtWidgets.QSpinBox()
+        self.fingers.setValue(5)
+        self.fingers.setRange(1,5)
+
         self.spread = QtWidgets.QCheckBox("Spread")
         self.spread.setChecked(True)
 
         self.curl = QtWidgets.QCheckBox("Curl")
         self.curl.setChecked(True)
 
+        options.addWidget(self.fingers_label)
+        options.addWidget(self.fingers)
         options.addWidget(self.spread)
         options.addWidget(self.curl)
 
-        self.verticalLayout.insertLayout(2, options)
+        self.verticalLayout.insertLayout(1, options)
+
+    def mdl_createGuides(self):
+        name = self.mdl_name.text()
+
+        self.module = self.base_module(name)
+        self.module.create_guides(finger_num=self.fingers.value())
+        self.btn_rig.setEnabled(True)
 
     def mdl_rig(self):
         self.module.create_joints()
-        self.module.create_hand()
         self.module.rig(spread = self.spread.isChecked(), curl = self.curl.isChecked())
 
 class BendyLimbPage(ModulePage):
