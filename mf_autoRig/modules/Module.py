@@ -54,6 +54,9 @@ class Module(abc.ABC):
     }
 
     def __init__(self, name, args, meta):
+        self.control_grp = None
+        self.joints_grp = None
+
         self.name = name
         self.meta = meta
         self.meta_args = args
@@ -177,31 +180,32 @@ class Module(abc.ABC):
         """
         Delete Module
         """
-        if keep_meta_node:
-            # HACK: Create empty transform and connect it to metaNode so that when deleting the module,
-            #       the metaNode is not deleted
-            tmp = pm.createNode('transform', name=f'{self.name}_TEMP_NODE')
-            self.metaNode.addAttr('TEMP_NODE', at='message')
-            tmp.message.connect(self.metaNode.TEMP_NODE)
+        # Disconnect metaNode from everything
+        if self.meta:
+            all_connections = self.metaNode.listConnections(d=False, source=True, plugs=True, connections=True)
+            conn = [tup[0] for tup in all_connections]
+            for c in conn:
+                c.disconnect()
 
         # Delete stuff
-        log.debug(f"Deleting {self.joints_grp}")
-        pm.delete(self.joints_grp)
+        try:
+            log.debug(f"Deleting {self.joints_grp}")
+            pm.delete(self.joints_grp)
+        except:
+            pass
 
-        log.debug(f"Deleting {self.control_grp}")
-        pm.delete(self.control_grp)
+        try:
+            log.debug(f"Deleting {self.control_grp}")
+            pm.delete(self.control_grp)
+        except:
+            pass
 
         try:
             pm.delete(self.guides)
         except:
             pass
 
-        if keep_meta_node:
-            # Disconnect tmp from metaNode
-            tmp.message.disconnect(self.metaNode.TEMP_NODE)
-            pm.delete(tmp)
-            self.metaNode.deleteAttr('TEMP_NODE')
-        else:
+        if not keep_meta_node:
             pm.delete(self.metaNode)
 
     def __str__(self):
