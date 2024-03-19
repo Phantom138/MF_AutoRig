@@ -50,12 +50,15 @@ def auto_color(objs):
     R side -> red
     L side -> blue
     """
+    if not isinstance(objs, list):
+        objs = [objs]
     for obj in objs:
         side = obj.name().split('_')[0]
         if side == 'R':
             set_color(obj, viewport='red')
         if side == 'L':
             set_color(obj, viewport='blue')
+
 def color_objs(objs, color):
     #receives color in rgb (0-255) format
     for obj in objs:
