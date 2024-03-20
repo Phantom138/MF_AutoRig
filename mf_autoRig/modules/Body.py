@@ -28,26 +28,43 @@ class Body():
         'legs': {'attributeType': 'message', 'm': True},
         'clavicles': {'attributeType': 'message', 'm': True},
     }
-    def __init__(self, meta=True):
+
+    def __init__(self, meta=True, do_hands=True, do_feet=True, do_clavicles=True):
+        self.do_hands = do_hands
+        self.do_feet = do_feet
+        self.do_clavicles = do_clavicles
+        self.spine = Spine('M_spine', num=3, meta=meta)
+
         self.arms = [Arm('L_arm', meta)]
-        self.hands = [Hand('L_hand', meta)]
         self.legs = [Leg('L_leg', meta)]
-        self.clavicles = [Clavicle('L_clavicle', meta)]
-        self.spine = Spine('M_spine', num = 3, meta=meta)
+
+        if self.do_hands:
+            self.hands = [Hand('L_hand', meta)]
+        else:
+            self.hands = None
+
+        if self.do_clavicles:
+            self.clavicles = [Clavicle('L_clavicle', meta)]
+        else:
+            self.clavicles = None
+
+
 
     def create_guides(self, positions):
-        log.info("Creating Guides")
-        mirror_pos = mirror_default_pos(positions)
+        log.info("Creating Guides for Body")
 
         self.arms[0].create_guides(positions['arm'])
         self.legs[0].create_guides(positions['leg'])
-        self.hands[0].create_guides(positions['hand_start'])
-        self.clavicles[0].create_guides(positions['clavicle'])
 
-        # Add wrist
-        self.hands[0].wrist_guide = self.arms[0].guides[-1]
-        # Add shoulder
-        self.clavicles[0].guides.append(self.arms[0].guides[0])
+        if self.do_hands:
+            self.hands[0].create_guides(positions['hand_start'])
+            # Add wrist
+            self.hands[0].wrist_guide = self.arms[0].guides[-1]
+
+        if self.do_clavicles:
+            self.clavicles[0].create_guides(positions['clavicle'])
+            # Add shoulder
+            self.clavicles[0].guides.append(self.arms[0].guides[0])
 
         self.spine.create_guides(positions['torso'])
 
@@ -58,9 +75,12 @@ class Body():
 
         self.arms[0].create_joints()
         self.legs[0].create_joints()
-        self.clavicles[0].create_joints()
 
-        self.hands[0].create_joints(wrist=self.arms[0].joints[-1])
+        if self.do_clavicles:
+            self.clavicles[0].create_joints()
+
+        if self.do_hands:
+            self.hands[0].create_joints(wrist=self.arms[0].joints[-1])
 
 
     def rig(self):
@@ -69,21 +89,42 @@ class Body():
 
         self.arms[0].rig()
         self.legs[0].rig()
-        self.hands[0].rig()
-        self.clavicles[0].rig()
+
+        if self.do_hands:
+            self.hands[0].rig()
+        else:
+            # HACK: add empty list to avoid errors
+            self.hands = [1,2]
+
+        if self.do_clavicles:
+            self.clavicles[0].rig()
+        else:
+            # HACK: add empty list to avoid errors
+            self.clavicles = [1,2]
+
 
         self.mirror_modules()
         for arm, leg, hand, clavicle in zip(self.arms, self.legs, self.hands, self.clavicles):
-            arm.connect(clavicle)
-            hand.connect(arm)
+            if self.do_clavicles:
+                arm.connect(clavicle)
+                clavicle.connect(self.spine)
+            else:
+                arm.connect(self.spine)
+
+            if self.do_hands:
+                hand.connect(arm)
+
             leg.connect(self.spine)
-            clavicle.connect(self.spine)
+
 
     def mirror_modules(self):
         self.arms.insert(1, self.arms[0].mirror())
         self.legs.insert(1, self.legs[0].mirror())
-        self.hands.insert(1, self.hands[0].mirror())
-        self.clavicles.insert(1, self.clavicles[0].mirror())
+
+        if self.do_hands:
+            self.hands.insert(1, self.hands[0].mirror())
+        if self.do_clavicles:
+            self.clavicles.insert(1, self.clavicles[0].mirror())
 
     def mirror_ctrls(self, side: str):
         log.info("Mirroring ctrls")

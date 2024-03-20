@@ -5,6 +5,7 @@ import pymel.core.nodetypes as nt
 import mf_autoRig.modules.meta as mdata
 from mf_autoRig import log
 from mf_autoRig.lib.get_curve_info import apply_curve_info, save_curve_info
+from mf_autoRig.modules import module_tools
 from mf_autoRig.utils.Side import Side
 
 from pprint import pprint
@@ -138,6 +139,26 @@ class Module(abc.ABC):
             return True
         return False
 
+    def get_connections(self, createModules=True):
+        connections = []
+        if self.meta:
+            outputs = self.metaNode.affects.get()
+            inputs = self.metaNode.affectedBy.get()
+
+            connections.append(outputs)
+            connections.append(inputs)
+
+        if createModules:
+            connected_modules = []
+            for c in connections:
+                for node in c:
+                    module = module_tools.createModule(node)
+                    connected_modules.append(module)
+            connections = connected_modules
+
+        return connections
+
+
     def edit(self):
         # TODO: Make sure all controls are zeroed out!!
         self.edit_mode = True
@@ -163,6 +184,11 @@ class Module(abc.ABC):
         # Create guides
         self.guides = edit_locators
 
+        connections = self.get_connections()
+        for c in connections:
+            module = module_tools.createModule(c)
+            module.edit()
+
     def apply_edit(self):
         if self.edit_mode is False:
             log.warning(f"{self.name} not in edit mode!")
@@ -174,6 +200,10 @@ class Module(abc.ABC):
         # Delete guides
         pm.delete(self.guides)
         self.guides = []
+
+        connections = self.get_connections()
+        for con in connections:
+            con.apply_edit()
 
 
     def delete(self, keep_meta_node=False):

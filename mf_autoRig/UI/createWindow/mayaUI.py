@@ -33,7 +33,6 @@ class MayaUI(UITemplate):
 
         self.connect_widgets()
 
-
         self.create_module_tabs()
 
 
@@ -71,12 +70,14 @@ class MayaUI(UITemplate):
         self.destroy()
 
     def auto_guides(self):
-        print("Running auto guides")
-        self.body = Body.Body()
+        self.body = Body.Body(
+            do_hands=self.ui.box_hands.isChecked(),
+            do_clavicles=self.ui.box_clavicles.isChecked(),
+            do_feet=self.ui.box_feet.isChecked()
+        )
         self.body.create_guides(df.default_pos)
 
     def auto_rig(self):
-        print("Running auto rig")
         self.body.create_joints()
         self.body.rig()
 

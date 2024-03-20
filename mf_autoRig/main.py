@@ -8,3 +8,4 @@ import mf_autoRig.UI.modifyWindow.modifyWindowUI as modifyWindow
 if __name__ == '__main__':
     createModulesUI.showWindow()
     toolsWindow.showWindow()
+    modifyWindow.showWindow()
