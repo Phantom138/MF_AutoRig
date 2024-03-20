@@ -6,7 +6,7 @@ from mf_autoRig.modules.Module import Module
 from mf_autoRig.lib.joint_inBetweener import inBetweener
 
 from mf_autoRig.lib.color_tools import set_color
-
+import mf_autoRig.lib.mirrorJoint as mirrorUtils
 
 def stretchy_splineIK(joints, name=None):
     # Create 2 degree curve
@@ -192,3 +192,7 @@ class BendyLimb(Module):
         N.attr.connect(elbow_mid_loc.translate)
 
         return shoulder_mid_loc, elbow_mid_loc
+
+    def mirror(self):
+
+        mirrorUtils.mirrorJoints(self.joints[0], (self.side, self.side.opposite))
