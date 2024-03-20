@@ -51,12 +51,14 @@ def stretchy_splineIK(joints, name=None):
     for jnt in joints[1:]:
         trans_div.outputX.connect(jnt.translateY)
 
-    return curve
+    return curve, splineHandle[0]
 
 
 class BendyLimb(Module):
     meta_args = {
         'switch': {'attributeType': 'message'},
+        'guides': {'attributeType': 'message', 'm': True},
+        'joints': {'attributeType': 'message', 'm': True},
         'fk_ctrls': {'attributeType': 'message', 'm': True}
     }
 
@@ -79,20 +81,26 @@ class BendyLimb(Module):
         pm.select(cl=True)
 
     def create_joints(self):
-        self.main_joints = create_joints_from_guides(f"{self.name}", self.guides, suffix='_driver')
+        self.joints = create_joints_from_guides(f"{self.name}", self.guides, suffix='_driver')
 
         #inBetweener(first_part[0], first_part[1], 5)
         #inBetweener(second_part[0], second_part[1], 5)
 
     def rig(self, bend_joints=7):
         self.bend_joints = bend_joints
-        ik_joints, ik_ctrls, ik_ctrl_grp, ikHandle = create_ik(self.main_joints, create_new=False)
+        ik_joints, ik_ctrls, ik_ctrl_grp, ikHandle = create_ik(self.joints, create_new=False)
 
         # Add bendy attribute to the ik_ctrl
-        pm.addAttr(ik_ctrls[0], ln="bendyWeight", at="double", min=0, max=1, dv=0.5, k=True)
-        self.bendy_attr =  ik_ctrls[0].bendyWeight
+        pm.addAttr(ik_ctrls[0], ln="upperArmBendyWeight", at="double", min=0, max=1, dv=0.5, k=True)
+        pm.addAttr(ik_ctrls[0], ln="forearmBendyWeight", at="double", min=0, max=1, dv=0.5, k=True)
+        self.first_bendy_attr = ik_ctrls[0].upperArmBendyWeight
+        self.second_bendy_attr = ik_ctrls[0].forearmBendyWeight
 
-        self.__create_splineIK_setup(self.main_joints)
+        # Create Control Grp
+        self.control_grp = pm.createNode('transform', name=f'{self.name}_Control{df.grp_sff}')
+        pm.parent(ik_ctrl_grp, self.control_grp)
+
+        self.__create_splineIK_setup(self.joints)
 
     def __create_splineIK_setup(self, joints):
         # Create locators for main joints
@@ -107,17 +115,17 @@ class BendyLimb(Module):
 
         # Create joint chain between Shoulder and Elbow
         shoulder_chain = inBetweener(joints[0], joints[1], self.bend_joints, name=f"{self.name}",
-                                     suffix='_bendy01'+df.skin_sff+df.jnt_sff)
+                                     suffix='_bendy01'+df.skin_sff+df.jnt_sff, end_suffix='_bendy01'+df.end_sff+df.jnt_sff)
         wrist_chain = inBetweener(joints[1], joints[2], self.bend_joints, name=f"{self.name}",
-                                  suffix='_bendy02'+df.skin_sff+df.jnt_sff)
+                                  suffix='_bendy02'+df.skin_sff+df.jnt_sff, end_suffix='_bendy01'+df.end_sff+df.jnt_sff)
 
         # Set color and radius
         for obj in shoulder_chain + wrist_chain:
             obj.radius.set(0.2)
             set_color(obj, viewport='magenta')
 
-        shoulder_curve = stretchy_splineIK(shoulder_chain, name=f"{self.name}_bendy01")
-        wrist_curve = stretchy_splineIK(wrist_chain, name=f"{self.name}_bendy02")
+        shoulder_curve, shoulder_handle = stretchy_splineIK(shoulder_chain, name=f"{self.name}_bendy01")
+        wrist_curve, wrist_handle = stretchy_splineIK(wrist_chain, name=f"{self.name}_bendy02")
 
         shoulder_mid_loc, elbow_mid_loc = self.__get_mid_position()
 
@@ -138,13 +146,23 @@ class BendyLimb(Module):
             pm.parent(cluster, loc)
 
         # Clean-up
+        # Parent bendy joints to driver joints so they get rotation info
+        pm.parent(shoulder_chain[0], self.joints[0])
+        pm.parent(wrist_chain[0], self.joints[1])
+
         # Create Locator grp
         loc_grp = pm.group(em=True, n=f"{self.name}_Locators{df.grp_sff}")
         pm.parent(self.bendy_locators, loc_grp)
 
         # Create Joint Grp
-        jnt_grp = pm.group(em=True, n=f"{self.name}_Joints{df.grp_sff}")
-        pm.parent(self.main_joints[0], shoulder_chain[0], wrist_chain[0], jnt_grp)
+        self.joints_grp = pm.group(em=True, n=f"{self.name}_Joints{df.grp_sff}")
+        pm.parent(self.joints[0], self.joints_grp)
+
+        # Parent to Control Grp
+        pm.parent(loc_grp, shoulder_curve, wrist_curve, self.control_grp)
+
+        # Parent Handles under ikHandle grp
+        pm.parent(wrist_handle, shoulder_handle, get_group(df.ikHandle_grp))
 
     def __get_mid_position(self):
         # Get position for mid clusters with vector nodes
@@ -157,12 +175,12 @@ class BendyLimb(Module):
         CA_norm = (A - C).norm()
 
         # Shoulder side
-        BD = BA * (self.bendy_attr, self.bendy_attr, self.bendy_attr)
+        BD = BA * (self.first_bendy_attr, self.first_bendy_attr, self.first_bendy_attr)
         dotProd = VectorNodes.dotProduct(BD, CA_norm)
         M = CA_norm * dotProd + B
 
         # Wrist side
-        BE = BC * (self.bendy_attr, self.bendy_attr, self.bendy_attr)
+        BE = BC * (self.second_bendy_attr, self.second_bendy_attr, self.second_bendy_attr)
         dotProd = VectorNodes.dotProduct(BE, CA_norm)
         N = CA_norm * dotProd + B
 

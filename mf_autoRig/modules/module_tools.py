@@ -1,6 +1,7 @@
 import pymel.core as pm
 
 from mf_autoRig.modules import Hand, Limb, Clavicle, Spine
+from mf_autoRig.modules.Toon import BendyLimb
 
 
 def createModule(metaNode):
@@ -13,7 +14,8 @@ def createModule(metaNode):
         'Leg': Limb.Leg,
         'Hand': Hand.Hand,
         'Clavicle': Clavicle.Clavicle,
-        'Spine': Spine.Spine
+        'Spine': Spine.Spine,
+        'BendyLimb': BendyLimb.BendyLimb
     }
 
     module = modules[metaNode.moduleType.get()]

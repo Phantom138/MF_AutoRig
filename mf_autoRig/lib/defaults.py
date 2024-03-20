@@ -13,6 +13,7 @@ control_grp = '_Control_Grp'
 ikfkSwitch_name = 'IkFkSwitch'
 root = 'Root_Ctrl'
 joints_grp = 'Joints_Grp'
+ikHandle_grp = 'ikHandle_grp'
 rig_guides_grp = 'rig_guides_grp'
 
 

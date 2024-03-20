@@ -4,7 +4,7 @@ import pymel.core.datatypes as dt
 import maya.cmds as cmds
 
 
-def inBetweener(start_jnt, end_jnt, num, name=None, duplicate_jnts=True, suffix=None):
+def inBetweener(start_jnt, end_jnt, num, name=None, duplicate_jnts=True, suffix=None, end_suffix=None):
     """
     Function that creates joints in between two joints
     :param start_jnt: The first joint
@@ -12,6 +12,9 @@ def inBetweener(start_jnt, end_jnt, num, name=None, duplicate_jnts=True, suffix=
     :param num: The number of joints to create
     :param duplicate_jnts: If True, the joints will be duplicated, if False, the joints will be created between the given joints
     """
+    if end_suffix is None:
+        suffix = end_suffix
+
     joints = []
     pm.select(clear=True)
     if duplicate_jnts:
@@ -56,6 +59,10 @@ def inBetweener(start_jnt, end_jnt, num, name=None, duplicate_jnts=True, suffix=
         for i, jnt in enumerate(joints):
             if suffix is None:
                 suffix = ''
-            jnt.rename(f"{name}{i+1:02}{suffix}")
+            if i == len(joints):
+                # Joint is last in chain
+                jnt.rename(f"{name}{i + 1:02}{end_suffix}")
+            else:
+                jnt.rename(f"{name}{i+1:02}{suffix}")
 
     return joints
