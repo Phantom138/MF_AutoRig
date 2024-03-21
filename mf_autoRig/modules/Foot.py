@@ -284,7 +284,7 @@ class Foot(Module):
         mir_module.locators, mir_module.locator_grp = self.__mirror_locators()
 
         # Mirror joints
-        mir_module.joints = mirrorUtils.mirrorJoints(self.joints[0], searchReplace=(f'{self.side}_', f'{self.side.opposite}_'))
+        mir_module.joints = mirrorUtils.mirrorJoints(self.joints, searchReplace=(f'{self.side}_', f'{self.side.opposite}_'))
 
         if rig:
             mir_module.rig()

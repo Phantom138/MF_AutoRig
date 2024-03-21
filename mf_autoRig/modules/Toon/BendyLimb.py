@@ -56,17 +56,26 @@ def stretchy_splineIK(joints, name=None):
 
 class BendyLimb(Module):
     meta_args = {
-        'switch': {'attributeType': 'message'},
         'guides': {'attributeType': 'message', 'm': True},
         'joints': {'attributeType': 'message', 'm': True},
-        'fk_ctrls': {'attributeType': 'message', 'm': True}
     }
 
     def __init__(self, name, meta=True):
         super().__init__(name, self.meta_args, meta)
 
+        self.joints = None
+
+        self.control_grp = None
+        self.joints_grp = None
         self.jnt_chain = None
         self.guides = None
+
+    @classmethod
+    def create_from_meta(cls, metaNode):
+        obj = super().create_from_meta(metaNode)
+        obj.all_ctrls = obj.control_grp.listRelatives(allDescendents=True, type='nurbsCurve')
+        print(obj.all_ctrls)
+        return obj
 
     def create_guides(self, pos=None):
         """
@@ -79,12 +88,16 @@ class BendyLimb(Module):
         self.guides = create_joint_chain(3, self.name, pos[0], pos[1], defaultValue=51)
 
         pm.select(cl=True)
+        if self.meta:
+            self.save_metadata()
 
     def create_joints(self):
         self.joints = create_joints_from_guides(f"{self.name}", self.guides, suffix='_driver')
 
         #inBetweener(first_part[0], first_part[1], 5)
         #inBetweener(second_part[0], second_part[1], 5)
+        if self.meta:
+            self.save_metadata()
 
     def rig(self, bend_joints=7):
         self.bend_joints = bend_joints
@@ -101,6 +114,8 @@ class BendyLimb(Module):
         pm.parent(ik_ctrl_grp, self.control_grp)
 
         self.__create_splineIK_setup(self.joints)
+        if self.meta:
+            self.save_metadata()
 
     def __create_splineIK_setup(self, joints):
         # Create locators for main joints
@@ -164,6 +179,9 @@ class BendyLimb(Module):
         # Parent Handles under ikHandle grp
         pm.parent(wrist_handle, shoulder_handle, get_group(df.ikHandle_grp))
 
+        if self.meta:
+            self.save_metadata()
+
     def __get_mid_position(self):
         # Get position for mid clusters with vector nodes
         A = VectorNodes(self.main_locators[0].translate)
@@ -194,5 +212,16 @@ class BendyLimb(Module):
         return shoulder_mid_loc, elbow_mid_loc
 
     def mirror(self):
+        name = self.name.replace(f'{self.side}_', f'{self.side.opposite}_')
+        mir_module = self.__class__(name)
 
-        mirrorUtils.mirrorJoints(self.joints[0], (self.side, self.side.opposite))
+        # Mirror Joints
+        mir_module.joints = mirrorUtils.mirrorJoints(self.joints, (self.side, self.side.opposite))
+
+        mir_module.rig()
+
+        # Mirror Ctrls
+        for src, dst in zip(self.all_ctrls, mir_module.all_ctrls):
+            control_shape_mirror(src, dst)
+
+        return mir_module

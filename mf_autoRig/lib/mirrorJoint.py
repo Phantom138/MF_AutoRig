@@ -62,23 +62,23 @@ def xformMirror(transforms=[], across='YZ'):
     for i,transform in enumerate(cp):
         pm.xform(transform, ws=True, m=flipped_matricies[i])
 
-def mirrorJoints(start_jnt, searchReplace, plane='YZ'):
+def mirrorJoints(joints, searchReplace, plane='YZ'):
     """
     Wrapper for pm.mirrorJoint that deletes redundant constraints or leftovers
     Returns mirrored joints PyNodes
     """
     if plane == 'YZ':
-        mirrored_jnts = pm.mirrorJoint(start_jnt, mirrorYZ=True, mirrorBehavior=True,
+        mirrored_jnts = pm.mirrorJoint(joints[0], mirrorYZ=True, mirrorBehavior=True,
                                        searchReplace=searchReplace)
     #TODO: add other planes
 
     objs = list(map(pm.PyNode, mirrored_jnts))
 
-    joints = []
+    dup_joints = []
     for obj in objs:
-        if isinstance(obj, pm.nt.Joint):
-            joints.append(obj)
+        if obj in joints:
+            dup_joints.append(obj)
         else:
             pm.delete(obj)
 
-    return joints
+    return dup_joints

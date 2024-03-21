@@ -203,7 +203,7 @@ class Limb(Module):
         mir_module = self.__class__(name)
 
         # Mirror Joints
-        mir_module.joints = mirrorUtils.mirrorJoints(self.joints[0], (self.side, self.side.opposite))
+        mir_module.joints = mirrorUtils.mirrorJoints(self.joints, (self.side, self.side.opposite))
 
         if rig:
             mir_module.rig()

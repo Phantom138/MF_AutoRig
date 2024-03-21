@@ -367,7 +367,7 @@ class Hand(Module):
             mir_module.finger_jnts.append(mir_finger[0])
 
         # Mirror hand_jnts
-        mir_module.hand_jnts = mirrorUtils.mirrorJoints(self.hand_jnts[0], (self.side, self.side.opposite))
+        mir_module.hand_jnts = mirrorUtils.mirrorJoints(self.hand_jnts, (self.side, self.side.opposite))
 
         mir_module.__clean_up_joints()
         # Rig hand
