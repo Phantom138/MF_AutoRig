@@ -98,14 +98,13 @@ def create_fk_ctrls(joints, skipEnd=True, shape='circle', scale=1):
 
         return fk.ctrl
 
-    # Skips end joints
-    if skipEnd:
-        joints = joints[:-1]
-
-
     # Get joint orientation and create circle controller accordingly
     # Ex. if orientation = X, circle is pointing in X
     axis = get_joint_orientation(joints[0], joints[1])
+
+    # Skips end joints
+    if skipEnd:
+        joints = joints[:-1]
 
     # Initialize ctrl list
     fk_ctrls = []
