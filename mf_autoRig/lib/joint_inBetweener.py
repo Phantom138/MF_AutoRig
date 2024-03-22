@@ -18,9 +18,9 @@ def inBetweener(start_jnt, end_jnt, num, name=None, duplicate_jnts=True, suffix=
     joints = []
     pm.select(clear=True)
     if duplicate_jnts:
-        dup = [pm.joint(), pm.joint()]
-        pm.matchTransform(dup[0], start_jnt)
-        pm.matchTransform(dup[1], end_jnt)
+        dup = [pm.joint(radius=start_jnt.radius.get()), pm.joint(radius=start_jnt.radius.get())]
+        pm.matchTransform(dup[0], start_jnt, pos=True)
+        pm.matchTransform(dup[1], end_jnt, pos=True)
         start_jnt = dup[0]
         end_jnt = dup[1]
 
@@ -34,8 +34,7 @@ def inBetweener(start_jnt, end_jnt, num, name=None, duplicate_jnts=True, suffix=
     start_jnt_rot = pm.xform(start_jnt, q=True, ro=True, ws=True)
 
     for i in range(num):
-        jnt = pm.joint(radius=start_jnt.radius.get())
-        jnt.radius.set(0.2)
+        jnt = pm.joint()
         joints.append(jnt)
 
         w = (i + 1) / (num + 1)
@@ -54,15 +53,24 @@ def inBetweener(start_jnt, end_jnt, num, name=None, duplicate_jnts=True, suffix=
     # Add end joint to the list
     joints.append(end_jnt)
 
-    # Rename the joints
+    if suffix is None:
+        suffix = ''
+
+    # Rename and scale the joints
+    start_radius = start_jnt.radius.get()
+    print("setting to", start_radius/2)
     if name:
         for i, jnt in enumerate(joints):
-            if suffix is None:
-                suffix = ''
-            if i == len(joints):
+            jnt.radius.set(start_radius/2)
+
+            if i == len(joints)-1:
                 # Joint is last in chain
-                jnt.rename(f"{name}{i + 1:02}{end_suffix}")
+                jnt.rename(f"{name}{i+1:02}{end_suffix}")
             else:
                 jnt.rename(f"{name}{i+1:02}{suffix}")
+    # Orient joints
+    # TODO: Orient based on original joints
+    pm.joint(joints[0], edit=True, orientJoint='yzx', secondaryAxisOrient='zup', children=True)
+    pm.joint(joints[-1], edit=True, orientJoint='none')
 
     return joints

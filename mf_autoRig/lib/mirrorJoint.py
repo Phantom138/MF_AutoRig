@@ -35,14 +35,14 @@ def xformMirror(transforms=[], across='YZ'):
         t = [n * -1 for n in mtx[12:15]]
 
         # Set matrix based on given plane, and whether to include behaviour or not.
-        if across is 'XY':
+        if across == 'XY':
             mtx[14] = t[2]  # set inverse of the Z translation
 
             # Set inverse of all rotation columns but for the one we've set translate to.
             mtx[0:9:4] = rx
             mtx[1:10:4] = ry
 
-        elif across is 'YZ':
+        elif across == 'YZ':
             mtx[12] = t[0]  # set inverse of the X translation
 
             mtx[1:10:4] = ry
@@ -72,13 +72,29 @@ def mirrorJoints(joints, searchReplace, plane='YZ'):
                                        searchReplace=searchReplace)
     #TODO: add other planes
 
-    objs = list(map(pm.PyNode, mirrored_jnts))
+    # objs = list(map(pm.PyNode, mirrored_jnts))
+    #
+    # print(objs)
+    # print(joints)
+
+    joints_newNames = []
+    for jnt in joints:
+        name = jnt.name().replace(searchReplace[0], searchReplace[1])
+        joints_newNames.append(name)
+
+    print(mirrored_jnts)
+    print(joints_newNames)
 
     dup_joints = []
-    for obj in objs:
-        if obj in joints:
+    for mir_jnt in mirrored_jnts:
+        if mir_jnt in joints_newNames:
+            obj = pm.PyNode(mir_jnt)
             dup_joints.append(obj)
         else:
-            pm.delete(obj)
+            try:
+                obj = pm.PyNode(mir_jnt)
+                pm.delete(obj)
+            except pm.MayaNodeError:
+                pass
 
     return dup_joints

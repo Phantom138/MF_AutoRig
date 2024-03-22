@@ -24,9 +24,9 @@ def stretchy_splineIK(joints, name=None):
         handle_name = name + '_ikHandle'
 
     curve = pm.curve(n=crv_name, d=2, p=[start_trs, mid_trs, end_trs])
-
+    pm.select(cl=True)
     splineHandle = pm.ikHandle(n=handle_name, sj=joints[0], ee=joints[-1], solver="ikSplineSolver",
-                               parentCurve=False, rootOnCurve=True, c=curve, ccv=False)
+                               parentCurve=False, rootOnCurve=False, c=curve, ccv=False)
 
     # Get curve distance
     curveInfo = pm.createNode('curveInfo')
@@ -73,8 +73,16 @@ class BendyLimb(Module):
     @classmethod
     def create_from_meta(cls, metaNode):
         obj = super().create_from_meta(metaNode)
-        obj.all_ctrls = obj.control_grp.listRelatives(allDescendents=True, type='nurbsCurve')
-        print(obj.all_ctrls)
+
+
+        ctrls = obj.control_grp.listRelatives(allDescendents=True, type='nurbsCurve')
+        obj.all_ctrls = []
+        print(ctrls)
+        for ctrl in ctrls:
+            if ctrl.name().endswith(f'{df.ctrl_sff}Shape'):
+                obj.all_ctrls.append(ctrl)
+
+        print("Created Object", obj)
         return obj
 
     def create_guides(self, pos=None):
@@ -114,8 +122,18 @@ class BendyLimb(Module):
         pm.parent(ik_ctrl_grp, self.control_grp)
 
         self.__create_splineIK_setup(self.joints)
+
+        # Get all ctrls by getting all nurbs curves and then filtering out only those that end in _ctrl
+        ctrls = self.control_grp.listRelatives(allDescendents=True, type='nurbsCurve')
+        self.all_ctrls = []
+
+        for ctrl in ctrls:
+            if ctrl.name().endswith(f'{df.ctrl_sff}Shape'):
+                self.all_ctrls.append(ctrl)
+
         if self.meta:
             self.save_metadata()
+
 
     def __create_splineIK_setup(self, joints):
         # Create locators for main joints
@@ -134,10 +152,11 @@ class BendyLimb(Module):
         wrist_chain = inBetweener(joints[1], joints[2], self.bend_joints, name=f"{self.name}",
                                   suffix='_bendy02'+df.skin_sff+df.jnt_sff, end_suffix='_bendy01'+df.end_sff+df.jnt_sff)
 
-        # Set color and radius
+
+        # Set color
         for obj in shoulder_chain + wrist_chain:
-            obj.radius.set(0.2)
             set_color(obj, viewport='magenta')
+
 
         shoulder_curve, shoulder_handle = stretchy_splineIK(shoulder_chain, name=f"{self.name}_bendy01")
         wrist_curve, wrist_handle = stretchy_splineIK(wrist_chain, name=f"{self.name}_bendy02")
@@ -177,7 +196,8 @@ class BendyLimb(Module):
         pm.parent(loc_grp, shoulder_curve, wrist_curve, self.control_grp)
 
         # Parent Handles under ikHandle grp
-        pm.parent(wrist_handle, shoulder_handle, get_group(df.ikHandle_grp))
+        grp = get_group(df.ikHandle_grp)
+        pm.parent(wrist_handle, shoulder_handle, grp)
 
         if self.meta:
             self.save_metadata()
@@ -216,8 +236,8 @@ class BendyLimb(Module):
         mir_module = self.__class__(name)
 
         # Mirror Joints
-        mir_module.joints = mirrorUtils.mirrorJoints(self.joints, (self.side, self.side.opposite))
-
+        mir_module.joints = mirrorUtils.mirrorJoints(self.joints, (self.side.side, self.side.opposite))
+        print("Mirrored joints:", mir_module.joints)
         mir_module.rig()
 
         # Mirror Ctrls

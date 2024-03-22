@@ -169,7 +169,9 @@ class Module(abc.ABC):
         edit_locators = []
         for jnt in self.joints:
             loc = pm.spaceLocator(name='temp_loc')
-            pm.matchTransform(loc, jnt)
+            trs = pm.xform(jnt, worldSpace=True, query=True, matrix=True)
+            pm.xform(loc, worldSpace=True, matrix=trs)
+            # pm.matchTransform(loc, jnt)
             edit_locators.append(loc)
 
         for i in range(len(edit_locators) - 1, 0, -1):

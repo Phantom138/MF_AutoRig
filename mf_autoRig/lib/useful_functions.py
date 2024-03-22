@@ -454,15 +454,14 @@ def create_joints_from_guides(name, guides, suffix=None):
     pm.select(clear=True)
     joints = []
     for i, tmp in enumerate(guides):
-        trs = pm.xform(tmp, q=True, t=True, ws=True)
-
         if suffix is None:
             suffix = df.skin_sff
             # Last joint has end suffix
             if i == len(guides) - 1:
                 suffix = df.end_sff
 
-        jnt = pm.joint(name=f'{name}{i + 1:02}{suffix}{df.jnt_sff}', position=trs)
+        jnt = pm.joint(name=f'{name}{i + 1:02}{suffix}{df.jnt_sff}')
+        pm.matchTransform(jnt, tmp, pos=True)
         joints.append(jnt)
 
     # Orient joints
