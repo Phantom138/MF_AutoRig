@@ -35,6 +35,7 @@ class Hand(Module):
     def create_from_meta(cls, metaNode):
         hand = super().create_from_meta(metaNode)
 
+
         return hand
 
     def create_guides(self, start_pos=None, finger_num: int=5):
@@ -362,12 +363,13 @@ class Hand(Module):
 
         # Mirror finger_jnts
         mir_module.finger_jnts = []
-        for finger in self.finger_jnts:
-            mir_finger = mirrorUtils.mirrorJoints(finger, (self.side, self.side.opposite))
+        for finger_start in self.finger_jnts:
+            finger = get_joint_hierarchy(finger_start)
+            mir_finger = mirrorUtils.mirrorJoints(finger, (f'{self.side}_', f'{self.side.opposite}_'))
             mir_module.finger_jnts.append(mir_finger[0])
 
         # Mirror hand_jnts
-        mir_module.hand_jnts = mirrorUtils.mirrorJoints(self.hand_jnts, (self.side, self.side.opposite))
+        mir_module.hand_jnts = mirrorUtils.mirrorJoints(self.hand_jnts, (f'{self.side}_', f'{self.side.opposite}_'))
 
         mir_module.__clean_up_joints()
         # Rig hand
