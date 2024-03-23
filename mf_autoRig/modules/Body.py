@@ -20,16 +20,18 @@ from mf_autoRig.lib.mirrorJoint import xformMirror
 
 from mf_autoRig import log
 
-class Body():
+class Body(Module):
     meta_args = {
-        'spine': {'attributeType': 'message'},
-        'arms': {'attributeType': 'message', 'm': True},
-        'hands': {'attributeType': 'message', 'm': True},
-        'legs': {'attributeType': 'message', 'm': True},
-        'clavicles': {'attributeType': 'message', 'm': True},
+        'spine_guides': {'attributeType': 'message', 'm': True},
+        'arms_guides': {'attributeType': 'message', 'm': True},
+        'hands_guides': {'attributeType': 'message', 'm': True},
+        'legs_guides': {'attributeType': 'message', 'm': True},
+        'clavicles_guides': {'attributeType': 'message', 'm': True},
     }
 
     def __init__(self, meta=True, do_hands=True, do_feet=True, do_clavicles=True):
+        super().__init__(name='M_Body', args=self.meta_args, meta=meta)
+
         self.do_hands = do_hands
         self.do_feet = do_feet
         self.do_clavicles = do_clavicles
@@ -48,6 +50,15 @@ class Body():
         else:
             self.clavicles = None
 
+        # Initialize guides
+        self.spine_guides = None
+        self.arms_guides = None
+        self.hands_guides = None
+        self.legs_guides = None
+        self.clavicles_guides = None
+
+    def save_metadata(self):
+        super().save_metadata()
 
 
     def create_guides(self, positions):
@@ -68,6 +79,27 @@ class Body():
 
         self.spine.create_guides(positions['torso'])
 
+        # Save guides
+        self.spine_guides = self.spine.guides
+        self.arms_guides = self.arms[0].guides
+        self.legs_guides = self.legs[0].guides
+        self.clavicles_guides = self.clavicles[0].guides
+
+        # Save hands guides
+        if self.do_hands:
+            from itertools import chain
+            self.hands_guides = list(chain.from_iterable(self.hands[0].guides))
+
+
+        print(self.spine_guides)
+        print(self.arms_guides)
+        print(self.hands_guides)
+        print(self.legs_guides)
+        print(self.clavicles_guides)
+
+
+        if self.meta:
+            self.save_metadata()
 
     def create_joints(self):
         log.info("Creating Joints")
