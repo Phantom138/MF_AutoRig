@@ -57,6 +57,39 @@ def addShelf(maya_path, source_path, forceInstall=False):
     mel.eval(f'loadNewShelf {shelf}')
     print("Shelf installed.")
 
+def add_directory_to_user_setup(maya_path, source_dir):
+    # HACK: Add path to sys path just so restarting maya is not required
+    # It is best to restart maya!!
+    sys.path.append(source_dir)
+
+    scripts_path = os.path.join(maya_path, "scripts")
+    userSetup = os.path.join(scripts_path, "userSetup.py")
+
+    append_path = f"sys.path.append('{source_dir}')"
+
+    # Creates userSetup.py if it doesn't exist
+    if not os.path.isfile(userSetup):
+        f = open(userSetup, "w")
+        f.close()
+
+    # Read the file
+    f = open(userSetup, "r")
+    content = f.read()
+    f.close()
+
+    # Check if the path is already in the file
+    if append_path not in content:
+        # Switch to append mode
+        f = open(userSetup, "a")
+
+        f.write("\nimport sys\n")
+        f.write(append_path)
+        f.close()
+
+        print(f"Added {source_dir} to userSetup.py")
+    else:
+        cmds.warning(f"{source_dir} is already in userSetup.py")
+
 def onMayaDroppedPythonFile(*args):
     doc_path = get_documents_path()
     maya_version = cmds.about(version=True)
@@ -73,6 +106,7 @@ def onMayaDroppedPythonFile(*args):
 
     copyIcons(maya_path, source_path)
     addShelf(maya_path, source_path, forceInstall=True)
+    add_directory_to_user_setup(maya_path, source_dir)
 
     del sys.modules["drag_and_drop_install"]
 
