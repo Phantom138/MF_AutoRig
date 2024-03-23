@@ -21,32 +21,58 @@ def get_documents_path():
     except Exception as e:
         print(f"An error occurred: {e}")
 
-def onMayaDroppedPythonFile(*args):
-    doc_path = get_documents_path()
-    maya_version = cmds.about(version=True)
+def copyIcons(maya_path, source_path):
+    icons = ["mf_colorPicker.png"]
 
+    dest_icon_dir = os.path.join(maya_path, "prefs", "icons")
+
+    for icon in icons:
+        src_icon = os.path.join(source_path, icon)
+        dest = shutil.copy(src_icon, dest_icon_dir)
+        print(f"Icon {icon} copied to {dest}")
+
+def addShelf(maya_path, source_path, forceInstall=False):
     shelf_name = "shelf_MF_Rigging_Tools.mel"
     shelf = shelf_name.replace(".mel", "")
 
-    dest_shelf = os.path.join(doc_path, "maya", maya_version, "prefs", "shelves", shelf_name)
+    dest_shelf = os.path.join(maya_path, "prefs", "shelves", shelf_name)
+    source_shelf = os.path.join(source_path, shelf_name)
 
-    try:
-        source_dir = os.path.dirname(__file__)
-    except:
-        source_dir = "MF_AutoRig"
-    source_shelf = os.path.normpath(os.path.join(source_dir, f"mf_autoRig/maya_shelf/{shelf_name}"))
-
-
-    if os.path.isfile(dest_shelf) and filecmp.cmp(source_shelf, dest_shelf):
+    # If shelf already existing, don't install
+    # Unless the force install is on, which will delete the shelf and install it again
+    if os.path.isfile(dest_shelf):
         # Shelf is already installed
-        cmds.error("Shelf is already installed.")
+        cmds.warning("Shelf is already installed.")
 
-        del sys.modules["drag_and_drop_install"]
-        return
+        if forceInstall is False:
+            del sys.modules["drag_and_drop_install"]
+            return
+        # Force delete shelf
+        f = open(os.path.join(source_path, "force_deleteShelfTab.mel"), "r")
+        script = f.read()
+        mel.eval(script)
+        mel.eval(f'force_deleteShelfTab {shelf.replace("shelf_", "")}')
 
     shutil.copy(source_shelf, dest_shelf)
     mel.eval(f'loadNewShelf {shelf}')
     print("Shelf installed.")
+
+def onMayaDroppedPythonFile(*args):
+    doc_path = get_documents_path()
+    maya_version = cmds.about(version=True)
+
+    # Get the source directory
+    try:
+        source_dir = os.path.dirname(__file__)
+    except:
+        source_dir = "MF_AutoRig"
+
+    # Get maya path and source path for icon and shelf
+    source_path = os.path.normpath(os.path.join(source_dir, f"mf_autoRig/maya_shelf/"))
+    maya_path = os.path.join(doc_path, "maya", maya_version)
+
+    copyIcons(maya_path, source_path)
+    addShelf(maya_path, source_path, forceInstall=True)
 
     del sys.modules["drag_and_drop_install"]
 

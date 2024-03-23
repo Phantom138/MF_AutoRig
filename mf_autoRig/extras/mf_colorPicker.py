@@ -6,6 +6,16 @@ import shiboken2
 from maya import OpenMayaUI
 from maya.app.general.mayaMixin import MayaQWidgetDockableMixin
 
+colors = {
+    'red': (255, 0, 0),
+    'orange': (255,140,0),
+    'yellow': (255, 255, 51),
+    'green': (0, 255, 0),
+    'cyan': (0, 255, 255),
+    'blue': (0, 0, 255),
+    'magenta': (255, 0, 255),
+}
+
 
 def color_selection(color):
     #receives color in rgb (0-255) format
@@ -45,11 +55,14 @@ def color_outliner(color):
 
 def disable_colors():
     selection = cmds.ls(sl=True)
-    if cmds.nodeType(selection) == 'joint':
-        shapes = selection
-    else:
-        shapes = cmds.listRelatives(selection, shapes=True)
-
+    shapes=[]
+    for sl in selection:
+        if cmds.nodeType(sl) == 'joint':
+            shp = sl
+        else:
+            shp = cmds.listRelatives(sl, shapes=True)[0]
+        shapes.append(shp)
+    print(shapes)
     for shape in shapes:
         cmds.setAttr(shape + '.overrideEnabled', 0) # disables color override
 
@@ -89,12 +102,13 @@ class MyWindow(MayaQWidgetDockableMixin, QtWidgets.QDialog):
         #Create button for each color
         buttonLayout = QtWidgets.QHBoxLayout(self)
         buttonLayout.setSpacing(0)
-        colors = [[255, 0, 0], [255, 255, 0],[21,203,3], [0,65,153],[44, 219, 210],[219, 0, 193]]
-        for color in colors:
+
+        for color in colors.values():
             button = QtWidgets.QPushButton()
             button.setGeometry(200, 150, 100, 40)
             # self.button.setStyleSheet(f'background-color: rgb({color[0] * 255},{color[1] * 255},{color[2] * 255})')
-            button.setStyleSheet(f'background-color: rgb({color[0]},{color[1]},{color[2]}); border: none; min-height:30px')
+            button.setStyleSheet(
+                f'background-color: rgb({color[0]},{color[1]},{color[2]}); border: none; min-height:30px')
             #button.clicked.connect(partial(color_selection, color))
             button.clicked.connect(partial(self.onColorClicked, color))
             #adds button to layout
@@ -137,8 +151,10 @@ class MyWindow(MayaQWidgetDockableMixin, QtWidgets.QDialog):
         else:
             disable_colors_outliner()
 
-mywindow = MyWindow()
-mywindow.show(dockable=True)
+def showWindow():
+    mywindow = MyWindow()
+    mywindow.show(dockable=True)
+
 
 # rgb = ["R","G","B"]
 # for channel in rgb:

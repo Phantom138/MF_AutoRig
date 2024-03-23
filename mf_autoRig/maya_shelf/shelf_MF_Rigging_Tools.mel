@@ -74,6 +74,19 @@ global proc shelf_MF_Rigging_Tools () {
         -commandRepeatable 1
         -flat 1
     ;
+    separator
+        -enable 1
+        -width 12
+        -height 35
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -enableBackground 0
+        -backgroundColor 0 0 0 
+        -highlightColor 0.321569 0.521569 0.65098 
+        -style "shelf" 
+        -horizontal 0
+    ;
     shelfButton
         -enableCommandRepeat 1
         -flexibleWidthType 1
@@ -105,6 +118,40 @@ global proc shelf_MF_Rigging_Tools () {
         -marginWidth 1
         -marginHeight 1
         -command "from unload_packages import unload_packages\nunload_packages(silent=True, packages=[\"mf_autoRig\"])\nimport mf_autoRig.UI.toolsWindow.toolsWindow as toolsWindow\ntoolsWindow.showWindow()\n" 
+        -sourceType "python" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -flexibleWidthType 3
+        -flexibleWidthValue 32
+        -enable 1
+        -width 39
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Color Picker for controllers/joints" 
+        -enableBackground 0
+        -backgroundColor 0 0 0 
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "Color Picker" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "mf_colorPicker.png" 
+        -image1 "mf_colorPicker.png" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "from mf_autoRig.extras.mf_colorPicker import showWindow\nshowWindow()" 
         -sourceType "python" 
         -commandRepeatable 1
         -flat 1
