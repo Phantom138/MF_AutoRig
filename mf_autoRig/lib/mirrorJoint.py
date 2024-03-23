@@ -67,6 +67,9 @@ def mirrorJoints(joints, searchReplace, plane='YZ'):
     Wrapper for pm.mirrorJoint that deletes redundant constraints or leftovers
     Returns mirrored joints PyNodes
     """
+    if not isinstance(joints, list):
+        joints = [joints]
+
     if plane == 'YZ':
         mirrored_jnts = pm.mirrorJoint(joints[0], mirrorYZ=True, mirrorBehavior=True,
                                        searchReplace=searchReplace)
@@ -81,9 +84,6 @@ def mirrorJoints(joints, searchReplace, plane='YZ'):
     for jnt in joints:
         name = jnt.name().replace(searchReplace[0], searchReplace[1])
         joints_newNames.append(name)
-
-    print(mirrored_jnts)
-    print(joints_newNames)
 
     dup_joints = []
     for mir_jnt in mirrored_jnts:
