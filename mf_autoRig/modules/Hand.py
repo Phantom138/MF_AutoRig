@@ -21,8 +21,11 @@ class Hand(Module):
     def __init__(self, name, meta=True):
         super().__init__(name, self.meta_args, meta)
 
-        self.hand_ctrl = None
+        self.all_guides = None
+        self.orient_guides = None
         self.guides = None
+
+        self.hand_ctrl = None
         self.wrist_guide = None
         self.finger_jnts = None
         self.hand_jnts = None
@@ -34,7 +37,6 @@ class Hand(Module):
     @classmethod
     def create_from_meta(cls, metaNode):
         hand = super().create_from_meta(metaNode)
-
 
         return hand
 
@@ -291,11 +293,6 @@ class Hand(Module):
         # Parent hand ctrl under root
         pm.parent(self.hand.grp, get_group(df.root))
         self.control_grp = self.hand.grp
-
-        # Delete guides
-        if self.guides:
-            pm.delete(self.guides)
-            pm.delete(self.wrist_guide)
 
         if self.meta:
             self.save_metadata()
