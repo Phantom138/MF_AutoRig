@@ -22,7 +22,8 @@ class EditWidget(QtWidgets.QDialog):
         self.btn_apply.setEnabled(False)
 
     def edit_item(self):
-        connections = module_tools.get_connections(self.module.metaNode)
+        highest_parent = self.module.get_connections(direction='up')[-1]
+        connections = module_tools.get_connections(highest_parent.metaNode)
 
         self.edited_modules = connections
 
