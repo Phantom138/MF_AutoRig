@@ -17,6 +17,8 @@ class FKFoot(Module):
         'fk_ctrls': {'attributeType': 'message', 'm': True},
     }
 
+    connectable_to = ['Limb']
+
     def __init__(self, name, meta=True):
         super().__init__(name, self.meta_args, meta)
         self.guides = None
@@ -67,6 +69,10 @@ class FKFoot(Module):
         # Get just the guides for the joints
         self.joints = create_joints_from_guides(self.name, self.guides)
 
+        # Cleanup
+        self.__joints_cleanup()
+
+    def __joints_cleanup(self):
         # Group joints
         self.joints_grp = pm.createNode('transform', name=f'{self.name}_{df.joints_grp}')
         pm.parent(self.joints[0], self.joints_grp)
@@ -74,6 +80,7 @@ class FKFoot(Module):
 
         if self.meta:
             self.save_metadata()
+
 
     def rig(self):
         self.skin_jnts = self.joints[:-1]
@@ -99,7 +106,7 @@ class FKFoot(Module):
 
         ctrl_grp = self.fk_ctrls[0].getParent(1)
 
-        pm.pointConstraint(ctrl_grp, dest.joints[-1], maintainOffset=True)
+        pm.pointConstraint(dest.joints[-1], ctrl_grp, maintainOffset=True)
 
         self.connect_metadata(dest)
 
@@ -109,6 +116,8 @@ class FKFoot(Module):
 
         # Mirror Joints
         mir_module.joints = mirrorUtils.mirrorJoints(self.joints, (self.side.side, self.side.opposite))
+        mir_module.__joints_cleanup()
+
 
         if rig:
             mir_module.rig()

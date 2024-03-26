@@ -139,25 +139,35 @@ class Module(abc.ABC):
             return True
         return False
 
-    def get_connections(self, createModules=True):
+    def get_connections(self, direction='up'):
         connections = []
-        if self.meta:
-            outputs = self.metaNode.affects.get()
-            inputs = self.metaNode.affectedBy.get()
 
-            connections.append(outputs)
-            connections.append(inputs)
+        if direction == 'up':
+            attr = self.metaNode.affectedBy
+        elif direction == 'down':
+            attr = self.metaNode.affects
+        else:
+            log.error(f"Invalid direction: {direction}")
+            return None
 
-        if createModules:
-            connected_modules = []
-            for c in connections:
-                for node in c:
-                    module = module_tools.createModule(node)
-                    connected_modules.append(module)
-            connections = connected_modules
+        inputs = attr.get()
+
+        while inputs:
+            module = module_tools.createModule(inputs[0])
+            connections.append(module)
+
+            if direction == 'up':
+                inputs = module.metaNode.affectedBy.get()
+            if direction == 'down':
+                inputs = module.metaNode.affects.get()
+
+        if not connections:
+            return [self]
 
         return connections
 
+        # Get all affects connections
+        # for each of them get all affects connections
 
     def edit(self):
         # TODO: Make sure all controls are zeroed out!!
@@ -232,13 +242,29 @@ class Module(abc.ABC):
         except:
             pass
 
-        try:
-            pm.delete(self.guides)
-        except:
-            pass
-
         if not keep_meta_node:
             pm.delete(self.metaNode)
+
+    def destroy_rig(self):
+        guides = self.guides
+        metaNode = self.metaNode
+        name = self.name
+
+        to_delete = [self.joints_grp, self.control_grp]
+        for node in to_delete:
+            log.debug(f"Deleting {node}")
+            pm.delete(node)
+
+        self.__init__(name, meta=metaNode)
+        self.guides = guides
+
+        # Disconnect
+        self.metaNode.affectedBy.disconnect()
+
+    def rebuild_rig(self):
+        self.create_joints()
+        self.rig()
+
 
     def __str__(self):
         return str(self.__dict__)

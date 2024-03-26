@@ -8,7 +8,7 @@ from mf_autoRig.lib.color_tools import set_color
 import mf_autoRig.modules.meta as mdata
 from mf_autoRig.modules import module_tools
 from mf_autoRig.modules.Module import Module
-from mf_autoRig.modules.Foot import Foot
+from mf_autoRig.modules.IKFoot import Foot
 import mf_autoRig.lib.mirrorJoint as mirrorUtils
 from mf_autoRig import log
 
@@ -60,6 +60,8 @@ class Limb(Module):
         'fk_joints': {'attributeType': 'message', 'm': True},
         'fk_ctrls': {'attributeType': 'message', 'm': True}
     }
+
+    connectable_to = ['Spine', 'Clavicle']
 
     def __init__(self, name, meta=True):
         super().__init__(name, self.meta_args, meta)
@@ -214,6 +216,38 @@ class Limb(Module):
 
         return mir_module
 
+    def connect(self, dest):
+        if self.check_if_connected(dest):
+            log.warning(f"{self.name} already connected to {dest.name}")
+            return
+
+        dest_class = dest.__class__.__name__
+        if dest_class not in self.connectable_to:
+            log.warning(f"{self.name} not connectable to {dest.name}")
+            return
+
+        # Connect to clavicle
+        if dest_class == 'Clavicle':
+            ctrl_grp = self.fk_ctrls[0].getParent(1)
+            print(ctrl_grp, dest.joints[-1])
+
+            # pm.matchTransform(ctrl_grp, dest.joints[-1], position=True)
+            pm.parentConstraint(dest.clavicle_ctrl, ctrl_grp, maintainOffset=True)
+            pm.parentConstraint(dest.joints[-1], self.ik_joints[0])
+
+            self.connect_metadata(dest)
+
+        # Connect to spine
+        elif dest_class == 'Spine':
+            ctrl_grp = self.fk_ctrls[0].getParent(1)
+
+            pm.parentConstraint(ctrl_grp, dest.hip_ctrl, maintainOffset=True)
+            pm.parentConstraint(dest.hip_ctrl, self.ik_joints[0], maintainOffset=True)
+
+            self.connect_metadata(dest)
+
+        log.info(f"Successfully connected {self.name} to {dest.name}")
+        return
 
 class Arm(Limb):
 

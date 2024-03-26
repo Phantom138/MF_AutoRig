@@ -1,6 +1,7 @@
 import pymel.core as pm
 
-from mf_autoRig.modules import Hand, Limb, Clavicle, Spine
+from mf_autoRig.modules import Hand, Limb, Clavicle, Spine, IKFoot
+from mf_autoRig.modules import FKFoot
 from mf_autoRig.modules.Toon import BendyLimb
 
 
@@ -13,6 +14,7 @@ def createModule(metaNode):
         'Arm': Limb.Arm,
         'Leg': Limb.Leg,
         'Hand': Hand.Hand,
+        'FKFoot': FKFoot.FKFoot,
         'Clavicle': Clavicle.Clavicle,
         'Spine': Spine.Spine,
         'BendyLimb': BendyLimb.BendyLimb
@@ -40,6 +42,36 @@ def get_all_modules(module_types=None):
         return good_nodes
 
     return metaNodes
+
+
+
+def get_connections(metaNode):
+    def get_con(metaNodes, conns):
+        """
+        This exists when there is no connections to the metaNode
+        """
+
+        if not isinstance(metaNodes, list):
+            metaNodes = [metaNodes]
+
+        # if not len(metaNodes) == 0:
+        #     connections.append(metaNodes)
+
+        for node in metaNodes:
+            conn = node.affects.get()
+            conns.append(node)
+
+            get_con(conn, conns)
+
+    connections = []
+    get_con(metaNode, connections)
+
+    modules = []
+    for conn in connections:
+        module = createModule(conn)
+        modules.append(module)
+
+    return modules
 
 # node = pm.PyNode('META_L_hand')
 # cls = createModule(node)

@@ -37,6 +37,7 @@ class ModifyWindow(UITemplate):
 
 
     def updateList(self):
+        #TODO: make a nice tree view
         self.ui.list_modules.clear()
 
         self.modules = module_tools.get_all_modules()

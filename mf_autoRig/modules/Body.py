@@ -9,9 +9,11 @@ import importlib
 
 from mf_autoRig.lib.useful_functions import *
 
+
 # Import Modules
 from mf_autoRig.modules.Hand import Hand
-from mf_autoRig.modules.Limb import Arm, Leg
+from mf_autoRig.modules.Limb import Arm, Limb
+from mf_autoRig.modules.FKFoot import FKFoot
 from mf_autoRig.modules.Module import Module
 from mf_autoRig.modules.Spine import Spine
 from mf_autoRig.modules.Clavicle import Clavicle
@@ -38,7 +40,10 @@ class Body(Module):
         self.spine = Spine('M_spine', num=3, meta=meta)
 
         self.arms = [Arm('L_arm', meta)]
-        self.legs = [Leg('L_leg', meta)]
+        self.legs = [Limb('L_leg', meta)]
+
+        if self.do_feet:
+            self.feet = [FKFoot('L_foot', meta)]
 
         if self.do_hands:
             self.hands = [Hand('L_hand', meta)]
@@ -57,15 +62,15 @@ class Body(Module):
         self.legs_guides = None
         self.clavicles_guides = None
 
-    def save_metadata(self):
-        super().save_metadata()
-
 
     def create_guides(self, positions):
         log.info("Creating Guides for Body")
 
         self.arms[0].create_guides(positions['arm'])
         self.legs[0].create_guides(positions['leg'])
+
+        if self.do_feet:
+            self.feet[0].create_guides(ankle_guide=self.legs[0].guides[-1])
 
         if self.do_hands:
             self.hands[0].create_guides(positions['hand_start'])
@@ -108,6 +113,9 @@ class Body(Module):
         self.arms[0].create_joints()
         self.legs[0].create_joints()
 
+        if self.do_feet:
+            self.feet[0].create_joints()
+
         if self.do_clavicles:
             self.clavicles[0].create_joints()
 
@@ -122,6 +130,9 @@ class Body(Module):
         self.arms[0].rig()
         self.legs[0].rig()
 
+        if self.do_feet:
+            self.feet[0].rig()
+
         if self.do_hands:
             self.hands[0].rig()
         else:
@@ -134,9 +145,10 @@ class Body(Module):
             # HACK: add empty list to avoid errors
             self.clavicles = [1,2]
 
-
         self.mirror_modules()
-        for arm, leg, hand, clavicle in zip(self.arms, self.legs, self.hands, self.clavicles):
+
+        # Do connections
+        for arm, leg, foot, hand, clavicle in zip(self.arms, self.legs, self.feet, self.hands, self.clavicles):
             if self.do_clavicles:
                 arm.connect(clavicle)
                 clavicle.connect(self.spine)
@@ -146,6 +158,9 @@ class Body(Module):
             if self.do_hands:
                 hand.connect(arm)
 
+            if self.do_feet:
+                foot.connect(leg)
+
             leg.connect(self.spine)
 
 
@@ -153,8 +168,12 @@ class Body(Module):
         self.arms.insert(1, self.arms[0].mirror())
         self.legs.insert(1, self.legs[0].mirror())
 
+        if self.do_feet:
+            self.feet.insert(1, self.feet[0].mirror())
+
         if self.do_hands:
             self.hands.insert(1, self.hands[0].mirror())
+
         if self.do_clavicles:
             self.clavicles.insert(1, self.clavicles[0].mirror())
 
