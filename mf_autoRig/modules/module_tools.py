@@ -48,9 +48,8 @@ def get_all_modules(module_types=None):
 def get_connections(metaNode):
     def get_con(metaNodes, conns):
         """
-        This exists when there is no connections to the metaNode
+        This exits when there is no connections to the metaNode
         """
-
         if not isinstance(metaNodes, list):
             metaNodes = [metaNodes]
 
