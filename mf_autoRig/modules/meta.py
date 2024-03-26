@@ -23,15 +23,25 @@ def create_metadata(name, moduleType, info_args):
     return metaNode
 
 def add(nodes, dst):
-    if nodes:
-        if isinstance(nodes, list):
-            for i, node in enumerate(nodes):
-                # Check if it isn't already connected
-                if not pm.isConnected(node.message, dst[i]):
-                    node.message.connect(dst[i])
-        else:
-            if not pm.isConnected(nodes.message, dst):
-                nodes.message.connect(dst)
+    if not nodes:
+        return
+
+    def connect(src, dest):
+        # If it's a pynode connect message attr
+        if isinstance(src, pm.PyNode):
+            if not pm.isConnected(src.message, dest):
+                src.message.connect(dest)
+
+        # If it's an int just set the value
+        elif isinstance(src, (float, int, str)):
+            dest.set(src)
+
+    # If it's a list of nodes connect each one to the destination
+    if isinstance(nodes, list):
+        for i, node in enumerate(nodes):
+            connect(node, dst[i])
+    else:
+        connect(nodes, dst)
 
 
 
