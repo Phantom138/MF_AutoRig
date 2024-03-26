@@ -1,6 +1,7 @@
 import re
 import importlib
 from itertools import chain
+from pprint import pprint
 
 import mf_autoRig.lib.defaults as df
 from mf_autoRig.lib.useful_functions import *
@@ -12,60 +13,94 @@ from mf_autoRig import log
 
 class Hand(Module):
     meta_args = {
+        'finger_num': {'attributeType': 'long'},
         'hand_ctrl': {'attributeType': 'message'},
+        'wrist_guide': {'attributeType': 'message'},
+        'guides': {'attributeType': 'message', 'm': True},
         'hand_jnts': {'attributeType': 'message', 'm': True},
         'finger_jnts': {'attributeType': 'message', 'm': True},
         'all_ctrls': {'attributeType': 'message', 'm': True}
     }
 
-    def __init__(self, name, meta=True):
+    def __init__(self, name, finger_num: int=5, meta=True):
         super().__init__(name, self.meta_args, meta)
 
-        self.all_guides = None
-        self.orient_guides = None
-        self.guides = None
-
-        self.hand_ctrl = None
-        self.wrist_guide = None
-        self.finger_jnts = None
-        self.hand_jnts = None
-        self.all_ctrls = []
-
-        self.control_grp = None
-        self.joints_grp = None
-
-    @classmethod
-    def create_from_meta(cls, metaNode):
-        hand = super().create_from_meta(metaNode)
-
-        return hand
-
-    def create_guides(self, start_pos=None, finger_num: int=5):
-        # TODO: better default placement for wrist guide
-        finger_grps = []
-        fingers_jnts = []
-
+        # Validate finger_num
         if finger_num > 5:
-            log.warning("Too many fingers, setting to 5")
+            log.warning(f"For {self.name} too many fingers, setting to 5")
             finger_num = 5
 
         elif finger_num < 1:
-            log.warning("Too few fingers, setting to 1")
+            log.warning(f"For {self.name} too few fingers, setting to 1")
             finger_num = 1
 
         elif not isinstance(finger_num, int):
-            log.warning("Invalid finger number, setting to 5")
+            log.warning(f"For {self.name} invalid finger number, setting to 5")
             finger_num = 5
+
+        self.finger_num = finger_num
+
+        # Guides
+        self.orient_guides = None
+        self.jnt_guides = None
+        self.wrist_guide = None
+        self.guides = None
+
+        # Controllers
+        self.hand_ctrl = None
+        self.all_ctrls = []
+
+        # Joints
+        self.finger_jnts = None
+        self.hand_jnts = None
+
+        # Groups - for deletion
+        self.control_grp = None
+        self.joints_grp = None
+
+
+    def update_from_meta(self):
+        super().update_from_meta()
+        self.all_ctrls = []
+
+        # Get orient_guides from guides
+        self.orient_guides = self.guides[:self.finger_num]
+
+        # Get jnt_guides from guides
+        tmp_jnt_guides = self.guides[self.finger_num:]
+
+        # The code expects the guides to be nested [[finger1_guides], [finger2_guides] .. ]
+        # But the guides are in a flat list, so we need to split them up
+        self.jnt_guides = []
+
+        # Thumb has less digits!
+        # TODO: make this less hardcoded, now it's based on the fact that thumb has 4 joints and the rest have 5
+        self.jnt_guides.append(tmp_jnt_guides[:4])
+        tmp_jnt_guides = tmp_jnt_guides[4:]
+        increment = int(len(tmp_jnt_guides) / (self.finger_num - 1))
+
+        for i in range(0, len(tmp_jnt_guides), increment):
+            self.jnt_guides.append(tmp_jnt_guides[i:i+increment])
+
+        print(f"METADATA FOR {self.name}")
+        print(self.jnt_guides)
+        print(self.orient_guides)
+
+    def create_guides(self, start_pos=None):
+        # TODO: better default placement for wrist guide
+        finger_grps = []
+        fingers_jnts = []
+        self.guides = []
 
         if start_pos is None:
             start_pos = [0,0,0]
 
         # initialize constants
         fingers = ['thumb', 'index', 'middle', 'ring', 'pinky']
-        fingers = fingers[:finger_num]
+        fingers = fingers[:self.finger_num]
+
         zPos = start_pos[2]
         spacing = 1.5
-
         # Create finger guides
         for index, name in enumerate(fingers):
             jnt_num = 5
@@ -108,7 +143,7 @@ class Hand(Module):
             if index == 0:
                 pm.rotate(finger_grp, (-25, -30, 0))
 
-        self.guides = fingers_jnts
+        self.jnt_guides = fingers_jnts
 
         # Group clean-up
         hand_grp = pm.createNode('transform', name=f'{self.name}_grp')
@@ -124,12 +159,20 @@ class Hand(Module):
 
         self.__create_orient_guides()
 
+        # Add orient guides to guides
+        from itertools import chain
+        self.guides = self.orient_guides + list(chain.from_iterable(self.jnt_guides))
+
+        if self.meta:
+            print(f"{self.name} guides: {self.guides}")
+            self.save_metadata()
+
         # Clear selection
         pm.select(clear=True)
 
     def __create_orient_guides(self):
         self.orient_guides = []
-        for finger_guide in self.guides:
+        for finger_guide in self.jnt_guides:
             orient_guide = pm.nurbsPlane(name=f'{finger_guide[1].name()}_orient',lengthRatio=3)[0]
 
             set_color(orient_guide, viewport='red')
@@ -163,7 +206,7 @@ class Hand(Module):
         pm.select(clear=True)
         # Create finger joints based on guides
         self.finger_jnts = []
-        for i, finger_guide in enumerate(self.guides):
+        for i, finger_guide in enumerate(self.jnt_guides):
             # Get finger name
             match = re.search(f'({self.name}_([a-zA-Z]+))\d*_', finger_guide[0].name())
             base_name = match.group(1)
