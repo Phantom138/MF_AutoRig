@@ -76,31 +76,6 @@ class Module(abc.ABC):
             self.metaNode = meta
             # TODO: Validate metadata
 
-    @classmethod
-    def create_from_meta(cls, metaNode):
-        """
-        Creates a Module instance from existing metadata node.
-
-        Args:
-            metaNode (pymel.core.PyNode): The metadata node to create the module from.
-
-        Returns:
-            Module: An instance of the Module class.
-        """
-
-        name = metaNode.Name.get()
-        general_obj = cls(name, meta=False)
-
-        general_obj.metaNode = metaNode
-        general_obj.meta = True
-        # Get attributes
-        for attribute in general_obj.meta_args:
-            setattr(general_obj, attribute, general_obj.metaNode.attr(attribute).get())
-
-        general_obj.moduleType = metaNode.moduleType.get()
-
-        return general_obj
-
     @abstractmethod
     def create_guides(self):
         pass
@@ -112,6 +87,41 @@ class Module(abc.ABC):
     @abstractmethod
     def rig(self):
         pass
+
+    # METADATA METHODS
+    @classmethod
+    def create_from_meta(cls, metaNode):
+        """
+        Creates a Module instance from existing metadata node.
+
+        Args:
+            metaNode (pymel.core.nt.Network): The metadata node to create the module from.
+
+        Returns:
+            Module: An instance of the Module class.
+        """
+
+        name = metaNode.Name.get()
+        general_obj = cls(name, meta=False)
+
+        general_obj.moduleType = metaNode.moduleType.get()
+
+        general_obj.metaNode = metaNode
+        general_obj.meta = True
+
+        general_obj.update_from_meta()
+
+        return general_obj
+
+    def update_from_meta(self):
+        for attribute in self.meta_args:
+            data = self.metaNode.attr(attribute).get()
+
+            # If list is empty, set to None
+            if isinstance(data, list) and not data:
+                data = None
+
+            setattr(self, attribute, data)
 
     def save_metadata(self):
         """
@@ -126,8 +136,8 @@ class Module(abc.ABC):
 
             if src is not None:
                 dst = self.metaNode.attr(attribute)
-                #print(src, dst)
                 mdata.add(src, dst)
+                log.debug(f"{self.name} - Metadata connected {src} to {dst}")
 
     def connect_metadata(self, dest):
         # Connect meta nodes
@@ -169,6 +179,7 @@ class Module(abc.ABC):
         # Get all affects connections
         # for each of them get all affects connections
 
+    # EDIT METHODS
     def edit(self):
         # TODO: Make sure all controls are zeroed out!!
         self.edit_mode = True
@@ -246,17 +257,16 @@ class Module(abc.ABC):
             pm.delete(self.metaNode)
 
     def destroy_rig(self):
-        guides = self.guides
-        metaNode = self.metaNode
-        name = self.name
+        # guides = self.guides
+        # metaNode = self.metaNode
+        # name = self.name
 
         to_delete = [self.joints_grp, self.control_grp]
         for node in to_delete:
             log.debug(f"Deleting {node}")
             pm.delete(node)
 
-        self.__init__(name, meta=metaNode)
-        self.guides = guides
+        self.update_from_meta()
 
         # Disconnect
         self.metaNode.affectedBy.disconnect()
