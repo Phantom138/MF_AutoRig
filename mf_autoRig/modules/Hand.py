@@ -22,7 +22,7 @@ class Hand(Module):
         'all_ctrls': {'attributeType': 'message', 'm': True}
     }
 
-    def __init__(self, name, finger_num: int=5, meta=True):
+    def __init__(self, name, meta=True, finger_num: int=5):
         super().__init__(name, self.meta_args, meta)
 
         # Validate finger_num
@@ -61,7 +61,12 @@ class Hand(Module):
 
     def update_from_meta(self):
         super().update_from_meta()
-        self.all_ctrls = []
+
+        if self.all_ctrls is None:
+            self.all_ctrls = []
+
+        if self.guides is None:
+            self.guides = []
 
         # Get orient_guides from guides
         self.orient_guides = self.guides[:self.finger_num]
@@ -79,12 +84,9 @@ class Hand(Module):
         tmp_jnt_guides = tmp_jnt_guides[4:]
         increment = int(len(tmp_jnt_guides) / (self.finger_num - 1))
 
-        for i in range(0, len(tmp_jnt_guides), increment):
-            self.jnt_guides.append(tmp_jnt_guides[i:i+increment])
-
-        print(f"METADATA FOR {self.name}")
-        print(self.jnt_guides)
-        print(self.orient_guides)
+        if increment != 0:
+            for i in range(0, len(tmp_jnt_guides), increment):
+                self.jnt_guides.append(tmp_jnt_guides[i:i+increment])
 
     def create_guides(self, start_pos=None):
         # TODO: better default placement for wrist guide
@@ -144,6 +146,24 @@ class Hand(Module):
                 pm.rotate(finger_grp, (-25, -30, 0))
 
         self.jnt_guides = fingers_jnts
+
+        # Create prettier guides
+        for finger_guide in self.jnt_guides:
+            # Get transforms for each guide
+            transforms = []
+            for guide in finger_guide:
+                trs = pm.xform(guide, q=True, ws=True, t=True)
+                transforms.append(trs)
+
+            # Create nurbs curve
+            curve = pm.curve(name=f'{finger_guide[0].name()}_crv' ,d=1, p=transforms)
+
+            # Create clusters for each point and parent them under the guide
+            for i in range(curve.numCVs()):
+                cluster = pm.cluster(curve.cv[i], name=f'{curve.name()}_{i + 1:02}_cluster')[1]
+                cluster.visibility.set(0)
+                pm.parent(cluster, finger_guide[i])
+            pm.parent(curve, get_group(df.driven_grp))
 
         # Group clean-up
         hand_grp = pm.createNode('transform', name=f'{self.name}_grp')
@@ -234,6 +254,9 @@ class Hand(Module):
                 # Set right orientation
                 constraint = pm.aimConstraint(next_jnt, jnt, aim = [0,1,0], upVector=[1,0,0], worldUpObject=self.orient_guides[i], worldUpType="objectrotation", worldUpVector=[0,1,0])
                 pm.delete(constraint)
+
+                # Freeze rotation of jnt
+                pm.makeIdentity(jnt, apply=True, r=True)
 
                 # Parent
                 pm.parent(next_jnt, jnt)
@@ -414,8 +437,12 @@ class Hand(Module):
         mir_module.__clean_up_joints()
         # Rig hand
         mir_module.rig()
+
         if mir_module.meta:
             mir_module.save_metadata()
+
+        # Do mirror connection for metadata
+        self.metaNode.message.connect(mir_module.metaNode.mirrored_from)
 
         return mir_module
 

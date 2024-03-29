@@ -352,15 +352,10 @@ def create_joint_chain(jnt_number, name, start_pos, end_pos, rot=None, defaultVa
     if rot is None:
         rot = [0, 0, 0]
 
-    # Create driven grp if not existent
-    try:
-        driven_grp = pm.PyNode('DONOTTOUCH_driven_guides_grp')
-    except pm.MayaNodeError:
-        driven_grp = pm.createNode('transform', name='DONOTTOUCH_driven_guides_grp')
-
     # Create plane
     plane = pm.polyPlane(name=f'tmp_{name}_Plane', w=2, h=26, sh=1, sw=1)[0]
     plane.v.set(0)
+    driven_grp = get_group(df.driven_grp)
     pm.parent(plane, driven_grp)
 
     joints = []
@@ -438,6 +433,21 @@ def create_joint_chain(jnt_number, name, start_pos, end_pos, rot=None, defaultVa
 
     joints.append(endJnt)
 
+    # Create curve driven by the guides
+    pts = []
+    for jnt in joints:
+        pt = pm.xform(jnt, query=True, translation=True, worldSpace=True)
+        pts.append(pt)
+
+    curve = pm.curve(d=1, p=pts, name=f'{name}_guide_crv')
+    pm.parent(curve, driven_grp)
+    for i in range(curve.numCVs()):
+        cluster = pm.cluster(curve.cv[i], name=f'{curve.name()}_{i + 1:02}_cluster')[1]
+        cluster.visibility.set(0)
+        pm.parent(cluster, joints[i])
+
+
+
     # Group start and end jnt
     grp = pm.createNode('transform', name=f'{name}_grp')
     pm.matchTransform(grp, startJnt)
@@ -445,7 +455,6 @@ def create_joint_chain(jnt_number, name, start_pos, end_pos, rot=None, defaultVa
 
     # Parent to rig grp
     pm.parent(grp, get_group(df.rig_guides_grp))
-
 
 
     return joints
@@ -460,13 +469,21 @@ def create_joints_from_guides(name, guides, suffix=None):
             if i == len(guides) - 1:
                 suffix = df.end_sff
 
-        jnt = pm.joint(name=f'{name}{i + 1:02}{suffix}{df.jnt_sff}')
+        jnt = pm.createNode('joint', name=f'{name}{i + 1:02}{suffix}{df.jnt_sff}')
         pm.matchTransform(jnt, tmp, pos=True)
         joints.append(jnt)
+
+    for i in range(len(joints) - 1, 0, -1):
+        pm.parent(joints[i], joints[i - 1])
 
     # Orient joints
     pm.joint(joints[0], edit=True, orientJoint='yzx', secondaryAxisOrient='zup', children=True)
     pm.joint(joints[-1], edit=True, orientJoint='none')
+
+    # HACK: sometimes the x axis of the last joint gets very minimal values. This messes up the IK
+    # This is more of a bandaid, the problem is somewhere in the code above
+    # TODO: Fix this
+    joints[-1].translateX.set(0)
 
     pm.select(clear = True)
     return joints

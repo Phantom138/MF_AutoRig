@@ -46,7 +46,7 @@ class Body(Module):
             self.feet = [FKFoot('L_foot', meta)]
 
         if self.do_hands:
-            self.hands = [Hand('L_hand', meta)]
+            self.hands = [Hand('L_hand', meta, finger_num=5)]
         else:
             self.hands = None
 
@@ -102,9 +102,6 @@ class Body(Module):
         print(self.legs_guides)
         print(self.clavicles_guides)
 
-
-        if self.meta:
-            self.save_metadata()
 
     def create_joints(self):
         log.info("Creating Joints")

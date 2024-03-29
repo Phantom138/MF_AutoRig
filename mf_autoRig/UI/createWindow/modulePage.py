@@ -81,7 +81,7 @@ class HandPage(ModulePage):
     def mdl_createGuides(self):
         name = self.mdl_name.text()
 
-        self.module = self.base_module(name, self.fingers.value())
+        self.module = self.base_module(name, finger_num = self.fingers.value())
         self.module.create_guides()
         self.btn_rig.setEnabled(True)
 

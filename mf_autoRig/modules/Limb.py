@@ -82,21 +82,21 @@ class Limb(Module):
 
         self.default_pin_value = 51
 
-    @classmethod
-    def create_from_meta(cls, metaNode):
-        obj = super().create_from_meta(metaNode)
-        # Get ikHandle
-        iks = obj.ik_joints[0].message.listConnections(d=True, type='ikHandle')
-        if len(iks) == 1:
-            obj.ikHandle = iks[0]
-        else:
-            raise ValueError(f"{obj.name} has {len(iks)} IKHandles")
+    def update_from_meta(self):
+        super().update_from_meta()
 
-        # Recreate all_ctrls
-        obj.all_ctrls = obj.fk_ctrls + obj.ik_ctrls
-        obj.all_ctrls.append(obj.switch)
+        if self.joints is not None:
+            # Get ikHandle
+            iks = self.ik_joints[0].message.listConnections(d=True, type='ikHandle')
+            if len(iks) == 1:
+                self.ikHandle = iks[0]
+            else:
+                raise ValueError(f"{self.name} has {len(iks)} IKHandles")
 
-        return obj
+            # Recreate all_ctrls
+            self.all_ctrls = self.fk_ctrls + self.ik_ctrls
+            self.all_ctrls.append(self.switch)
+
 
     def create_guides(self, pos=None):
         """
@@ -116,25 +116,7 @@ class Limb(Module):
     def create_joints(self, mirror_from = None):
         self.joints = []
 
-        # Create based on guides
-        for i, tmp in enumerate(self.guides):
-            trs = pm.xform(tmp, q=True, t=True, ws=True)
-
-            sff = df.skin_sff
-            # Last joint has end suffix
-            if i == len(self.guides) - 1:
-                sff = df.end_sff
-
-            jnt = pm.joint(name=f'{self.name}{i + 1:02}{sff}{df.jnt_sff}', position=trs)
-
-            self.joints.append(jnt)
-
-        # Orient joints
-        pm.joint(self.joints[0], edit=True, orientJoint='yzx', secondaryAxisOrient='zup', children=True)
-        pm.joint(self.joints[-1], edit=True, orientJoint='none')
-
-        # Clear Selection
-        pm.select(clear=True)
+        self.joints = create_joints_from_guides(self.name, self.guides)
 
         if self.meta:
             self.save_metadata()
@@ -204,7 +186,10 @@ class Limb(Module):
         name = self.name.replace(f'{self.side}_', f'{self.side.opposite}_')
         mir_module = self.__class__(name)
 
-        # Mirror Joints
+        # # Mirror Guides
+        # mir_module.create_guides()
+        # mir_module.load_saved_guides(self.save_guides())
+
         mir_module.joints = mirrorUtils.mirrorJoints(self.joints, (self.side.side, self.side.opposite))
 
         if rig:
@@ -213,6 +198,9 @@ class Limb(Module):
         # Mirror Ctrls
         for src, dst in zip(self.all_ctrls, mir_module.all_ctrls):
             control_shape_mirror(src, dst)
+
+        # Do mirror connection for metadata
+        self.metaNode.message.connect(mir_module.metaNode.mirrored_from)
 
         return mir_module
 
@@ -248,6 +236,29 @@ class Limb(Module):
 
         log.info(f"Successfully connected {self.name} to {dest.name}")
         return
+
+    def save_guides(self):
+        saved_guides = []
+        info = pm.xform(self.guides[0], query=True, worldSpace=True, matrix=True)
+        saved_guides.append(info)
+
+        # Get the ucoord and vcoord
+        info = [self.guides[1].uCoord.get(), self.guides[1].uCoord.get()]
+        saved_guides.append(info)
+
+        info = pm.xform(self.guides[2], query=True, worldSpace=True, matrix=True)
+        saved_guides.append(info)
+
+        return saved_guides
+
+    def load_saved_guides(self, saved_guides):
+        for guide, saved in zip(self.guides, saved_guides):
+            if len(saved) == 2:
+                guide.uCoord.set(saved[0])
+                guide.vCoord.set(saved[1])
+            else:
+                pm.xform(guide, m=saved)
+
 
 class Arm(Limb):
 

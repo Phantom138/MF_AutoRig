@@ -52,11 +52,13 @@ class Module(abc.ABC):
     df_meta_args = {
         'joints_grp': {'attributeType': 'message'},
         'control_grp': {'attributeType': 'message'},
+        'mirrored_from': {'attributeType': 'message'},
     }
 
     def __init__(self, name, args, meta):
         self.control_grp = None
         self.joints_grp = None
+        self.mirrored_from = None
 
         self.name = name
         self.meta = meta
@@ -228,7 +230,6 @@ class Module(abc.ABC):
         for con in connections:
             con.apply_edit()
 
-
     def delete(self, keep_meta_node=False):
         """
         Delete Module
@@ -260,6 +261,12 @@ class Module(abc.ABC):
         # guides = self.guides
         # metaNode = self.metaNode
         # name = self.name
+        log.debug(f"Destroying rig for {self.name}")
+        if self.mirrored_from is not None:
+            log.debug(f"DELETING Mirrored from {self.mirrored_from}")
+            self.delete()
+            return
+
 
         to_delete = [self.joints_grp, self.control_grp]
         for node in to_delete:
@@ -270,6 +277,13 @@ class Module(abc.ABC):
 
         # Disconnect
         self.metaNode.affectedBy.disconnect()
+
+    def save_guides(self):
+        saved_guides = []
+        for guide in self.guides:
+            svd = pm.xform(guide, query=True, worldSpace=True, matrix=True)
+            saved_guides.append(svd)
+        log.debug(f"Saved guides for {self.name}")
 
     def rebuild_rig(self):
         self.create_joints()

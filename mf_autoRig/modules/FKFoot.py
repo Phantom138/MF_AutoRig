@@ -126,4 +126,7 @@ class FKFoot(Module):
         for src, dst in zip(self.fk_ctrls, mir_module.fk_ctrls):
             control_shape_mirror(src, dst)
 
+        # Do mirror connection for metadata
+        self.metaNode.message.connect(mir_module.metaNode.mirrored_from)
+
         return mir_module

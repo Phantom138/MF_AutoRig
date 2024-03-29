@@ -54,8 +54,9 @@ class ModifyWindow(UITemplate):
     def on_selection_changed(self):
         row = self.ui.list_modules.currentRow()
         self.selected_module = module_tools.createModule(self.modules[row])
-        pm.select(self.selected_module.joints_grp)
-        pm.viewFit()
+        if self.selected_module.joints_grp is not None:
+            pm.select(self.selected_module.joints_grp)
+            pm.viewFit()
 
     def context_menu(self, position):
         item_row = self.ui.list_modules.currentRow()
