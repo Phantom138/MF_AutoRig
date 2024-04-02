@@ -1,6 +1,6 @@
 import pathlib
 
-from PySide2 import QtWidgets
+from PySide2 import QtWidgets, QtGui
 from PySide2.QtGui import QIntValidator
 from mf_autoRig.UI.utils.loadUI import loadUi
 
@@ -53,6 +53,30 @@ class ModulePage(QtWidgets.QWidget):
             return None
 
         self.btn_guides.setEnabled(True)
+
+
+class SpinePage(ModulePage):
+    def __init__(self, base_module, parent=None):
+        super().__init__(base_module, parent)
+
+        options = QtWidgets.QHBoxLayout()
+
+        self.label = QtWidgets.QLabel("Joints for spine:")
+        self.num = QtWidgets.QSpinBox()
+        self.num.setValue(3)
+        self.num.setRange(2, 10)
+
+        options.addWidget(self.label)
+        options.addWidget(self.num)
+
+        self.verticalLayout.insertLayout(1, options)
+    def mdl_createGuides(self):
+        name = self.mdl_name.text()
+
+        self.module = self.base_module(name, num=self.num.value())
+        self.module.create_guides()
+        self.btn_rig.setEnabled(True)
+
 
 class HandPage(ModulePage):
     def __init__(self, base_module, parent=None):

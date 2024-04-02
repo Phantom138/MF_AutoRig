@@ -207,10 +207,13 @@ def create_ik(joints, translation=False, create_new=True):
     # Create controller and group
     pole = CtrlGrp(pole_name, 'joint_curve')
 
-    # Place it into position
+    # Place pole into position
     pole_vector = create_pole_vector(joints)
-    pm.move(pole_vector.x, pole_vector.y, pole_vector.z, pole.grp, worldSpace=True)
+    pole.grp.translate.set(pole_vector)
     pm.poleVectorConstraint(pole.ctrl, ikHandle[0])
+
+    # Add guide for pole vector
+    create_guide_curve_for_pole(pole.ctrl, ik_joints[1])
 
     # Clean-Up
     ik_ctrls = [ik.ctrl, pole.ctrl]
@@ -222,6 +225,34 @@ def create_ik(joints, translation=False, create_new=True):
     pm.select(clear=True)
 
     return ik_joints, ik_ctrls, ik_ctrl_grp, ikHandle[0]
+
+
+def create_guide_curve_for_pole(ctrl, joint):
+    # Parent new guide shape under ctrl
+    crv = pm.curve(d=1, p=[(0, 0, 0), (0, 0, 0)], k=[0, 1], name=f'{ctrl.name()}_guide')
+    shape = crv.getShape()
+    pm.parent(shape, ctrl, r=True, s=True)
+
+    # Delete old transform node
+    pm.delete(crv)
+
+    # Set shape to template and change width
+    shape.overrideEnabled.set(1)
+    shape.overrideDisplayType.set(1)
+    shape.lineWidth.set(1.5)
+
+    # Get end point position
+    # This has to be local position, so relative to the parent(ctrl) position.
+    # To do this, we get the joint position in world space and then multiply it by the ctrl inverse matrix
+    mult = pm.createNode("multMatrix")
+    joint.worldMatrix[0].connect(mult.matrixIn[0])
+    ctrl.worldInverseMatrix[0].connect(mult.matrixIn[1])
+
+    # Decompose the matrix
+    decompose = pm.createNode("decomposeMatrix")
+    mult.matrixSum.connect(decompose.inputMatrix)
+
+    decompose.outputTranslate.connect(shape.controlPoints[1])
 
 def constraint_ikfk(joints, ik_joints, fk_joints):
     fkik_constraints = []
@@ -461,6 +492,7 @@ def create_joint_chain(jnt_number, name, start_pos, end_pos, rot=None, defaultVa
 
 def create_joints_from_guides(name, guides, suffix=None):
     pm.select(clear=True)
+    radius = guides[0].radius.get()
     joints = []
     for i, tmp in enumerate(guides):
         if suffix is None:
@@ -470,6 +502,7 @@ def create_joints_from_guides(name, guides, suffix=None):
                 suffix = df.end_sff
 
         jnt = pm.createNode('joint', name=f'{name}{i + 1:02}{suffix}{df.jnt_sff}')
+        jnt.radius.set(radius)
         pm.matchTransform(jnt, tmp, pos=True)
         joints.append(jnt)
 

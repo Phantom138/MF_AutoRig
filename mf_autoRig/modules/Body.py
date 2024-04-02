@@ -32,7 +32,8 @@ class Body(Module):
     }
 
     def __init__(self, meta=True, do_hands=True, do_feet=True, do_clavicles=True):
-        super().__init__(name='M_Body', args=self.meta_args, meta=meta)
+        super().__init__(name='M_Body', args=self.meta_args, meta=False)
+        self.meta=True
 
         self.do_hands = do_hands
         self.do_feet = do_feet

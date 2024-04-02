@@ -22,6 +22,8 @@ class Hand(Module):
         'all_ctrls': {'attributeType': 'message', 'm': True}
     }
 
+    connectable_to = ['Arm', 'Limb']
+
     def __init__(self, name, meta=True, finger_num: int=5):
         super().__init__(name, self.meta_args, meta)
 
@@ -51,6 +53,7 @@ class Hand(Module):
         self.all_ctrls = []
 
         # Joints
+        self.joints = None
         self.finger_jnts = None
         self.hand_jnts = None
 
@@ -66,7 +69,7 @@ class Hand(Module):
             self.all_ctrls = []
 
         if self.guides is None:
-            self.guides = []
+            return
 
         # Get orient_guides from guides
         self.orient_guides = self.guides[:self.finger_num]
@@ -219,6 +222,8 @@ class Hand(Module):
 
         self.__clean_up_joints()
 
+        self.joints = [self.finger_jnts + self.hand_jnts]
+
         if self.meta:
             self.save_metadata()
 
@@ -226,6 +231,10 @@ class Hand(Module):
         pm.select(clear=True)
         # Create finger joints based on guides
         self.finger_jnts = []
+        obj = self.jnt_guides[0][0]
+        scale = pm.xform(obj, q=True, ws=True, scale=True)[0]
+        radius = obj.radius.get() * scale
+        print("RADIUS FOR FINGERS", radius, scale)
         for i, finger_guide in enumerate(self.jnt_guides):
             # Get finger name
             match = re.search(f'({self.name}_([a-zA-Z]+))\d*_', finger_guide[0].name())
@@ -242,7 +251,7 @@ class Hand(Module):
                     suff = df.end_sff
 
                 jnt = pm.createNode('joint', name=f'{base_name}{k + 1:02}{suff}{df.jnt_sff}')
-
+                jnt.radius.set(radius)
                 pm.matchTransform(jnt, guide, pos=True, rot=False, scale=False)
                 jnts.append(jnt)
 
@@ -271,10 +280,13 @@ class Hand(Module):
             wrist = self.wrist_guide
 
         self.hand_jnts = []
+        obj = self.wrist_guide
+        scale = pm.xform(obj, q=True, ws=True, scale=True)[0]
+        radius = obj.radius.get() * scale
 
         # Create start jnt where the wrist is
         mtx = pm.xform(wrist, q=True, ws=True, t=True)
-        hand_start = pm.joint(name=f'{self.name}{df.skin_sff}{df.jnt_sff}', p=mtx)
+        hand_start = pm.joint(name=f'{self.name}{df.skin_sff}{df.jnt_sff}', p=mtx, radius=radius)
 
         self.hand_jnts.append(hand_start)
 
@@ -290,7 +302,7 @@ class Hand(Module):
             cnt += 1
 
         average = [sums[0]/cnt, sums[1]/cnt, sums[2]/cnt]
-        hand_end = pm.joint(name = f'{self.name}{df.end_sff}{df.jnt_sff}', position=average)
+        hand_end = pm.joint(name = f'{self.name}{df.end_sff}{df.jnt_sff}', position=average, radius=radius)
         self.hand_jnts.append(hand_end)
 
         # Orient Joints
@@ -446,19 +458,19 @@ class Hand(Module):
 
         return mir_module
 
-    def connect(self, arm):
-        if self.check_if_connected(arm):
+    def connect(self, arm, force=False):
+        if self.check_if_connected(arm) and not force:
             pm.warning(f"{self.name} already connected to {arm.name}")
             return
 
         self.handJnt = self.hand_jnts[0]
-        self.hand_ctrl = self.hand.ctrl
+        hand_grp = self.hand_ctrl.getParent(1)
 
         match = re.search('([a-zA-Z]_([a-zA-Z]+))\d*_', self.handJnt.name())
         base_name = match.group(1)
 
         # Point constraint
-        pm.pointConstraint(arm.joints[-1], self.hand_ctrl)
+        pm.pointConstraint(arm.joints[-1], hand_grp)
 
         # Create locators
         # IK locator
@@ -481,7 +493,7 @@ class Hand(Module):
         pm.parent(fk_loc_grp, arm.fk_ctrls[-1])
 
         # Create orient constraint and get weight list
-        constraint = pm.orientConstraint(ik_loc, fk_loc, self.hand_ctrl)
+        constraint = pm.orientConstraint(ik_loc, fk_loc, hand_grp)
         weights = constraint.getWeightAliasList()
 
         for weight in weights:

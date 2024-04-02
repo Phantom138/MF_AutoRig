@@ -6,38 +6,48 @@ from mf_autoRig.modules import module_tools
 
 
 class EditWidget(QtWidgets.QDialog):
-    def __init__(self, module_meta_node, parent=None):
+    def __init__(self, module, run_when_finished, parent=None):
         QtWidgets.QDialog.__init__(self, parent)
 
         path = pathlib.Path(__file__).parent.resolve()
         loadUi(rf"{path}\editWidget.ui", self)
-        name = module_meta_node.Name.get()
 
-        self.module = crMod.createModule(module_meta_node)
+        self.run_when_finished = run_when_finished
+        self.module = module
 
-        self.label_module.setText(f'Editing {name}')
+        highest_parent = self.module.get_connections(direction='up')[-1]
+        self.edited_modules = module_tools.get_connections(highest_parent.metaNode)
+        self.label_module.setText(f'Editing {highest_parent.name}')
+
         self.btn_editMode.clicked.connect(self.edit_item)
 
         self.btn_apply.clicked.connect(self.apply_changes)
         self.btn_apply.setEnabled(False)
 
     def edit_item(self):
-        highest_parent = self.module.get_connections(direction='up')[-1]
-        connections = module_tools.get_connections(highest_parent.metaNode)
-
-        self.edited_modules = connections
-
         for child in self.edited_modules:
-            child.destroy_rig()
+            if child.mirrored_from is None:
+                child.destroy_rig()
 
         self.btn_apply.setEnabled(True)
 
     def apply_changes(self):
-        for edit_mdl in self.edited_modules:
+        print("Applying changes")
+        print(self.edited_modules)
+        modules = [module for module in self.edited_modules if module.mirrored_from is None]
+
+        for edit_mdl in modules:
+            print(f"Rebuilding {edit_mdl.name}")
             edit_mdl.rebuild_rig()
 
-        # Redo connections
-        for i in range(len(self.edited_modules) - 1, 0, -1):
-            self.edited_modules[i].connect(self.edited_modules[i - 1])
+        # # Redo connections
+        # for module in modules:
+        #     meta_connect_to = module.metaNode.affectedBy.get()
+        #     print(meta_connect_to)
+        #     if len(meta_connect_to) == 1:
+        #         connect_to = module_tools.createModule(meta_connect_to[0])
+        #         module.connect(connect_to, force=True)
 
+
+        self.run_when_finished()
         self.destroy()

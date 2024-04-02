@@ -1,8 +1,13 @@
 import re
 import pymel.core as pm
+import pymel.core.datatypes as dt
+
+def get_base_name(name):
+    search = re.search('[A-Za-z]', name)
+    return search.group(1)
 
 
-def parent_switch(object, drivers, hasGroup=True):
+def parent_switch_locators(object, drivers, hasGroup=True):
     # Get nice name for object
     object_match = re.search(r'^[a-zA-Z]_*[a-zA-Z]+\d*', object.name())
     object_name = object_match.group(0)
@@ -59,7 +64,117 @@ def parent_switch(object, drivers, hasGroup=True):
         condition.outColorR.connect(weight)
 
 
-obj = pm.PyNode('M_eye_aim_ctrl')
-drivers = [pm.PyNode("M_head_ctrl"), pm.PyNode("Root_Ctrl")]
+def parent_switch_matrix(obj, drivers, names=None):
+    """
+    Creates a parent switch using matrix multiplication, this is a much cleaner way of doing it, compared to the locator method.
 
-parent_switch(obj, drivers)
+    Originally from: https://www.chadvernon.com/blog/space-switching-offset-parent-matrix/
+    This only works in maya 2020 or onwards
+
+    @param obj: The object to be parent switched
+    @param drivers: The objects that will drive the parent switching
+    @param names: The names of the drivers, if not provided, it will use the drivers names
+    """
+    switch_name = 'spaceSwitch'
+
+    # If it has switch attribute already, it attempts to connect to the existing switch and to the existing blend matrix
+    if pm.hasAttr(obj, switch_name):
+        pm.warning(f'{obj.name()} already has spaceSwitch attribute, trying to connect the drivers to it')
+
+        # Get enum_names
+        enum_names = pm.attributeQuery(switch_name, node=obj, listEnum=True)[0]
+        offset = len(enum_names.split(':'))
+
+        enum_names += ':' # Add a colon to separate the new names
+        has_switch = True
+    else:
+        enum_names = ''
+        offset = 0
+        has_switch = False
+
+    # Generate names for enum
+    if names is None:
+        # Get names from drivers
+        for driver in drivers:
+            enum_names += driver.name() + ':'
+    else:
+        # Length of names and drivers must be the same
+        if len(names) != len(drivers):
+            pm.error("Names and drivers must be the same length")
+
+        for name in names:
+            enum_names += name + ':'
+
+    # Get or create blend and switch for connecting later
+    if has_switch:
+        # Try and get the blend matrix node
+        inputs = obj.offsetParentMatrix.inputs(type='blendMatrix')
+        if len(inputs) == 1:
+            blend = inputs[0]
+        else:
+            pm.error(f'{obj.name()} has no offsetParentMatrix attribute, please remove the spaceSwitch attribute')
+            return
+
+        # Add new enum names
+        switch = obj.attr(switch_name)
+        pm.addAttr(switch, e=True, en=enum_names)
+
+    else:
+        # Create blend and switch
+        blend = pm.createNode("blendMatrix", name=f'{obj.name()}_spaceSwitch_blend')
+
+        # Connect blend to object
+        blend.outputMatrix.connect(obj.offsetParentMatrix)
+
+        # Add enum attribute for object
+        pm.addAttr(obj, ln=switch_name, attributeType='enum', en=enum_names, k=True)
+        switch = obj.attr(switch_name)
+
+    # Do the switch
+    for i, driver in enumerate(drivers):
+        # Offset i
+        index = i+offset
+
+        mtx = _get_matrices(obj, driver)
+
+        # Connect the result to blend
+        mtx.matrixSum.connect(blend.target[index].targetMatrix)
+
+        _connect_to_switch(switch, blend, index)
+
+def _get_matrices(obj, driver):
+    # Multiply matrices
+    mult = pm.createNode("multMatrix")
+
+    # Get the offset matrix
+    offset = dt.Matrix(obj.worldMatrix[0].get())
+    offset *= dt.Matrix(obj.matrix.get()).inverse()
+    offset *= dt.Matrix(driver.worldInverseMatrix[0].get())
+
+    mult.matrixIn[0].set(offset, type="matrix")
+    driver.worldMatrix[0].connect(mult.matrixIn[1])
+
+    parent = obj.getParent(1)
+    if parent is not None:
+        parent.worldInverseMatrix[0].connect(mult.matrixIn[2])
+
+    return mult
+
+def _connect_to_switch(switch, blend, index):
+    # Connect blend to enum using condition nodes
+    condition = pm.createNode('condition')
+
+    switch.connect(condition.firstTerm)
+
+    condition.secondTerm.set(index)
+    condition.colorIfTrueR.set(1)
+    condition.colorIfFalseR.set(0)
+    condition.outColorR.connect(blend.target[index].weight)
+
+
+
+
+child = pm.PyNode('L_arm03_ik_ctrl')
+driverss = [pm.PyNode("M_spine02_ctrl")]
+
+parent_switch_matrix(child, driverss)

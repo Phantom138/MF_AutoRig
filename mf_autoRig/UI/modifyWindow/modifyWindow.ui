@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>284</width>
-    <height>300</height>
+    <width>260</width>
+    <height>358</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -22,7 +22,18 @@
     </widget>
    </item>
    <item>
-    <widget class="QListWidget" name="list_modules"/>
+    <widget class="QTreeWidget" name="tree">
+     <column>
+      <property name="text">
+       <string>Name</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Module Type</string>
+      </property>
+     </column>
+    </widget>
    </item>
   </layout>
  </widget>

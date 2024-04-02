@@ -14,6 +14,9 @@ class Spine(Module):
         'joints': {'attributeType': 'message', 'm': True},
         'fk_ctrls': {'attributeType': 'message', 'm': True},
     }
+
+    attachment_pts = ['Chest', 'Hip']
+
     def __init__(self, name, meta=True, num=4):
         super().__init__(name, self.meta_args, meta)
 
@@ -27,12 +30,10 @@ class Spine(Module):
         self.control_grp = None
         self.joints_grp = None
 
-    @classmethod
-    def create_from_meta(cls, metaNode):
-        obj = super().create_from_meta(metaNode)
+    def update_from_meta(self):
+        super().update_from_meta()
 
-        return obj
-
+        self.all_ctrls = self.fk_ctrls
     def create_guides(self, pos=None):
         if pos is None:
             pos = [(0,0,0), (0,10,0)]
@@ -47,20 +48,11 @@ class Spine(Module):
     def create_joints(self):
         self.joints = []
 
-        # Create a joint for all the guides
-        for i, guide in enumerate(self.guides):
-            trs = pm.xform(guide, q=True, t=True, ws=True)
-            jnt = pm.joint(name=f'{self.name}{i + 1:02}{df.skin_sff}{df.jnt_sff}', position=trs)
-
-            self.joints.append(jnt)
-        pm.select(clear=True)
-
-        # Orient joints
-        pm.joint(self.joints[0], edit=True, orientJoint='yzx', secondaryAxisOrient='zup', children=True)
-        pm.joint(self.joints[-1], edit=True, orientJoint='none')
+        self.joints = create_joints_from_guides(self.name, self.guides, suffix = df.skin_sff)
 
         # Create hip at the beginning of joint chain
         self.hip_jnt = pm.createNode('joint', name=f'{self.name[0]}_hip{df.skin_sff}{df.jnt_sff}')
+        self.hip_jnt.radius.set(self.joints[0].radius.get())
         pm.matchTransform(self.hip_jnt, self.joints[0])
 
         # Parent Joints under Joint_grp
@@ -88,7 +80,7 @@ class Spine(Module):
         pm.parent(self.fk_ctrls[0].getParent(1), get_group(df.root))
 
         self.control_grp = self.fk_ctrls[0].getParent(1)
-
+        self.all_ctrls = self.fk_ctrls
         # Add joints
         if self.meta:
             self.save_metadata()

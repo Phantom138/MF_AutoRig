@@ -6,6 +6,9 @@ def save_curve_info(curves):
     curve_info ={}
     for curve in curves:
         crv_name = curve.name()
+        if crv_name.endswith('_pole_ctrl'):
+            continue
+
         deg = cmds.getAttr(f'{crv_name}.degree')
         form = cmds.getAttr(f'{crv_name}.form')
         cvs = cmds.getAttr(f'{crv_name}.cv[*]')

@@ -61,8 +61,7 @@ class Limb(Module):
         'fk_ctrls': {'attributeType': 'message', 'm': True}
     }
 
-    connectable_to = ['Spine', 'Clavicle']
-
+    connectable_to = ['Clavicle', 'Spine']
     def __init__(self, name, meta=True):
         super().__init__(name, self.meta_args, meta)
 
@@ -84,6 +83,10 @@ class Limb(Module):
 
     def update_from_meta(self):
         super().update_from_meta()
+
+        if self.guides is not None and len(self.guides) is not 3:
+            log.warning(f"For {self.name}, couldn't find all guides. Found only: {self.guides}")
+            self.guides = None
 
         if self.joints is not None:
             # Get ikHandle
@@ -204,8 +207,8 @@ class Limb(Module):
 
         return mir_module
 
-    def connect(self, dest):
-        if self.check_if_connected(dest):
+    def connect(self, dest, attachment=None, force=False):
+        if self.check_if_connected(dest) and not force:
             log.warning(f"{self.name} already connected to {dest.name}")
             return
 
@@ -213,6 +216,25 @@ class Limb(Module):
         if dest_class not in self.connectable_to:
             log.warning(f"{self.name} not connectable to {dest.name}")
             return
+        print(f"connecting to {attachment}")
+
+
+        if dest_class == 'Spine':
+            if attachment == 'Chest':
+                pm.parentConstraint(dest.fk_ctrls[-1], self.ik_joints[0], maintainOffset=True)
+                pm.parentConstraint(dest.fk_ctrls[-1], self.fk_ctrls[0].getParent(1), maintainOffset=True)
+
+                self.connect_metadata(dest)
+                return
+
+            if attachment == 'Hip':
+                ctrl_grp = self.fk_ctrls[0].getParent(1)
+
+                pm.parentConstraint(dest.fk_ctrls[0], ctrl_grp, maintainOffset=True)
+                pm.parentConstraint(dest.hip_ctrl, self.ik_joints[0], maintainOffset=True)
+
+                self.connect_metadata(dest)
+                return
 
         # Connect to clavicle
         if dest_class == 'Clavicle':
@@ -225,17 +247,7 @@ class Limb(Module):
 
             self.connect_metadata(dest)
 
-        # Connect to spine
-        elif dest_class == 'Spine':
-            ctrl_grp = self.fk_ctrls[0].getParent(1)
-
-            pm.parentConstraint(ctrl_grp, dest.hip_ctrl, maintainOffset=True)
-            pm.parentConstraint(dest.hip_ctrl, self.ik_joints[0], maintainOffset=True)
-
-            self.connect_metadata(dest)
-
         log.info(f"Successfully connected {self.name} to {dest.name}")
-        return
 
     def save_guides(self):
         saved_guides = []
@@ -261,35 +273,11 @@ class Limb(Module):
 
 
 class Arm(Limb):
-
-    connectable_to = ['Clavicle']
+    connectable_to = ['Clavicle', 'Chest', 'Hip']
     def __init__(self, name, meta=True):
         super().__init__(name, meta)
         self.default_pin_value = 51
 
-    def connect(self, dest):
-        if self.check_if_connected(dest):
-            log.warning(f"{self.name} already connected to {dest.name}")
-            return
-
-        ctrl_grp = self.fk_ctrls[0].getParent(1)
-        print(ctrl_grp, dest.joints[-1])
-
-        #pm.matchTransform(ctrl_grp, dest.joints[-1], position=True)
-        pm.parentConstraint(dest.clavicle_ctrl, ctrl_grp, maintainOffset=True)
-        pm.parentConstraint(dest.joints[-1], self.ik_joints[0])
-
-        self.connect_metadata(dest)
-
-    def apply_edit(self):
-        super().apply_edit()
-        # Re-do connections
-        if len(self.metaNode.affectedBy.get()) != 1:
-            return
-
-        connection = self.metaNode.affectedBy.get()[0]
-        self.metaNode.affectedBy.disconnect()
-        self.connect(module_tools.createModule(connection))
 
 class Leg(Limb):
     """

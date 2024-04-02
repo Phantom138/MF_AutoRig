@@ -4,7 +4,7 @@ import pathlib
 
 import mf_autoRig.UI.createWindow.modulePage as modPages
 from mf_autoRig.UI.utils.UI_Template import UITemplate, delete_workspace_control
-from mf_autoRig.modules import Limb, Spine, Clavicle, Hand, Body, IKFoot
+from mf_autoRig.modules import Limb, Spine, Clavicle, Hand, Body, FKFoot
 from mf_autoRig.modules.Toon import BendyLimb
 import mf_autoRig.modules.module_tools as crMod
 import mf_autoRig.lib.defaults as df
@@ -14,13 +14,12 @@ WORK_PATH = pathlib.Path(__file__).parent.resolve()
 #TODO: create separate window for module management
 
 class_name_map = {
-    'Limb': Limb.Limb,
-    'Arm': Limb.Arm,
-    'Leg': Limb.Leg,
-    'BendyLimb': BendyLimb.BendyLimb,
-    'Clavicle': Clavicle.Clavicle,
     'Spine': Spine.Spine,
+    'Clavicle': Clavicle.Clavicle,
+    'Limb': Limb.Limb,
+    'BendyLimb': BendyLimb.BendyLimb,
     'Hand': Hand.Hand,
+    'FKFoot': FKFoot.FKFoot,
 }
 
 
@@ -33,10 +32,10 @@ class MayaUI(UITemplate):
         self.connect_widgets()
 
         self.create_module_tabs()
-
+        self.ui.tabWidget.removeTab(0)
+        self.ui.tabWidget.removeTab(1)
 
     def connect_widgets(self):
-        self.ui.btn_close.clicked.connect(self.closeWindow)
 
         # Auto rig Tab
         self.ui.auto_btn_guides.clicked.connect(self.auto_guides)
@@ -55,18 +54,13 @@ class MayaUI(UITemplate):
                 module_tab = modPages.HandPage(class_name_map.get(module))
             elif module == 'BendyLimb':
                 module_tab = modPages.BendyLimbPage(class_name_map.get(module))
+            elif module == 'Spine':
+                module_tab = modPages.SpinePage(class_name_map.get(module))
             else:
                 module_tab = modPages.ModulePage(class_name_map.get(module))
             self.ui.mdl_stackedTabs.addWidget(module_tab)
 
         self.ui.mdl_comboBox.activated.connect(self.ui.mdl_stackedTabs.setCurrentIndex)
-
-    def closeWindow(self):
-        """
-        Close window.
-        """
-        print('closing window')
-        self.destroy()
 
     def auto_guides(self):
         self.body = Body.Body(
@@ -159,7 +153,7 @@ class MayaUI(UITemplate):
 
 
 def showWindow():
-    title = 'Auto Rig 2'
+    title = 'Auto Rig'
 
     delete_workspace_control(title)
 

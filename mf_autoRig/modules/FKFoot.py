@@ -27,15 +27,15 @@ class FKFoot(Module):
         self.fk_ctrls = None
         self.locators_guides = None
         self.locators = None
+        self.all_ctrls = []
 
         self.control_grp = None
         self.joints_grp = None
 
-    @classmethod
-    def create_from_meta(cls, metaNode):
-        foot = super().create_from_meta(metaNode)
 
-        return foot
+    def update_from_meta(self):
+        super().update_from_meta()
+        self.all_ctrls = self.fk_ctrls
 
     def create_guides(self, ankle_guide=None, pos=None):
         self.guides = []
@@ -96,6 +96,7 @@ class FKFoot(Module):
         pm.parent(self.fk_ctrls[0].getParent(1), self.control_grp)
         pm.parent(self.control_grp, get_group(df.root))
 
+        self.all_ctrls = self.fk_ctrls
         if self.meta:
             self.save_metadata()
 

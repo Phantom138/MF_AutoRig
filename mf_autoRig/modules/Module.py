@@ -59,6 +59,7 @@ class Module(abc.ABC):
         self.control_grp = None
         self.joints_grp = None
         self.mirrored_from = None
+        self.curve_info = None
 
         self.name = name
         self.meta = meta
@@ -178,58 +179,34 @@ class Module(abc.ABC):
 
         return connections
 
-        # Get all affects connections
-        # for each of them get all affects connections
+    def get_parent(self):
+        """
+        Get the parent module of the module
+        Returns:
+            Parent module if it exists, None otherwise
+        """
+        if self.meta:
+            parent = self.metaNode.affectedBy.get()
+            if len(parent) == 1:
+                return module_tools.createModule(parent[0])
+            else:
+                return None
+
+    def get_children(self) -> list:
+        """
+        Get all children of the module
+        Returns:
+            List of children modules
+            List is empty if there are no children
+        """
+        if self.meta:
+            children = self.metaNode.affects.get()
+            if len(children) == 0:
+                return []
+            return [module_tools.createModule(child) for child in children]
+
 
     # EDIT METHODS
-    def edit(self):
-        # TODO: Make sure all controls are zeroed out!!
-        self.edit_mode = True
-        # Save edited curves
-        self.curves_info = save_curve_info(self.all_ctrls)
-
-        # Create guides where joints are
-        edit_locators = []
-        for jnt in self.joints:
-            loc = pm.spaceLocator(name='temp_loc')
-            trs = pm.xform(jnt, worldSpace=True, query=True, matrix=True)
-            pm.xform(loc, worldSpace=True, matrix=trs)
-            # pm.matchTransform(loc, jnt)
-            edit_locators.append(loc)
-
-        for i in range(len(edit_locators) - 1, 0, -1):
-            pm.parent(edit_locators[i], edit_locators[i - 1])
-
-        # Destroy rig
-        self.delete(keep_meta_node=True)
-
-        # Recreates class
-        self.__init__(self.name, meta=self.metaNode)
-
-        # Create guides
-        self.guides = edit_locators
-
-        connections = self.get_connections()
-        for c in connections:
-            module = module_tools.createModule(c)
-            module.edit()
-
-    def apply_edit(self):
-        if self.edit_mode is False:
-            log.warning(f"{self.name} not in edit mode!")
-            return
-
-        self.create_joints()
-        self.rig()
-        apply_curve_info(self.all_ctrls, self.curves_info)
-        # Delete guides
-        pm.delete(self.guides)
-        self.guides = []
-
-        connections = self.get_connections()
-        for con in connections:
-            con.apply_edit()
-
     def delete(self, keep_meta_node=False):
         """
         Delete Module
@@ -242,6 +219,12 @@ class Module(abc.ABC):
                 c.disconnect()
 
         # Delete stuff
+        try:
+            log.debug(f"Deleting {self.guides}")
+            pm.delete(self.guides)
+        except:
+            pass
+
         try:
             log.debug(f"Deleting {self.joints_grp}")
             pm.delete(self.joints_grp)
@@ -257,15 +240,19 @@ class Module(abc.ABC):
         if not keep_meta_node:
             pm.delete(self.metaNode)
 
-    def destroy_rig(self):
+    def destroy_rig(self, disconnect=True):
         # guides = self.guides
         # metaNode = self.metaNode
         # name = self.name
-        log.debug(f"Destroying rig for {self.name}")
-        if self.mirrored_from is not None:
-            log.debug(f"DELETING Mirrored from {self.mirrored_from}")
-            self.delete()
-            return
+        # log.debug(f"Destroying rig for {self.name}")
+        # if self.mirrored_from is not None:
+        #     log.debug(f"DELETING Mirrored from {self.mirrored_from}")
+        #     self.delete()
+        #     return
+
+        # Save curve info
+        self.curve_info = save_curve_info(self.all_ctrls)
+        print("SAVED CURVE INFO", self.curve_info)
 
 
         to_delete = [self.joints_grp, self.control_grp]
@@ -275,19 +262,33 @@ class Module(abc.ABC):
 
         self.update_from_meta()
 
-        # Disconnect
-        self.metaNode.affectedBy.disconnect()
+        # Delete mirrored modules
+        mirrored_to = self.metaNode.message.get()
+        if mirrored_to is not None and isinstance(mirrored_to, nt.Network):
+            module_tools.createModule(mirrored_to).delete()
+
+        if disconnect:
+            # Disconnect
+            self.metaNode.affectedBy.disconnect()
 
     def save_guides(self):
         saved_guides = []
         for guide in self.guides:
             svd = pm.xform(guide, query=True, worldSpace=True, matrix=True)
             saved_guides.append(svd)
+
+        return saved_guides
         log.debug(f"Saved guides for {self.name}")
 
     def rebuild_rig(self):
+        if self.mirrored_from is not None:
+            return
+
         self.create_joints()
         self.rig()
+
+        if self.curve_info is not None:
+            apply_curve_info(self.all_ctrls, self.curve_info)
 
 
     def __str__(self):

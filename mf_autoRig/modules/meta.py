@@ -36,6 +36,9 @@ def add(nodes, dst):
         elif isinstance(src, (float, int, str)):
             dest.set(src)
 
+        elif isinstance(src, bool):
+            dest.set(src)
+
     # If it's a list of nodes connect each one to the destination
     if isinstance(nodes, list):
         for i, node in enumerate(nodes):

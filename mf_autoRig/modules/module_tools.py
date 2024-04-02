@@ -2,6 +2,7 @@ import pymel.core as pm
 
 from mf_autoRig.modules import Hand, Limb, Clavicle, Spine, IKFoot
 from mf_autoRig.modules import FKFoot
+
 from mf_autoRig.modules.Toon import BendyLimb
 
 
@@ -25,7 +26,7 @@ def createModule(metaNode):
 
     return obj
 
-def get_all_modules(module_types=None):
+def get_all_modules(module_types=None, create=False):
     metaNodes = pm.ls(regex='META_.*', type='network')
 
     if not metaNodes:
@@ -33,15 +34,17 @@ def get_all_modules(module_types=None):
         return None
 
     if module_types is not None:
-        good_nodes = []
+        nodes = []
         for node in metaNodes:
-
             if node.moduleType.get() in module_types:
-                good_nodes.append(node)
+                nodes.append(node)
+    else:
+        nodes = metaNodes
 
-        return good_nodes
+    if create:
+        return [createModule(node) for node in nodes]
 
-    return metaNodes
+    return nodes
 
 
 

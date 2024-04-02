@@ -11,6 +11,8 @@ class Clavicle(Module):
         'clavicle_ctrl': {'attributeType': 'message'},
     }
 
+    connectable_to = ['Spine']
+
     def __init__(self, name, meta=True):
         super().__init__(name, self.meta_args, meta)
 
@@ -22,12 +24,11 @@ class Clavicle(Module):
         self.control_grp = None
         self.joints_grp = None
 
-    @classmethod
-    def create_from_meta(cls, metaNode):
-        clavicle = super().create_from_meta(metaNode)
-        clavicle.all_ctrls.append(clavicle.clavicle_ctrl)
 
-        return clavicle
+    def update_from_meta(self):
+        super().update_from_meta()
+        if self.clavicle_ctrl is not None:
+            self.all_ctrls.append(self.clavicle_ctrl)
 
 
     def create_guides(self, pos = None):
@@ -109,8 +110,8 @@ class Clavicle(Module):
             self.save_metadata()
 
 
-    def connect(self, torso):
-        if self.check_if_connected(torso):
+    def connect(self, torso, force=False):
+        if self.check_if_connected(torso) and not force:
             pm.warning(f"{self.name} already connected to {torso.name}")
             return
 
