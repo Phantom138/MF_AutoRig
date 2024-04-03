@@ -14,6 +14,8 @@ from mf_autoRig import log
 class Hand(Module):
     meta_args = {
         'finger_num': {'attributeType': 'long'},
+        'finger_joints': {'attributeType': 'long'},
+        'thumb_joints': {'attributeType': 'long'},
         'hand_ctrl': {'attributeType': 'message'},
         'wrist_guide': {'attributeType': 'message'},
         'guides': {'attributeType': 'message', 'm': True},
@@ -24,7 +26,7 @@ class Hand(Module):
 
     connectable_to = ['Arm', 'Limb']
 
-    def __init__(self, name, meta=True, finger_num: int=5):
+    def __init__(self, name, meta=True, finger_num: int=5, finger_joints: int=5, thumb_joints: int=4):
         super().__init__(name, self.meta_args, meta)
 
         # Validate finger_num
@@ -40,7 +42,14 @@ class Hand(Module):
             log.warning(f"For {self.name} invalid finger number, setting to 5")
             finger_num = 5
 
+        if finger_joints < 3:
+            log.warning(f"For {self.name} too few finger joints, setting to 3")
+            finger_joints = 3
+
+        # Parameters
         self.finger_num = finger_num
+        self.finger_joints = finger_joints
+        self.thumb_joints = thumb_joints
 
         # Guides
         self.orient_guides = None
@@ -93,6 +102,7 @@ class Hand(Module):
 
     def create_guides(self, start_pos=None):
         # TODO: better default placement for wrist guide
+        # TODO: Heavy rewrite, maybe having separate modules for each finger
         finger_grps = []
         fingers_jnts = []
         self.guides = []
@@ -108,10 +118,10 @@ class Hand(Module):
         spacing = 1.5
         # Create finger guides
         for index, name in enumerate(fingers):
-            jnt_num = 5
+            jnt_num = self.finger_joints
             if index == 0:
                 # Thumb has less joints
-                jnt_num = 4
+                jnt_num = self.thumb_joints
             else:
                 # Offset fingers
                 zPos -= spacing

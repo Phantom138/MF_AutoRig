@@ -1,6 +1,6 @@
 import pathlib
 
-from PySide2 import QtWidgets, QtGui
+from PySide2 import QtWidgets, QtGui, QtCore
 from PySide2.QtGui import QIntValidator
 from mf_autoRig.UI.utils.loadUI import loadUi
 
@@ -78,16 +78,38 @@ class SpinePage(ModulePage):
         self.btn_rig.setEnabled(True)
 
 
+class InputBox(QtWidgets.QWidget):
+    def __init__(self, label, parent=None):
+        super(InputBox, self).__init__(parent)
+
+        self.layout = QtWidgets.QHBoxLayout()
+        self.setLayout(self.layout)
+
+        self.label = QtWidgets.QLabel(label)
+        self.input = QtWidgets.QSpinBox()
+
+        self.layout.addWidget(self.label)
+        self.layout.addWidget(self.input, 1)
+        self.layout.addStretch(2)
+        self.layout.setContentsMargins(0,0, 0, 0)
+
 class HandPage(ModulePage):
     def __init__(self, base_module, parent=None):
         super().__init__(base_module, parent)
 
-        options = QtWidgets.QHBoxLayout()
+        options = QtWidgets.QVBoxLayout()
 
-        self.fingers_label = QtWidgets.QLabel("Fingers:")
-        self.fingers = QtWidgets.QSpinBox()
-        self.fingers.setValue(5)
-        self.fingers.setRange(1,5)
+        self.fingers = InputBox("Fingers:")
+        self.fingers.input.setValue(5)
+        self.fingers.input.setRange(1,5)
+
+        self.finger_jnts = InputBox("Finger joints:")
+        self.finger_jnts.input.setValue(5)
+        self.finger_jnts.input.setRange(2,10)
+
+        self.thumb_jnts = InputBox("Thumb joints:")
+        self.thumb_jnts.input.setValue(4)
+        self.thumb_jnts.input.setRange(2,10)
 
         self.spread = QtWidgets.QCheckBox("Spread")
         self.spread.setChecked(True)
@@ -95,8 +117,10 @@ class HandPage(ModulePage):
         self.curl = QtWidgets.QCheckBox("Curl")
         self.curl.setChecked(True)
 
-        options.addWidget(self.fingers_label)
         options.addWidget(self.fingers)
+        options.addWidget(self.finger_jnts)
+        options.addWidget(self.thumb_jnts)
+
         options.addWidget(self.spread)
         options.addWidget(self.curl)
 
@@ -105,7 +129,11 @@ class HandPage(ModulePage):
     def mdl_createGuides(self):
         name = self.mdl_name.text()
 
-        self.module = self.base_module(name, finger_num = self.fingers.value())
+        self.module = self.base_module(name,
+                finger_num = self.fingers.input.value(),
+                finger_joints = self.finger_jnts.input.value(),
+                thumb_joints = self.thumb_jnts.input.value())
+
         self.module.create_guides()
         self.btn_rig.setEnabled(True)
 
