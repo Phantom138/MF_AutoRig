@@ -90,15 +90,15 @@ class Hand(Module):
         # But the guides are in a flat list, so we need to split them up
         self.jnt_guides = []
 
-        # Thumb has less digits!
-        # TODO: make this less hardcoded, now it's based on the fact that thumb has 4 joints and the rest have 5
-        self.jnt_guides.append(tmp_jnt_guides[:4])
-        tmp_jnt_guides = tmp_jnt_guides[4:]
-        increment = int(len(tmp_jnt_guides) / (self.finger_num - 1))
+        # Get thumb joints
+        self.jnt_guides.append(tmp_jnt_guides[:self.thumb_joints])
+        tmp_jnt_guides = tmp_jnt_guides[self.thumb_joints:]
 
-        if increment != 0:
-            for i in range(0, len(tmp_jnt_guides), increment):
-                self.jnt_guides.append(tmp_jnt_guides[i:i+increment])
+        # Get the rest of the fingers
+        for i in range(0, len(tmp_jnt_guides), self.finger_joints):
+            self.jnt_guides.append(tmp_jnt_guides[i:i + self.finger_joints])
+
+        pprint(self.jnt_guides)
 
     def create_guides(self, start_pos=None):
         # TODO: better default placement for wrist guide
@@ -238,13 +238,17 @@ class Hand(Module):
             self.save_metadata()
 
     def __create_fingers(self):
+        print(self.jnt_guides)
+
         pm.select(clear=True)
         # Create finger joints based on guides
         self.finger_jnts = []
+
+        # Get joint radius from guide
         obj = self.jnt_guides[0][0]
         scale = pm.xform(obj, q=True, ws=True, scale=True)[0]
         radius = obj.radius.get() * scale
-        print("RADIUS FOR FINGERS", radius, scale)
+
         for i, finger_guide in enumerate(self.jnt_guides):
             # Get finger name
             match = re.search(f'({self.name}_([a-zA-Z]+))\d*_', finger_guide[0].name())
