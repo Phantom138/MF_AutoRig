@@ -45,12 +45,14 @@ class Hand(Module):
         if finger_joints < 3:
             log.warning(f"For {self.name} too few finger joints, setting to 3")
             finger_joints = 3
-
         # Parameters
         self.finger_num = finger_num
         self.finger_joints = finger_joints
         self.thumb_joints = thumb_joints
 
+        self.reset()
+
+    def reset(self):
         # Guides
         self.orient_guides = None
         self.jnt_guides = None
@@ -468,7 +470,7 @@ class Hand(Module):
             mir_module.save_metadata()
 
         # Do mirror connection for metadata
-        self.metaNode.message.connect(mir_module.metaNode.mirrored_from)
+        self.metaNode.mirrored_to.connect(mir_module.metaNode.mirrored_from)
 
         return mir_module
 

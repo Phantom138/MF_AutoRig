@@ -65,6 +65,9 @@ class Limb(Module):
     def __init__(self, name, meta=True):
         super().__init__(name, self.meta_args, meta)
 
+        self.reset()
+
+    def reset(self):
         self.joints = None
         self.guides = None
 
@@ -203,7 +206,7 @@ class Limb(Module):
             control_shape_mirror(src, dst)
 
         # Do mirror connection for metadata
-        self.metaNode.message.connect(mir_module.metaNode.mirrored_from)
+        self.metaNode.mirrored_to.connect(mir_module.metaNode.mirrored_from)
 
         return mir_module
 

@@ -21,6 +21,10 @@ class FKFoot(Module):
 
     def __init__(self, name, meta=True):
         super().__init__(name, self.meta_args, meta)
+
+        self.reset()
+
+    def reset(self):
         self.guides = None
 
         self.joints = None
@@ -128,6 +132,6 @@ class FKFoot(Module):
             control_shape_mirror(src, dst)
 
         # Do mirror connection for metadata
-        self.metaNode.message.connect(mir_module.metaNode.mirrored_from)
+        self.metaNode.mirrored_to.connect(mir_module.metaNode.mirrored_from)
 
         return mir_module

@@ -52,6 +52,7 @@ class Module(abc.ABC):
     df_meta_args = {
         'joints_grp': {'attributeType': 'message'},
         'control_grp': {'attributeType': 'message'},
+        'mirrored_to': {'attributeType': 'message'},
         'mirrored_from': {'attributeType': 'message'},
     }
 
@@ -59,6 +60,7 @@ class Module(abc.ABC):
         self.control_grp = None
         self.joints_grp = None
         self.mirrored_from = None
+        self.mirrored_to = None
         self.curve_info = None
 
         self.name = name
@@ -78,6 +80,9 @@ class Module(abc.ABC):
             # Using existing metadata node
             self.metaNode = meta
             # TODO: Validate metadata
+    @abstractmethod
+    def reset(self):
+        pass
 
     @abstractmethod
     def create_guides(self):
@@ -117,6 +122,10 @@ class Module(abc.ABC):
         return general_obj
 
     def update_from_meta(self):
+        # Reset the class so we start with clean values
+        self.reset()
+
+        # Get the attributes from the saved metadata
         for attribute in self.meta_args:
             data = self.metaNode.attr(attribute).get()
 
@@ -211,6 +220,7 @@ class Module(abc.ABC):
         """
         Delete Module
         """
+        print("WARNING")
         # Disconnect metaNode from everything
         if self.meta:
             all_connections = self.metaNode.listConnections(d=False, source=True, plugs=True, connections=True)
@@ -262,11 +272,6 @@ class Module(abc.ABC):
 
         self.update_from_meta()
 
-        # Delete mirrored modules
-        mirrored_to = self.metaNode.message.get()
-        if mirrored_to is not None and isinstance(mirrored_to, nt.Network):
-            module_tools.createModule(mirrored_to).delete()
-
         if disconnect:
             # Disconnect
             self.metaNode.affectedBy.disconnect()
@@ -283,13 +288,20 @@ class Module(abc.ABC):
     def rebuild_rig(self):
         if self.mirrored_from is not None:
             return
+        print("REBUILDING RIG")
 
+        print("CTRLS BEFORE", self.all_ctrls)
         self.create_joints()
         self.rig()
 
         if self.curve_info is not None:
+            print("CTRLS AFTER " ,self.all_ctrls)
             apply_curve_info(self.all_ctrls, self.curve_info)
 
+        if self.mirrored_to is not None:
+            mirrored_to = module_tools.createModule(self.mirrored_to)
+            mirrored_to.delete()
+            self.mirror()
 
     def __str__(self):
         return str(self.__dict__)

@@ -15,7 +15,9 @@ class Clavicle(Module):
 
     def __init__(self, name, meta=True):
         super().__init__(name, self.meta_args, meta)
+        self.reset()
 
+    def reset(self):
         self.clavicle_ctrl = None
         self.joints = None
         self.guides = None
@@ -23,7 +25,6 @@ class Clavicle(Module):
 
         self.control_grp = None
         self.joints_grp = None
-
 
     def update_from_meta(self):
         super().update_from_meta()
@@ -144,7 +145,7 @@ class Clavicle(Module):
             control_shape_mirror(src, dst)
 
         # Do mirror connection for metadata
-        self.metaNode.message.connect(mir_module.metaNode.mirrored_from)
+        self.metaNode.mirrored_to.connect(mir_module.metaNode.mirrored_from)
 
         return mir_module
 

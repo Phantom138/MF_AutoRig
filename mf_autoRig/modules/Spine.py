@@ -19,8 +19,11 @@ class Spine(Module):
 
     def __init__(self, name, meta=True, num=4):
         super().__init__(name, self.meta_args, meta)
-
         self.num = num
+
+        self.reset()
+
+    def reset(self):
         self.guides = None
         self.joints = None
         self.hip_ctrl = None
