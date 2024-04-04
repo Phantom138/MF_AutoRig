@@ -15,9 +15,11 @@ class Clavicle(Module):
 
     def __init__(self, name, meta=True):
         super().__init__(name, self.meta_args, meta)
+
         self.reset()
 
     def reset(self):
+        super().reset()
         self.clavicle_ctrl = None
         self.joints = None
         self.guides = None

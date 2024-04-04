@@ -53,6 +53,8 @@ class Hand(Module):
         self.reset()
 
     def reset(self):
+        super().reset()
+
         # Guides
         self.orient_guides = None
         self.jnt_guides = None

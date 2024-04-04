@@ -57,12 +57,6 @@ class Module(abc.ABC):
     }
 
     def __init__(self, name, args, meta):
-        self.control_grp = None
-        self.joints_grp = None
-        self.mirrored_from = None
-        self.mirrored_to = None
-        self.curve_info = None
-
         self.name = name
         self.meta = meta
         self.meta_args = args
@@ -73,6 +67,7 @@ class Module(abc.ABC):
         self.moduleType = self.__class__.__name__
         self.side = Side(name.split('_')[0])
 
+
         if meta is True:
             log.debug(f"Creating metadata for {name}")
             self.metaNode = mdata.create_metadata(name, self.moduleType, args)
@@ -80,9 +75,16 @@ class Module(abc.ABC):
             # Using existing metadata node
             self.metaNode = meta
             # TODO: Validate metadata
+
+
     @abstractmethod
     def reset(self):
-        pass
+        self.control_grp = None
+        self.joints_grp = None
+        self.mirrored_from = None
+        self.mirrored_to = None
+        self.curve_info = None
+
 
     @abstractmethod
     def create_guides(self):
@@ -220,7 +222,6 @@ class Module(abc.ABC):
         """
         Delete Module
         """
-        print("WARNING")
         # Disconnect metaNode from everything
         if self.meta:
             all_connections = self.metaNode.listConnections(d=False, source=True, plugs=True, connections=True)
@@ -229,23 +230,18 @@ class Module(abc.ABC):
                 c.disconnect()
 
         # Delete stuff
-        try:
+        if self.guides is not None:
             log.debug(f"Deleting {self.guides}")
             pm.delete(self.guides)
-        except:
-            pass
 
-        try:
+        if self.joints_grp is not None:
             log.debug(f"Deleting {self.joints_grp}")
             pm.delete(self.joints_grp)
-        except:
-            pass
 
-        try:
+        if self.control_grp is not None:
             log.debug(f"Deleting {self.control_grp}")
             pm.delete(self.control_grp)
-        except:
-            pass
+
 
         if not keep_meta_node:
             pm.delete(self.metaNode)
@@ -261,8 +257,8 @@ class Module(abc.ABC):
         #     return
 
         # Save curve info
+        log.info(f"{self.name}: Destroying rig")
         self.curve_info = save_curve_info(self.all_ctrls)
-        print("SAVED CURVE INFO", self.curve_info)
 
 
         to_delete = [self.joints_grp, self.control_grp]
@@ -283,24 +279,23 @@ class Module(abc.ABC):
             saved_guides.append(svd)
 
         return saved_guides
-        log.debug(f"Saved guides for {self.name}")
 
     def rebuild_rig(self):
+        log.info(f"{self.name}: Rebuilding rig")
+
         if self.mirrored_from is not None:
             return
-        print("REBUILDING RIG")
 
-        print("CTRLS BEFORE", self.all_ctrls)
         self.create_joints()
         self.rig()
 
         if self.curve_info is not None:
-            print("CTRLS AFTER " ,self.all_ctrls)
             apply_curve_info(self.all_ctrls, self.curve_info)
 
         if self.mirrored_to is not None:
             mirrored_to = module_tools.createModule(self.mirrored_to)
             mirrored_to.delete()
+            print(mirrored_to)
             self.mirror()
 
     def __str__(self):

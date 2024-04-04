@@ -24,6 +24,8 @@ class Spine(Module):
         self.reset()
 
     def reset(self):
+        super().reset()
+
         self.guides = None
         self.joints = None
         self.hip_ctrl = None

@@ -68,6 +68,8 @@ class Limb(Module):
         self.reset()
 
     def reset(self):
+        super().reset()
+
         self.joints = None
         self.guides = None
 
