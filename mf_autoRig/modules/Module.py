@@ -272,14 +272,6 @@ class Module(abc.ABC):
             # Disconnect
             self.metaNode.affectedBy.disconnect()
 
-    def save_guides(self):
-        saved_guides = []
-        for guide in self.guides:
-            svd = pm.xform(guide, query=True, worldSpace=True, matrix=True)
-            saved_guides.append(svd)
-
-        return saved_guides
-
     def rebuild_rig(self):
         log.info(f"{self.name}: Rebuilding rig")
 
@@ -295,7 +287,6 @@ class Module(abc.ABC):
         if self.mirrored_to is not None:
             mirrored_to = module_tools.createModule(self.mirrored_to)
             mirrored_to.delete()
-            print(mirrored_to)
             self.mirror()
 
     def __str__(self):

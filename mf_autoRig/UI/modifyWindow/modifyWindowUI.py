@@ -115,6 +115,7 @@ class ModifyWindow(UITemplate):
     def on_selection_changed(self):
         if self.ui.tree.currentItem() is None:
             return
+
         key = self.ui.tree.currentItem().text(0)
         self.selected_module = self.modules_ref[key]
 
@@ -186,7 +187,6 @@ class ModifyWindow(UITemplate):
                 mirror_action = QAction('Mirror', self)
                 mirror_action.triggered.connect(self.mirror_item)
                 self.menu.addAction(mirror_action)
-
 
 
         # Create actions
