@@ -186,32 +186,6 @@ class Limb(Module):
         # Clear selection
         pm.select(clear=True)
 
-    def mirror(self, rig=True):
-        """
-        Return a class of the same type that is mirrored on the YZ plane
-        """
-        #TODO: add possibility to mirror on different plane
-        name = self.name.replace(f'{self.side}_', f'{self.side.opposite}_')
-        mir_module = self.__class__(name)
-
-        # # Mirror Guides
-        # mir_module.create_guides()
-        # mir_module.load_saved_guides(self.save_guides())
-
-        mir_module.joints = mirrorUtils.mirrorJoints(self.joints, (self.side.side, self.side.opposite))
-
-        if rig:
-            mir_module.rig()
-
-        # Mirror Ctrls
-        for src, dst in zip(self.all_ctrls, mir_module.all_ctrls):
-            control_shape_mirror(src, dst)
-
-        # Do mirror connection for metadata
-        self.metaNode.mirrored_to.connect(mir_module.metaNode.mirrored_from)
-
-        return mir_module
-
     def connect(self, dest, attachment=None, force=False):
         if self.check_if_connected(dest) and not force:
             log.warning(f"{self.name} already connected to {dest.name}")

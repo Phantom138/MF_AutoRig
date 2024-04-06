@@ -7,6 +7,7 @@ from mf_autoRig import log
 from mf_autoRig.lib.get_curve_info import apply_curve_info, save_curve_info
 from mf_autoRig.modules import module_tools
 from mf_autoRig.utils.Side import Side
+import mf_autoRig.lib.mirrorJoint as mirrorUtils
 
 from pprint import pprint
 
@@ -153,6 +154,7 @@ class Module(abc.ABC):
                 mdata.add(src, dst)
                 log.debug(f"{self.name} - Metadata connected {src} to {dst}")
 
+    # CONNECTION METHODS
     def connect_metadata(self, dest):
         # Connect meta nodes
         if self.meta:
@@ -288,6 +290,48 @@ class Module(abc.ABC):
             mirrored_to = module_tools.createModule(self.mirrored_to)
             mirrored_to.delete()
             self.mirror()
+
+    def mirror(self, rig=True):
+        """
+        Default mirror method, other modules might override this for custom behavior
+        Mirrors on the YZ plane!
+        Returns:
+            New mirrored module, of the same type
+        """
+
+        # TODO: add possibility to mirror on different plane
+        name = self.name.replace(f'{self.side.side}_', f'{self.side.opposite}_')
+        mir_module = self.__class__(name)
+
+        mir_module.joints = mirrorUtils.mirrorJoints(self.joints, (self.side.side, self.side.opposite))
+
+        if rig:
+            mir_module.rig()
+
+        # Mirror Ctrls
+        # Get ctrl info
+        ctrl_info = save_curve_info(self.all_ctrls)
+
+        mir_ctrl_info = {}
+        # Mirror the positions across the YZ plane
+        for key, value in ctrl_info.items():
+            mir_key = key.replace(f'{self.side.side}_', f'{self.side.opposite}_')
+
+            mir_ctrl_info[mir_key] = value
+
+            for i, point in enumerate(value['cvs']):
+                x, y, z = point
+                # Multiply x and z value by -1 to mirror across YZ plane
+                mir_ctrl_info[mir_key]['cvs'][i] = (x * -1, y, z * -1)
+
+        pprint(mir_ctrl_info)
+
+        apply_curve_info(mir_module.all_ctrls, mir_ctrl_info)
+
+        # Do mirror connection for metadata
+        self.metaNode.mirrored_to.connect(mir_module.metaNode.mirrored_from)
+
+        return mir_module
 
     def __str__(self):
         return str(self.__dict__)

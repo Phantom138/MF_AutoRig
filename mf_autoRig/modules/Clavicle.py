@@ -121,33 +121,3 @@ class Clavicle(Module):
         pm.parentConstraint(torso.fk_ctrls[-1], self.clavicle_ctrl.getParent(1), maintainOffset=True)
 
         self.connect_metadata(torso)
-
-    def mirror(self):
-        """
-        Return a class of the same type that is mirrored on the YZ plane
-        """
-        name = self.name.replace(f'{self.side}_', f'{self.side.opposite}_')
-        mir_module = self.__class__(name)
-
-        # Mirror Joints
-        mirrored_jnts = pm.mirrorJoint(self.joints[0], mirrorYZ=True, mirrorBehavior=True,
-                                       searchReplace=(self.side, self.side.opposite))
-        mir_joints = list(map(pm.PyNode, mirrored_jnts))
-        mir_module.joints = []
-        for obj in mir_joints:
-            if isinstance(obj, pm.nt.Joint):
-                mir_module.joints.append(obj)
-            else:
-                pm.delete(obj)
-
-        mir_module.rig()
-
-        # Mirror Ctrls
-        for src, dst in zip(self.all_ctrls, mir_module.all_ctrls):
-            control_shape_mirror(src, dst)
-
-        # Do mirror connection for metadata
-        self.metaNode.mirrored_to.connect(mir_module.metaNode.mirrored_from)
-
-        return mir_module
-
