@@ -12,6 +12,9 @@ import pymel.core as pm
 
 
 import pathlib
+
+from mf_autoRig.lib.undo import UndoStack
+
 WORK_PATH = pathlib.Path(__file__).parent.resolve()
 
 
@@ -132,6 +135,7 @@ class ModifyWindow(UITemplate):
 
         if self.selected_module.all_ctrls is None or len(self.selected_module.all_ctrls) == 0:
             # This means the module is not rigged
+            is_rigged = False
             rig_action = QAction('Rig', self)
             rig_action.triggered.connect(self.rig_item)
             self.menu.addAction(rig_action)
@@ -205,18 +209,20 @@ class ModifyWindow(UITemplate):
         self.menu.exec_(self.ui.tree.mapToGlobal(position))
 
     def connect_module(self, module):
-        self.selected_module.connect(module)
+        with UndoStack(f"Connected {self.selected_module.name} to {module.name}"):
+            self.selected_module.connect(module)
         self.update_tree()
 
     def mirror_item(self):
-        self.selected_module.mirror()
+        with UndoStack(f"Mirrored {self.selected_module.name}"):
+            self.selected_module.mirror()
         self.update_tree()
-        print('Mirror item')
 
     def disconnect_item(self):
-        self.selected_module.destroy_rig()
-        self.selected_module.create_joints()
-        self.selected_module.rig()
+        with UndoStack(f"Disconnected {self.selected_module.name}"):
+            self.selected_module.destroy_rig()
+            self.selected_module.create_joints()
+            self.selected_module.rig()
         self.update_tree()
 
     def edit_item(self):
@@ -226,12 +232,14 @@ class ModifyWindow(UITemplate):
         self.edit_widget.show()
 
     def rig_item(self):
-        self.selected_module.create_joints()
-        self.selected_module.rig()
+        with UndoStack(f"Rigged {self.selected_module.name}"):
+            self.selected_module.create_joints()
+            self.selected_module.rig()
         self.update_tree()
 
     def delete_item(self):
-        self.selected_module.delete()
+        with UndoStack(f"Deleted {self.selected_module.name}"):
+            self.selected_module.delete()
         self.update_tree()
         print('Delete item')
 
