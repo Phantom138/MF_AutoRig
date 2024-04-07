@@ -53,7 +53,7 @@ class Spine(Module):
     def create_joints(self):
         self.joints = []
 
-        self.joints = create_joints_from_guides(self.name, self.guides, suffix = df.skin_sff)
+        self.joints = create_joints_from_guides(self.name, self.guides, suffix=df.skin_sff, endJnt=False)
 
         # Create hip at the beginning of joint chain
         self.hip_jnt = pm.createNode('joint', name=f'{self.name[0]}_hip{df.skin_sff}{df.jnt_sff}')

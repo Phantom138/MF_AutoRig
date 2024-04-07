@@ -490,14 +490,16 @@ def create_joint_chain(jnt_number, name, start_pos, end_pos, rot=None, defaultVa
 
     return joints
 
-def create_joints_from_guides(name, guides, suffix=None):
+def create_joints_from_guides(name, guides, suffix=None, endJnt=True):
     pm.select(clear=True)
     radius = guides[0].radius.get()
     joints = []
     for i, tmp in enumerate(guides):
         if suffix is None:
             suffix = df.skin_sff
-            # Last joint has end suffix
+
+        # Last joint has end suffix
+        if endJnt:
             if i == len(guides) - 1:
                 suffix = df.end_sff
 
