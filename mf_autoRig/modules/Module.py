@@ -218,6 +218,29 @@ class Module(abc.ABC):
                 return []
             return [module_tools.createModule(child) for child in children]
 
+    def get_info(self) -> tuple[bool, bool, bool]:
+        """
+        Utility method to get information about the module
+        """
+        self.update_from_meta()
+
+        if self.all_ctrls is None or len(self.all_ctrls) == 0:
+            # This means the module is not rigged
+            is_rigged = False
+        else:
+            is_rigged = True
+
+        if self.get_parent() is None:
+            is_connected = False
+        else:
+            is_connected = True
+
+        if self.mirrored_from is None:
+            is_mirrored = False
+        else:
+            is_mirrored = True
+
+        return is_rigged, is_connected, is_mirrored
 
     # EDIT METHODS
     def delete(self, keep_meta_node=False):
@@ -249,15 +272,6 @@ class Module(abc.ABC):
             pm.delete(self.metaNode)
 
     def destroy_rig(self, disconnect=True):
-        # guides = self.guides
-        # metaNode = self.metaNode
-        # name = self.name
-        # log.debug(f"Destroying rig for {self.name}")
-        # if self.mirrored_from is not None:
-        #     log.debug(f"DELETING Mirrored from {self.mirrored_from}")
-        #     self.delete()
-        #     return
-
         # Save curve info
         log.info(f"{self.name}: Destroying rig")
         self.curve_info = save_curve_info(self.all_ctrls)

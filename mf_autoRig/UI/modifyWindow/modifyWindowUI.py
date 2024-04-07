@@ -70,27 +70,35 @@ class ModifyWindow(UITemplate):
         # Get root modules (the ones with no parents)
         root_modules = [module for module in self.modules if module.get_parent() is None]
 
-        def validate(item, module):
-            # Mirrored modules are grey
-            if module.mirrored_from is not None:
+        def validate(tree_item, module):
+            # Get information about the selected module
+            is_rigged, is_connected, is_mirrored = module.get_info()
+
+
+            if is_mirrored:
+                # Mirrored modules are grey
                 color = QtGui.QColor("#737373")
-                item.setForeground(0, QtGui.QBrush(color))
-                item.setForeground(1, QtGui.QBrush(color))
+                toolTip = f"Module mirrored from {module.mirrored_from.Name.get()}, cannot be edited"
 
-            # If module doesn't have guides, show red
             elif module.guides is None or len(module.guides) < 2:
-                item.setForeground(0, QtGui.QBrush(Qt.red))
-                item.setForeground(1, QtGui.QBrush(Qt.red))
-                item.setToolTip(0, "Warning: No guides found, delete or recreate module")
+                # Modules with no guides are red
+                color = Qt.red
+                toolTip = "Warning: No guides found, delete or recreate module"
 
-            elif module.all_ctrls is not None and len(module.all_ctrls) != 0:
+            elif is_rigged:
+                # Modules that are rigged are blue
                 color = QtGui.QColor("#00deff")
-                item.setForeground(0, QtGui.QBrush(color))
-                item.setForeground(1, QtGui.QBrush(color))
-                item.setToolTip(0, "Module is rigged")
+                toolTip = "Module is rigged"
 
             else:
-                item.setToolTip(0, "Module is not rigged, rig it to connect to other modules")
+                # Modules that are not rigged are white
+                color = Qt.white
+                toolTip = "Module is not rigged, rig it to connect to other modules"
+
+            tree_item.setForeground(0, QtGui.QBrush(color))
+            tree_item.setForeground(1, QtGui.QBrush(color))
+            tree_item.setToolTip(0, toolTip)
+            tree_item.setToolTip(1, toolTip)
 
         for mdl in root_modules:
             item = QTreeWidgetItem([mdl.name, mdl.moduleType])
@@ -143,23 +151,8 @@ class ModifyWindow(UITemplate):
         if self.ui.tree.currentItem() is None:
             return
 
-
         # Get information about the selected module
-        if self.selected_module.all_ctrls is None or len(self.selected_module.all_ctrls) == 0:
-            # This means the module is not rigged
-            is_rigged = False
-        else:
-            is_rigged = True
-
-        if self.selected_module.get_parent() is None:
-            is_connected = False
-        else:
-            is_connected = True
-
-        if self.selected_module.mirrored_from is None:
-            is_mirrored = False
-        else:
-            is_mirrored = True
+        is_rigged, is_connected, is_mirrored = self.selected_module.get_info()
 
         # Create context menu
         self.menu = QMenu()
