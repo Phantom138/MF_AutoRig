@@ -102,7 +102,6 @@ class Hand(Module):
         for i in range(0, len(tmp_jnt_guides), self.finger_joints):
             self.jnt_guides.append(tmp_jnt_guides[i:i + self.finger_joints])
 
-        pprint(self.jnt_guides)
 
     def create_guides(self, start_pos=None):
         # TODO: better default placement for wrist guide
@@ -201,7 +200,6 @@ class Hand(Module):
         self.guides = self.orient_guides + list(chain.from_iterable(self.jnt_guides))
 
         if self.meta:
-            print(f"{self.name} guides: {self.guides}")
             self.save_metadata()
 
         # Clear selection
@@ -242,7 +240,6 @@ class Hand(Module):
             self.save_metadata()
 
     def __create_fingers(self):
-        print(self.jnt_guides)
 
         pm.select(clear=True)
         # Create finger joints based on guides
