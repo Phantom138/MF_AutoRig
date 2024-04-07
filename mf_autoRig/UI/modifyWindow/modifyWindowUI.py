@@ -194,23 +194,19 @@ class ModifyWindow(UITemplate):
             if type == 'Spine' and self.selected_module.moduleType == 'Limb':
                 # HACKY way to do the Limb to Spine connection
                 # TODO: Make this more dynamic
-                action1 = QAction(f'{name} <{type}> Chest', connect_menu)
-                connect_menu.addAction(action1)
+                for i, pt in enumerate(option.attachment_pts):
+                    action = QAction(f'{name} <{type}> {pt}', connect_menu)
+                    connect_menu.addAction(action)
 
-                action1.triggered.connect(partial(self.selected_module.connect, option, 'Chest'))
-
-                action2 = QAction(f'{name} <{type}> Hip', connect_menu)
-                connect_menu.addAction(action2)
-
-                action2.triggered.connect(partial(self.selected_module.connect, option, 'Hip'))
-
+                    action.triggered.connect(partial(self.connect_module, option, i))
             else:
                 action = QAction(f'{name} <{type}>', connect_menu)
                 connect_menu.addAction(action)
 
                 action.triggered.connect(partial(self.connect_module, option))
 
-        self.menu.addMenu(connect_menu)
+        if len(conn_to) != 0:
+            self.menu.addMenu(connect_menu)
 
     def __disconnect_menu(self):
         disconnect_action = QAction('Disconnect', self)
@@ -239,9 +235,12 @@ class ModifyWindow(UITemplate):
         self.menu.addAction(rig_action)
 
     @run_update_tree
-    def connect_module(self, module):
+    def connect_module(self, module, index=None):
         with UndoStack(f"Connected {self.selected_module.name} to {module.name}"):
-            self.selected_module.connect(module)
+            if index is None:
+                self.selected_module.connect(module)
+            elif isinstance(index, int):
+                self.selected_module.connect(module, index)
 
     @run_update_tree
     def mirror_item(self):

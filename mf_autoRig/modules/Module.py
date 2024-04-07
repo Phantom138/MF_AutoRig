@@ -68,7 +68,6 @@ class Module(abc.ABC):
         self.moduleType = self.__class__.__name__
         self.side = Side(name.split('_')[0])
 
-
         if meta is True:
             log.debug(f"Creating metadata for {name}")
             self.metaNode = mdata.create_metadata(name, self.moduleType, args)
@@ -155,14 +154,16 @@ class Module(abc.ABC):
                 log.debug(f"{self.name} - Metadata connected {src} to {dst}")
 
     # CONNECTION METHODS
-    def connect_metadata(self, dest):
+    def connect_metadata(self, dest, index=0):
         # Connect meta nodes
         if self.meta:
-            dest.metaNode.affects.connect(self.metaNode.affectedBy)
+            dest.metaNode.attach_pts[index].connect(self.metaNode.connected_to)
+            log.info(f"Successfully connected {self.name} to {dest.name}")
 
     def check_if_connected(self, dest):
-        if self.meta and pm.isConnected(dest.metaNode.affects, self.metaNode.affectedBy):
-            return True
+        if self.meta:
+            if self.metaNode.connected_to.get() == dest.metaNode:
+                return True
         return False
 
     def get_connections(self, direction='up'):
@@ -199,11 +200,11 @@ class Module(abc.ABC):
             Parent module if it exists, None otherwise
         """
         if self.meta:
-            parent = self.metaNode.affectedBy.get()
-            if len(parent) == 1:
-                return module_tools.createModule(parent[0])
-            else:
+            parent = self.metaNode.connected_to.get()
+            if parent is None:
                 return None
+            else:
+                return module_tools.createModule(parent)
 
     def get_children(self) -> list:
         """
@@ -213,7 +214,7 @@ class Module(abc.ABC):
             List is empty if there are no children
         """
         if self.meta:
-            children = self.metaNode.affects.get()
+            children = self.metaNode.attach_pts.get()
             if len(children) == 0:
                 return []
             return [module_tools.createModule(child) for child in children]
@@ -346,6 +347,7 @@ class Module(abc.ABC):
         self.metaNode.mirrored_to.connect(mir_module.metaNode.mirrored_from)
 
         return mir_module
+
 
     def __str__(self):
         return str(self.__dict__)

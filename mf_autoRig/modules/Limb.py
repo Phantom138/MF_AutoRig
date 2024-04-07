@@ -186,7 +186,7 @@ class Limb(Module):
         # Clear selection
         pm.select(clear=True)
 
-    def connect(self, dest, attachment=None, force=False):
+    def connect(self, dest, attach_index=0, force=False):
         if self.check_if_connected(dest) and not force:
             log.warning(f"{self.name} already connected to {dest.name}")
             return
@@ -195,28 +195,34 @@ class Limb(Module):
         if dest_class not in self.connectable_to:
             log.warning(f"{self.name} not connectable to {dest.name}")
             return
-        print(f"connecting to {attachment}")
 
 
         if dest_class == 'Spine':
-            if attachment == 'Chest':
+            attach_pt = dest.attachment_pts[attach_index]
+            log.info(f"Connecting {self.name} to {dest_class}.{attach_pt}")
+
+            if attach_pt == 'Chest':
                 pm.parentConstraint(dest.fk_ctrls[-1], self.ik_joints[0], maintainOffset=True)
                 pm.parentConstraint(dest.fk_ctrls[-1], self.fk_ctrls[0].getParent(1), maintainOffset=True)
 
-                self.connect_metadata(dest)
+                self.connect_metadata(dest, attach_index)
                 return
 
-            if attachment == 'Hip':
+            if attach_pt == 'Hip':
                 ctrl_grp = self.fk_ctrls[0].getParent(1)
 
                 pm.parentConstraint(dest.fk_ctrls[0], ctrl_grp, maintainOffset=True)
                 pm.parentConstraint(dest.hip_ctrl, self.ik_joints[0], maintainOffset=True)
 
-                self.connect_metadata(dest)
+                self.connect_metadata(dest, attach_index)
                 return
+            else:
+                raise NotImplementedError(f"Method for attaching {self.name} to point {attach_pt} from {dest_class} not implemented yet.")
 
         # Connect to clavicle
         if dest_class == 'Clavicle':
+            log.info(f"Connecting {self.name} to {dest_class}")
+
             ctrl_grp = self.fk_ctrls[0].getParent(1)
             print(ctrl_grp, dest.joints[-1])
 
@@ -224,9 +230,8 @@ class Limb(Module):
             pm.parentConstraint(dest.clavicle_ctrl, ctrl_grp, maintainOffset=True)
             pm.parentConstraint(dest.joints[-1], self.ik_joints[0])
 
-            self.connect_metadata(dest)
+            self.connect_metadata(dest, 0)
 
-        log.info(f"Successfully connected {self.name} to {dest.name}")
 
     def save_guides(self):
         saved_guides = []

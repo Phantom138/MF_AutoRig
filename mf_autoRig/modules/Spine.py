@@ -15,6 +15,7 @@ class Spine(Module):
         'fk_ctrls': {'attributeType': 'message', 'm': True},
     }
 
+    connectable_to = []
     attachment_pts = ['Chest', 'Hip']
 
     def __init__(self, name, meta=True, num=4):
@@ -22,6 +23,7 @@ class Spine(Module):
         self.num = num
 
         self.reset()
+
 
     def reset(self):
         super().reset()
