@@ -1,10 +1,15 @@
 import pymel.core as pm
 
-def create_metadata(name, moduleType, info_args):
+def create_metadata(name, moduleType, info_args, can_mirror):
     metaNode = pm.createNode('network', name="META_" + name)
     # Connection attributes
     metaNode.addAttr('connected_to', at='message', r=False)
     metaNode.addAttr('attach_pts', at='message', m=True, w=False)
+
+    # Mirror attributes
+    if can_mirror:
+        metaNode.addAttr('mirrored_to', at='message')
+        metaNode.addAttr('mirrored_from', at='message')
 
     # Default args
     metaNode.addAttr('Name', type='string')

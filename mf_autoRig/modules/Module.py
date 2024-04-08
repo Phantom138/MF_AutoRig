@@ -53,8 +53,6 @@ class Module(abc.ABC):
     df_meta_args = {
         'joints_grp': {'attributeType': 'message'},
         'control_grp': {'attributeType': 'message'},
-        'mirrored_to': {'attributeType': 'message'},
-        'mirrored_from': {'attributeType': 'message'},
     }
 
     def __init__(self, name, args, meta):
@@ -68,9 +66,15 @@ class Module(abc.ABC):
         self.moduleType = self.__class__.__name__
         self.side = Side(name.split('_')[0])
 
+        # If it is a middle module, you cannot mirror it
+        if self.side.opposite is None:
+            can_mirror = False
+        else:
+            can_mirror = True
+
         if meta is True:
             log.debug(f"Creating metadata for {name}")
-            self.metaNode = mdata.create_metadata(name, self.moduleType, args)
+            self.metaNode = mdata.create_metadata(name, self.moduleType, args, True)
         if isinstance(meta, pm.nt.Network):
             # Using existing metadata node
             self.metaNode = meta
@@ -79,10 +83,14 @@ class Module(abc.ABC):
 
     @abstractmethod
     def reset(self):
+        self.all_ctrls = None
+
         self.control_grp = None
         self.joints_grp = None
+
         self.mirrored_from = None
         self.mirrored_to = None
+
         self.curve_info = None
 
 
@@ -127,6 +135,10 @@ class Module(abc.ABC):
         # Reset the class so we start with clean values
         self.reset()
 
+        # Get mirror info
+        self.mirrored_from = self.metaNode.mirrored_from.get()
+        self.mirrored_to = self.metaNode.mirrored_to.get()
+
         # Get the attributes from the saved metadata
         for attribute in self.meta_args:
             data = self.metaNode.attr(attribute).get()
@@ -148,10 +160,12 @@ class Module(abc.ABC):
                 # Skip if list is empty
                 continue
 
-            if src is not None:
-                dst = self.metaNode.attr(attribute)
-                mdata.add(src, dst)
-                log.debug(f"{self.name} - Metadata connected {src} to {dst}")
+            if src is None:
+                continue
+
+            dst = self.metaNode.attr(attribute)
+            mdata.add(src, dst)
+            log.debug(f"{self.name} - Metadata connected {src} to {dst}")
 
     # CONNECTION METHODS
     def connect_metadata(self, dest, index=0):
@@ -192,6 +206,16 @@ class Module(abc.ABC):
             return [self]
 
         return connections
+
+    def get_all_children(self):
+        all_children = []
+        def children(parent_mdl):
+            for child in parent_mdl.get_children():
+                all_children.append(child)
+                children(child)
+
+        children(self)
+        return all_children
 
     def get_parent(self):
         """
@@ -287,11 +311,16 @@ class Module(abc.ABC):
 
         if disconnect:
             # Disconnect
-            self.metaNode.affectedBy.disconnect()
+            self.metaNode.connected_to.disconnect()
+
+        if self.mirrored_to is not None:
+            mirrored_to = module_tools.createModule(self.mirrored_to)
+            mirrored_to.destroy_rig(disconnect = disconnect)
 
     def rebuild_rig(self):
         log.info(f"{self.name}: Rebuilding rig")
 
+        # If module is mirrored
         if self.mirrored_from is not None:
             return
 
@@ -303,8 +332,7 @@ class Module(abc.ABC):
 
         if self.mirrored_to is not None:
             mirrored_to = module_tools.createModule(self.mirrored_to)
-            mirrored_to.delete()
-            self.mirror()
+            mirrored_to.update_mirrored(destroy=False)
 
     def mirror(self, rig=True):
         """
@@ -323,14 +351,22 @@ class Module(abc.ABC):
         if rig:
             mir_module.rig()
 
+        mir_module.mirror_ctrls(self)
+
+        # Do mirror connection for metadata
+        self.metaNode.mirrored_to.connect(mir_module.metaNode.mirrored_from)
+
+        return mir_module
+
+    def mirror_ctrls(self, source):
         # Mirror Ctrls
         # Get ctrl info
-        ctrl_info = save_curve_info(self.all_ctrls)
+        ctrl_info = save_curve_info(source.all_ctrls)
 
         mir_ctrl_info = {}
         # Mirror the positions across the YZ plane
         for key, value in ctrl_info.items():
-            mir_key = key.replace(f'{self.side.side}_', f'{self.side.opposite}_')
+            mir_key = key.replace(f'{source.side.side}_', f'{self.side.side}_')
 
             mir_ctrl_info[mir_key] = value
 
@@ -339,15 +375,24 @@ class Module(abc.ABC):
                 # Multiply x and z value by -1 to mirror across YZ plane
                 mir_ctrl_info[mir_key]['cvs'][i] = (x * -1, y, z * -1)
 
-        pprint(mir_ctrl_info)
+        apply_curve_info(self.all_ctrls, mir_ctrl_info)
 
-        apply_curve_info(mir_module.all_ctrls, mir_ctrl_info)
 
-        # Do mirror connection for metadata
-        self.metaNode.mirrored_to.connect(mir_module.metaNode.mirrored_from)
+    def update_mirrored(self, destroy=False):
+        """
+        Update the mirrored module. This assumes it has already been destroyed!
+        """
+        if self.mirrored_from is None:
+            return
 
-        return mir_module
+        if destroy:
+            self.destroy_rig()
 
+        self.joints = mirrorUtils.mirrorJoints(self.mirrored_from.joints.get(), (self.side.opposite, self.side.side))
+
+        self.rig()
+
+        self.mirror_ctrls(module_tools.createModule(self.mirrored_from))
 
     def __str__(self):
         return str(self.__dict__)

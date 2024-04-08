@@ -205,23 +205,18 @@ class Limb(Module):
                 pm.parentConstraint(dest.fk_ctrls[-1], self.ik_joints[0], maintainOffset=True)
                 pm.parentConstraint(dest.fk_ctrls[-1], self.fk_ctrls[0].getParent(1), maintainOffset=True)
 
-                self.connect_metadata(dest, attach_index)
-                return
-
-            if attach_pt == 'Hip':
+            elif attach_pt == 'Hip':
                 ctrl_grp = self.fk_ctrls[0].getParent(1)
 
                 pm.parentConstraint(dest.fk_ctrls[0], ctrl_grp, maintainOffset=True)
                 pm.parentConstraint(dest.hip_ctrl, self.ik_joints[0], maintainOffset=True)
 
-                self.connect_metadata(dest, attach_index)
-                return
             else:
                 raise NotImplementedError(f"Method for attaching {self.name} to point {attach_pt} from {dest_class} not implemented yet.")
 
         # Connect to clavicle
         if dest_class == 'Clavicle':
-            log.info(f"Connecting {self.name} to {dest_class}")
+            log.info(f"Connecting {self.name} to {dest.name}")
 
             ctrl_grp = self.fk_ctrls[0].getParent(1)
             print(ctrl_grp, dest.joints[-1])
@@ -230,6 +225,7 @@ class Limb(Module):
             pm.parentConstraint(dest.clavicle_ctrl, ctrl_grp, maintainOffset=True)
             pm.parentConstraint(dest.joints[-1], self.ik_joints[0])
 
+        if not force:
             self.connect_metadata(dest, 0)
 
 

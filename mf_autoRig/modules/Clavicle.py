@@ -120,4 +120,5 @@ class Clavicle(Module):
 
         pm.parentConstraint(torso.fk_ctrls[-1], self.clavicle_ctrl.getParent(1), maintainOffset=True)
 
-        self.connect_metadata(torso)
+        if not force:
+            self.connect_metadata(torso)

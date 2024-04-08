@@ -79,6 +79,7 @@ class ModifyWindow(UITemplate):
                 # Mirrored modules are grey
                 color = QtGui.QColor("#737373")
                 toolTip = f"Module mirrored from {module.mirrored_from.Name.get()}, cannot be edited"
+                tree_item.setText(1, f'Mirrored from {module.mirrored_from.Name.get()}')
 
             elif module.guides is None or len(module.guides) < 2:
                 # Modules with no guides are red
@@ -109,6 +110,7 @@ class ModifyWindow(UITemplate):
             def add_children(parent_item, parent_mdl):
                 for child in parent_mdl.get_children():
                     child_item = QTreeWidgetItem([child.name, child.moduleType])
+
                     parent_item.addChild(child_item)
                     # Validate item
                     validate(child_item, child)
@@ -144,7 +146,10 @@ class ModifyWindow(UITemplate):
         self.selected_module = self.modules_ref[key]
 
         if self.selected_module.joints_grp is not None:
-            pm.select(self.selected_module.joints_grp)
+            # When the joint group gets recreated, the selection is reset and pymel loses the selection
+            # HACK: Uses cmds to select based on name instead
+            import maya.cmds as cmds
+            cmds.select(self.selected_module.joints_grp.name())
             # pm.viewFit()
 
     def context_menu(self, position):
@@ -168,7 +173,9 @@ class ModifyWindow(UITemplate):
             if not is_mirrored:
                 # We cannot mirror or edit a mirrored module
                 self.__edit_menu()
-                self.__mirror_menu()
+                if self.selected_module.mirrored_to is None:
+                    self.__mirror_menu()
+
         else:
             self.__rig_menu()
 
@@ -250,9 +257,12 @@ class ModifyWindow(UITemplate):
     @run_update_tree
     def disconnect_item(self):
         with UndoStack(f"Disconnected {self.selected_module.name}"):
-            self.selected_module.destroy_rig()
-            self.selected_module.create_joints()
-            self.selected_module.rig()
+            if self.selected_module.mirrored_from is not None:
+                self.selected_module.update_mirrored(destroy=True)
+            else:
+                self.selected_module.destroy_rig()
+                self.selected_module.create_joints()
+                self.selected_module.rig()
 
     def edit_item(self):
         self.edit_widget = EditWidget(self.selected_module, self.update_tree, parent=self)
