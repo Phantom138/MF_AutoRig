@@ -5,7 +5,7 @@ import maya.cmds as cmds
 
 import mf_autoRig.lib.defaults as df
 
-
+#TODO: split this into file into multiple files
 class CtrlGrp:
     def __init__(self, name, shape, scale=df.CTRL_SCALE, axis=(0, 1, 0)):
         # Create empty grp
@@ -499,9 +499,8 @@ def create_joints_from_guides(name, guides, suffix=None, endJnt=True):
             suffix = df.skin_sff
 
         # Last joint has end suffix
-        if endJnt:
-            if i == len(guides) - 1:
-                suffix = df.end_sff
+        if endJnt and i == len(guides) - 1:
+            suffix = df.end_sff
 
         jnt = pm.createNode('joint', name=f'{name}{i + 1:02}{suffix}{df.jnt_sff}')
         jnt.radius.set(radius)
