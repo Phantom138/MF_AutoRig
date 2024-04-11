@@ -1,3 +1,4 @@
+# TODO: Replace with a config/json file
 tool_prf = 'autoMF_'
 grp_sff = '_grp'
 ctrl_sff = '_ctrl'
@@ -45,17 +46,3 @@ default_pos = {
     'hand_start': [43.59, 92.72, 7.61],
     'clavicle': [2.65, 143.59, 0.0]
 }
-
-
-def mirror_default_pos():
-    mirrored_pos = {}
-    for key, value in default_pos.items():
-        if isinstance(value[0], list):
-            mirrored_pos[key] = [[pos[0]*(-1)] + pos[1:] for pos in value]
-        else:
-            mirrored_pos[key] = [value[0]*(-1)] + value[1:]
-
-    #mirrored_pos = {key: [[-pos[0]] + pos[1:] for pos in value] for key, value in default_pos.items()}
-    return mirrored_pos
-
-mirrored_pos = mirror_default_pos()
