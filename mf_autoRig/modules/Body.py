@@ -12,7 +12,7 @@ from mf_autoRig.lib.useful_functions import *
 
 # Import Modules
 from mf_autoRig.modules.Hand import Hand
-from mf_autoRig.modules.Limb import Arm, Limb
+from mf_autoRig.modules.Limb import Limb
 from mf_autoRig.modules.FKFoot import FKFoot
 from mf_autoRig.modules.Module import Module
 from mf_autoRig.modules.Spine import Spine

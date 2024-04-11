@@ -12,8 +12,6 @@ def createModule(metaNode):
     """
     modules = {
         'Limb': Limb.Limb,
-        'Arm': Limb.Arm,
-        'Leg': Limb.Leg,
         'Hand': Hand.Hand,
         'FKFoot': FKFoot.FKFoot,
         'Clavicle': Clavicle.Clavicle,
