@@ -334,29 +334,17 @@ class Module(abc.ABC):
             mirrored_to = module_tools.createModule(self.mirrored_to)
             mirrored_to.update_mirrored(destroy=False)
 
-    def mirror(self, rig=True):
+    def mirror(self):
         """
-        Default mirror method, other modules might override this for custom behavior
-        Mirrors on the YZ plane!
-        Returns:
-            New mirrored module, of the same type
+        Default mirror method
         """
-
-        # TODO: add possibility to mirror on different plane
         name = self.name.replace(f'{self.side.side}_', f'{self.side.opposite}_')
         mir_module = self.__class__(name)
-
-        mir_module.joints = mirrorUtils.mirrorJoints(self.joints, (self.side.side, self.side.opposite))
-
-        if rig:
-            mir_module.rig()
-
-        mir_module.mirror_ctrls(self)
 
         # Do mirror connection for metadata
         self.metaNode.mirrored_to.connect(mir_module.metaNode.mirrored_from)
 
-        return mir_module
+        mir_module.update_mirrored(source=self)
 
     def mirror_ctrls(self, source):
         # Mirror Ctrls
@@ -378,21 +366,28 @@ class Module(abc.ABC):
         apply_curve_info(self.all_ctrls, mir_ctrl_info)
 
 
-    def update_mirrored(self, destroy=False):
+    def update_mirrored(self, destroy=False, source=None):
         """
-        Update the mirrored module. This assumes it has already been destroyed!
+        Update the mirrored module. This assumes it has already been destroyed, or started from scratch
         """
-        if self.mirrored_from is None:
-            return
+        if source is None:
+            # Try and get the source from the metadata
+            if self.mirrored_from is None:
+                pm.warning(f"{self.name} has no mirrored source")
+                return
+            else:
+                source = module_tools.createModule(self.mirrored_from)
+        elif not isinstance(source, self.__class__):
+            raise ValueError(f"Source must be of same type ({self.__class__})")
 
         if destroy:
             self.destroy_rig()
 
-        self.joints = mirrorUtils.mirrorJoints(self.mirrored_from.joints.get(), (self.side.opposite, self.side.side))
+        self.joints = mirrorUtils.mirrorJoints(source.joints, (self.side.opposite, self.side.side))
 
         self.rig()
 
-        self.mirror_ctrls(module_tools.createModule(self.mirrored_from))
+        self.mirror_ctrls(source)
 
     def __str__(self):
         return str(self.__dict__)
