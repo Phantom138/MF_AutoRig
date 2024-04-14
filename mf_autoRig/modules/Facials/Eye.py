@@ -1,5 +1,5 @@
 from mf_autoRig.modules.Module import Module
-from mf_autoRig.utils.useful_functions import *
+import mf_autoRig.utils as utils
 import pymel.core as pm
 
 class EyeAim(Module):
@@ -15,10 +15,10 @@ class EyeAim(Module):
         self.joint = None
 
 
-    def create_guides(self, object = None):
+    def create_guides(self, obj = None):
         self.guide = pm.spaceLocator()
-        if object is not None:
-            pm.matchTransform(self.guide, object)
+        if obj is not None:
+            pm.matchTransform(self.guide, obj)
 
     def create_joints(self):
         self.joint = pm.createNode('joint')
@@ -26,12 +26,12 @@ class EyeAim(Module):
 
     def rig(self):
         # Create close-up eye ctrl
-        eye_ctrl = CtrlGrp(self.name+"_offset", 'circle')
+        eye_ctrl = utils.CtrlGrp(self.name+"_offset", 'circle')
         pm.matchTransform(eye_ctrl.grp, self.joint)
         pm.parentConstraint(eye_ctrl.ctrl, self.joint)
 
         # Create eye aim ctrl and move it
-        eye_aim = CtrlGrp(self.name+"_aim", 'circle', axis=(0,0,1))
+        eye_aim = utils.CtrlGrp(self.name+"_aim", 'circle', axis=(0,0,1))
         pm.matchTransform(eye_aim.grp, self.joint)
         pm.move(eye_aim.grp, [0,0,10])
         pm.aimConstraint(eye_aim.ctrl, eye_ctrl.grp, maintainOffset=True, aimVector=[0,0,1], upVector=[0,1,0], worldUpType="none")

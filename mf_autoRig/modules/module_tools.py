@@ -1,15 +1,16 @@
 import pymel.core as pm
 
-from mf_autoRig.modules import Hand, Limb, Clavicle, Spine, IKFoot
-from mf_autoRig.modules import FKFoot
-
-from mf_autoRig.modules.Toon import BendyLimb
 
 
 def createModule(metaNode):
     """
     Function to create corresponding class from metadata node
     """
+    from mf_autoRig.modules import Hand, Limb, Clavicle, Spine, IKFoot
+    from mf_autoRig.modules import FKFoot
+
+    from mf_autoRig.modules.Toon import BendyLimb
+
     modules = {
         'Limb': Limb.Limb,
         'Hand': Hand.Hand,
@@ -73,5 +74,4 @@ def get_connections(metaNode):
 
     return modules
 
-# node = pm.PyNode('META_L_hand')
-# cls = createModule(node)
+

@@ -3,11 +3,11 @@ from pprint import pprint
 import pymel.core as pm
 
 from mf_autoRig.utils.color_tools import auto_color
-from mf_autoRig.utils.useful_functions import *
+from mf_autoRig.utils.general import *
 from mf_autoRig.modules.Module import Module
 
 import mf_autoRig.utils.defaults as df
-import mf_autoRig.utils.mirrorJoint as mirrorUtils
+import mf_autoRig.utils as utils
 
 
 class FKFoot(Module):
@@ -73,7 +73,7 @@ class FKFoot(Module):
 
     def create_joints(self):
         # Get just the guides for the joints
-        self.joints = create_joints_from_guides(self.name, self.guides)
+        self.joints = utils.create_joints_from_guides(self.name, self.guides)
 
         # Cleanup
         self.__joints_cleanup()
@@ -92,7 +92,7 @@ class FKFoot(Module):
         self.skin_jnts = self.joints[:-1]
 
         # Create FK
-        self.fk_ctrls = create_fk_ctrls(self.joints)
+        self.fk_ctrls = utils.create_fk_ctrls(self.joints)
 
         # Color
         auto_color(self.fk_ctrls)
@@ -122,7 +122,7 @@ class FKFoot(Module):
         mir_module = self.__class__(name)
 
         # Mirror Joints
-        mir_module.joints = mirrorUtils.mirrorJoints(self.joints, (self.side.side, self.side.opposite))
+        mir_module.joints = utils.mirrorJoints(self.joints, (self.side.side, self.side.opposite))
         mir_module.__joints_cleanup()
 
 
@@ -131,7 +131,7 @@ class FKFoot(Module):
 
         # Mirror Ctrls
         for src, dst in zip(self.fk_ctrls, mir_module.fk_ctrls):
-            control_shape_mirror(src, dst)
+            utils.control_shape_mirror(src, dst)
 
         # Do mirror connection for metadata
         self.metaNode.mirrored_to.connect(mir_module.metaNode.mirrored_from)

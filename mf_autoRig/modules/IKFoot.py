@@ -2,11 +2,11 @@ from pprint import pprint
 
 import pymel.core as pm
 
-from mf_autoRig.utils.useful_functions import *
+from mf_autoRig.utils.general import *
 from mf_autoRig.modules.Module import Module
 
 import mf_autoRig.utils.defaults as df
-import mf_autoRig.utils.mirrorJoint as mirrorUtils
+import mf_autoRig.utils as utils
 
 
 class Foot(Module):
@@ -117,7 +117,7 @@ class Foot(Module):
         print("FOOT LOCATORS GUIDES:", self.locators_guides)
         # Get just the guides for the joints
         jnt_guides = self.guides[:-3]
-        self.joints = create_joints_from_guides(self.name, jnt_guides)
+        self.joints = utils.create_joints_from_guides(self.name, jnt_guides)
 
         self.locators_guides = self.guides[:3]
         self.__create_locators()
@@ -139,15 +139,15 @@ class Foot(Module):
         self.skin_jnts = self.joints[:-1]
 
         # Create FK
-        self.fk_jnts = create_fk_jnts(self.joints)
-        self.fk_ctrls = create_fk_ctrls(self.fk_jnts)
+        self.fk_jnts = utils.create_fk_jnts(self.joints)
+        self.fk_ctrls = utils.create_fk_ctrls(self.fk_jnts)
 
         # Create ik joints for foot
         self.ik_jnts = pm.duplicate(self.joints)
         for i,jnt in enumerate(self.ik_jnts):
             pm.rename(jnt,f'{self.name}{i+1:02}{df.ik_sff}{df.jnt_sff}')
 
-        self.ikfk_constraints = constraint_ikfk(self.joints, self.ik_jnts, self.fk_jnts)
+        self.ikfk_constraints = utils.constraint_ikfk(self.joints, self.ik_jnts, self.fk_jnts)
 
         match = re.match('(^[A-Za-z]_)\w+', self.joints[0].name())
         side = match.group(1)
@@ -307,7 +307,7 @@ class Foot(Module):
         mir_module.locators, mir_module.locator_grp = self.__mirror_locators()
 
         # Mirror joints
-        mir_module.joints = mirrorUtils.mirrorJoints(self.joints, searchReplace=(f'{self.side}_', f'{self.side.opposite}_'))
+        mir_module.joints = utils.mirrorJoints(self.joints, searchReplace=(f'{self.side}_', f'{self.side.opposite}_'))
 
         if rig:
             mir_module.rig()

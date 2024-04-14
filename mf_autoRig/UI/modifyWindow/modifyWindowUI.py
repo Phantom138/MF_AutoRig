@@ -196,18 +196,18 @@ class ModifyWindow(UITemplate):
 
         for option in conn_options:
             name = option.name
-            type = option.moduleType
+            mdl_type = option.moduleType
 
-            if type == 'Spine' and self.selected_module.moduleType == 'Limb':
+            if mdl_type == 'Spine' and self.selected_module.moduleType == 'Limb':
                 # HACKY way to do the Limb to Spine connection
                 # TODO: Make this more dynamic
                 for i, pt in enumerate(option.attachment_pts):
-                    action = QAction(f'{name} <{type}> {pt}', connect_menu)
+                    action = QAction(f'{name} <{mdl_type}> {pt}', connect_menu)
                     connect_menu.addAction(action)
 
                     action.triggered.connect(partial(self.connect_module, option, i))
             else:
-                action = QAction(f'{name} <{type}>', connect_menu)
+                action = QAction(f'{name} <{mdl_type}>', connect_menu)
                 connect_menu.addAction(action)
 
                 action.triggered.connect(partial(self.connect_module, option))

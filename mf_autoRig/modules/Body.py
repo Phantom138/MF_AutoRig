@@ -7,7 +7,7 @@ import re
 from mf_autoRig.utils.defaults import *
 import importlib
 
-from mf_autoRig.utils.useful_functions import *
+from mf_autoRig.utils.general import *
 
 
 # Import Modules
@@ -18,7 +18,6 @@ from mf_autoRig.modules.Module import Module
 from mf_autoRig.modules.Spine import Spine
 from mf_autoRig.modules.Clavicle import Clavicle
 
-from mf_autoRig.utils.mirrorJoint import xformMirror
 
 from mf_autoRig import log
 

@@ -4,10 +4,10 @@ import pymel.core as pm
 import pymel.core.nodetypes as nt
 import mf_autoRig.modules.meta as mdata
 from mf_autoRig import log
-from mf_autoRig.utils.get_curve_info import apply_curve_info, save_curve_info
-from mf_autoRig.modules import module_tools
+from mf_autoRig.utils.controllers_tools import apply_curve_info, save_curve_info
 from mf_autoRig.utt.Side import Side
-import mf_autoRig.utils.mirrorJoint as mirrorUtils
+import mf_autoRig.utils as utils
+from mf_autoRig.modules import module_tools
 
 from pprint import pprint
 
@@ -383,7 +383,7 @@ class Module(abc.ABC):
         if destroy:
             self.destroy_rig()
 
-        self.joints = mirrorUtils.mirrorJoints(source.joints, (self.side.opposite, self.side.side))
+        self.joints = utils.mirrorJoints(source.joints, (self.side.opposite, self.side.side))
 
         self.rig()
 

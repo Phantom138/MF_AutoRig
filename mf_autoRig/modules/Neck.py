@@ -1,5 +1,5 @@
 from mf_autoRig.modules.Module import Module
-from mf_autoRig.utils.useful_functions import *
+from mf_autoRig.utils.general import *
 import pymel.core as pm
 
 class Neck(Module):

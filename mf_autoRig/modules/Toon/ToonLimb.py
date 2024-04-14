@@ -1,4 +1,4 @@
-from mf_autoRig.utils.useful_functions import *
+from mf_autoRig.utils.general import *
 from mf_autoRig.utils.color_tools import set_color
 
 from mf_autoRig.modules.Limb import Limb

@@ -1,7 +1,7 @@
-from mf_autoRig.utils.useful_functions import *
+from mf_autoRig.utils.general import *
 import mf_autoRig.utils.defaults as df
+import mf_autoRig.utils as utils
 from mf_autoRig.utils.color_tools import set_color
-import mf_autoRig.modules.meta as mdata
 from mf_autoRig.modules.Module import Module
 
 class Clavicle(Module):
@@ -67,7 +67,7 @@ class Clavicle(Module):
             self.guides.append(shoulder)
 
         # Create joints
-        self.joints = create_joints_from_guides(self.name, self.guides)
+        self.joints = utils.create_joints_from_guides(self.name, self.guides)
 
         # Parent Joints under Joint_grp
         pm.parent(self.joints[0], get_group(df.joints_grp))
@@ -81,8 +81,8 @@ class Clavicle(Module):
             pm.error('Can only create clavicle with 2 joints')
 
         # Create ctrl and group
-        axis = get_joint_orientation(self.joints[0], self.joints[1])
-        clav = CtrlGrp(self.name, 'arc', axis=axis)
+        axis = utils.get_joint_orientation(self.joints[0], self.joints[1])
+        clav = utils.CtrlGrp(self.name, 'arc', axis=axis)
 
         # Match ctrl to first joint
         jnt = self.joints[0]

@@ -1,15 +1,10 @@
-from pprint import pprint
-
-import pymel.core as pm
-
-from mf_autoRig.utils.get_curve_info import save_curve_info, apply_curve_info
-from mf_autoRig.utils.useful_functions import *
+from mf_autoRig.utils.controllers_tools import save_curve_info, apply_curve_info
+from mf_autoRig.utils.general import *
 from mf_autoRig.utils.color_tools import set_color
-import mf_autoRig.modules.meta as mdata
-from mf_autoRig.modules import module_tools
+
 from mf_autoRig.modules.Module import Module
-from mf_autoRig.modules.IKFoot import Foot
-import mf_autoRig.utils.mirrorJoint as mirrorUtils
+
+import mf_autoRig.utils as utils
 from mf_autoRig import log
 
 class Limb(Module):
@@ -89,7 +84,7 @@ class Limb(Module):
     def update_from_meta(self):
         super().update_from_meta()
 
-        if self.guides is not None and len(self.guides) is not 3:
+        if self.guides is not None and len(self.guides) != 3:
             log.warning(f"For {self.name}, couldn't find all guides. Found only: {self.guides}")
             self.guides = None
 
@@ -114,7 +109,7 @@ class Limb(Module):
         if pos is None:
             pos = [(0, 10, 0), (0, 0, 0)]
 
-        self.guides = create_joint_chain(3, self.name, pos[0], pos[1], defaultValue=self.default_pin_value)
+        self.guides = utils.create_joint_chain(3, self.name, pos[0], pos[1], defaultValue=self.default_pin_value)
 
         pm.select(cl=True)
 
@@ -124,7 +119,7 @@ class Limb(Module):
     def create_joints(self, mirror_from = None):
         self.joints = []
 
-        self.joints = create_joints_from_guides(self.name, self.guides)
+        self.joints = utils.create_joints_from_guides(self.name, self.guides)
 
         if self.meta:
             self.save_metadata()
@@ -132,13 +127,13 @@ class Limb(Module):
     def rig(self, ik_ctrl_trans=False):
         self.skin_jnts = self.joints[:-1]
         # IK
-        self.ik_joints, self.ik_ctrls, self.ik_ctrls_grp, self.ikHandle = create_ik(self.joints, ik_ctrl_trans)
+        self.ik_joints, self.ik_ctrls, self.ik_ctrls_grp, self.ikHandle = utils.create_ik(self.joints, ik_ctrl_trans)
         # FK
-        self.fk_joints = create_fk_jnts(self.joints)
-        self.fk_ctrls = create_fk_ctrls(self.fk_joints)
+        self.fk_joints = utils.create_fk_jnts(self.joints)
+        self.fk_ctrls = utils.create_fk_ctrls(self.fk_joints)
 
-        self.ikfk_constraints = constraint_ikfk(self.joints, self.ik_joints, self.fk_joints)
-        self.switch = ikfk_switch(self.ik_ctrls_grp, self.fk_ctrls, self.ikfk_constraints, self.joints[-1])
+        self.ikfk_constraints = utils.constraint_ikfk(self.joints, self.ik_joints, self.fk_joints)
+        self.switch = utils.ikfk_switch(self.ik_ctrls_grp, self.fk_ctrls, self.ikfk_constraints, self.joints[-1])
 
         self.all_ctrls.extend(self.fk_ctrls)
         self.all_ctrls.extend(self.ik_ctrls)

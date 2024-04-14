@@ -1,12 +1,8 @@
-import re
-
 import pathlib
-
-from PySide2.QtWidgets import QStyleFactory
 
 from mf_autoRig.UI.utils.UI_Template import UITemplate, delete_workspace_control
 import pymel.core as pm
-from mf_autoRig.utils.useful_functions import *
+import mf_autoRig.utils as utils
 
 WORK_PATH = pathlib.Path(__file__).parent.resolve()
 
@@ -53,7 +49,7 @@ class ToolsWindow(UITemplate):
                 pm.error("Selection contains non-joint objects")
                 return
 
-        create_fk_ctrls(selection)
+        utils.create_fk_ctrls(selection)
 
     @staticmethod
     def create_ik():
@@ -63,7 +59,7 @@ class ToolsWindow(UITemplate):
                 pm.error("Selection contains non-joint objects")
                 return
 
-        create_ik(selection, create_new=False)
+        utils.create_ik(selection, create_new=False)
 
     @staticmethod
     def create_ikfk():
@@ -75,14 +71,14 @@ class ToolsWindow(UITemplate):
 
         joints = selection
         # FK
-        fk_joints = create_fk_jnts(joints)
-        fk_ctrls = create_fk_ctrls(fk_joints)
+        fk_joints = utils.create_fk_jnts(joints)
+        fk_ctrls = utils.create_fk_ctrls(fk_joints)
 
         # IK
-        ik_joints, ik_ctrls, ik_ctrl_grp, ikHandle = create_ik(joints)
+        ik_joints, ik_ctrls, ik_ctrl_grp, ikHandle = utils.create_ik(joints)
 
-        ikfk_const = constraint_ikfk(joints, fk_joints, ik_joints)
-        ikfk_switch(ik_ctrl_grp, fk_ctrls, ikfk_const, joints[-1])
+        ikfk_const = utils.constraint_ikfk(joints, fk_joints, ik_joints)
+        utils.ikfk_switch(ik_ctrl_grp, fk_ctrls, ikfk_const, joints[-1])
 
     @staticmethod
     def replace_ctrl():
@@ -90,7 +86,7 @@ class ToolsWindow(UITemplate):
         if len(sl) != 2:
             pm.error("Select two objects")
 
-        replace_ctrl(sl[0], sl[1])
+        utils.replace_ctrl(sl[0], sl[1])
 
     @staticmethod
     def mirror_ctrl_shape():
@@ -98,7 +94,7 @@ class ToolsWindow(UITemplate):
         if len(sl) != 2:
             pm.error("Select two objects")
 
-        control_shape_mirror(sl[0], sl[1])
+        utils.control_shape_mirror(sl[0], sl[1])
 
 
 def showWindow():

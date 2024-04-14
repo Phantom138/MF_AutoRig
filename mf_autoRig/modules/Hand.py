@@ -1,14 +1,8 @@
-import re
-import importlib
-from itertools import chain
-from pprint import pprint
-
 import mf_autoRig.utils.defaults as df
-from mf_autoRig.utils.useful_functions import *
+from mf_autoRig.utils.general import *
 from mf_autoRig.utils.color_tools import set_color, auto_color
-import mf_autoRig.modules.meta as mdata
 from mf_autoRig.modules.Module import Module
-import mf_autoRig.utils.mirrorJoint as mirrorUtils
+import mf_autoRig.utils as utils
 from mf_autoRig import log
 
 class Hand(Module):
@@ -309,7 +303,7 @@ class Hand(Module):
         sums = [0,0,0]
         cnt = 0
         for finger in self.finger_jnts[1:]:
-            jnts = get_joint_hierarchy(finger)
+            jnts = utils.get_joint_hierarchy(finger)
             pos = pm.xform(jnts[1], q=True, t=True, ws=True)
             sums[0] += pos[0]
             sums[1] += pos[1]
@@ -340,7 +334,7 @@ class Hand(Module):
 
     def rig(self, curl=True, spread=True):
         # Create hand ctrl
-        self.hand = CtrlGrp(self.name, shape='circle')
+        self.hand = utils.CtrlGrp(self.name, shape='circle')
         self.handJnt = self.hand_jnts[0]
 
         auto_color(self.hand.ctrl)
@@ -353,8 +347,8 @@ class Hand(Module):
         all_offset_grps = []
         for finger_start in self.finger_jnts:
             # Get finger hierarchy
-            finger = get_joint_hierarchy(finger_start)
-            finger_ctrls = create_fk_ctrls(finger, scale=0.2)
+            finger = utils.get_joint_hierarchy(finger_start)
+            finger_ctrls = utils.create_fk_ctrls(finger, scale=0.2)
 
             # Color finger ctrls
             auto_color(finger_ctrls)
@@ -454,12 +448,12 @@ class Hand(Module):
         # Mirror finger_jnts
         mir_module.finger_jnts = []
         for finger_start in self.finger_jnts:
-            finger = get_joint_hierarchy(finger_start)
-            mir_finger = mirrorUtils.mirrorJoints(finger, (f'{self.side}_', f'{self.side.opposite}_'))
+            finger = utils.get_joint_hierarchy(finger_start)
+            mir_finger = utils.mirrorJoints(finger, (f'{self.side}_', f'{self.side.opposite}_'))
             mir_module.finger_jnts.append(mir_finger[0])
 
         # Mirror hand_jnts
-        mir_module.hand_jnts = mirrorUtils.mirrorJoints(self.hand_jnts, (f'{self.side}_', f'{self.side.opposite}_'))
+        mir_module.hand_jnts = utils.mirrorJoints(self.hand_jnts, (f'{self.side}_', f'{self.side.opposite}_'))
 
         mir_module.__clean_up_joints()
         # Rig hand
