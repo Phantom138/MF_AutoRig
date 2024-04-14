@@ -13,7 +13,7 @@ import pymel.core as pm
 
 import pathlib
 
-from mf_autoRig.lib.undo import UndoStack
+from mf_autoRig.utils.undo import UndoStack
 
 WORK_PATH = pathlib.Path(__file__).parent.resolve()
 

@@ -4,7 +4,7 @@ import pymel.core as pm
 from PySide2 import QtWidgets, QtGui, QtCore
 from PySide2.QtGui import QIntValidator
 from mf_autoRig.UI.utils.loadUI import loadUi
-from mf_autoRig.lib.undo import UndoStack
+from mf_autoRig.utils.undo import UndoStack
 
 class ModulePage(QtWidgets.QWidget):
     def __init__(self, base_module, parent=None):

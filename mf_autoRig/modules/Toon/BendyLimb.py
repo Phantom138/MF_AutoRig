@@ -1,12 +1,12 @@
 import pymel.core as pm
 
-from mf_autoRig.lib.VectorNodes import VectorNodes
-from mf_autoRig.lib.useful_functions import *
+from mf_autoRig.utils.VectorNodes import VectorNodes
+from mf_autoRig.utils.useful_functions import *
 from mf_autoRig.modules.Module import Module
-from mf_autoRig.lib.joint_inBetweener import inBetweener
+from mf_autoRig.utils.joint_inBetweener import inBetweener
 
-from mf_autoRig.lib.color_tools import set_color
-import mf_autoRig.lib.mirrorJoint as mirrorUtils
+from mf_autoRig.utils.color_tools import set_color
+import mf_autoRig.utils.mirrorJoint as mirrorUtils
 
 def stretchy_splineIK(joints, name=None):
     # Create 2 degree curve

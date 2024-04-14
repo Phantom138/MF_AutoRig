@@ -3,7 +3,9 @@ import pymel.core.datatypes as dt
 import re
 import maya.cmds as cmds
 
-import mf_autoRig.lib.defaults as df
+import mf_autoRig.utils.defaults as df
+from mf_autoRig.utils.orient_joint import orient_joints
+
 
 #TODO: split this into file into multiple files
 class CtrlGrp:
@@ -507,17 +509,18 @@ def create_joints_from_guides(name, guides, suffix=None, endJnt=True):
         pm.matchTransform(jnt, tmp, pos=True)
         joints.append(jnt)
 
-    for i in range(len(joints) - 1, 0, -1):
-        pm.parent(joints[i], joints[i - 1])
-
-    # Orient joints
-    pm.joint(joints[0], edit=True, orientJoint='yzx', secondaryAxisOrient='zup', children=True)
-    pm.joint(joints[-1], edit=True, orientJoint='none')
-
-    # HACK: sometimes the x axis of the last joint gets very minimal values. This messes up the IK
-    # This is more of a bandaid, the problem is somewhere in the code above
-    # TODO: Fix this
-    joints[-1].translateX.set(0)
+    orient_joints(joints, aimVector=(0, 1, 0), upVector=(1, 0, 0))
+    # for i in range(len(joints) - 1, 0, -1):
+    #     pm.parent(joints[i], joints[i - 1])
+    #
+    # # Orient joints
+    # pm.joint(joints[0], edit=True, orientJoint='yzx', secondaryAxisOrient='zup', children=True)
+    # pm.joint(joints[-1], edit=True, orientJoint='none')
+    #
+    # # HACK: sometimes the x axis of the last joint gets very minimal values. This messes up the IK
+    # # This is more of a bandaid, the problem is somewhere in the code above
+    # # TODO: Fix this
+    # joints[-1].translateX.set(0)
 
     pm.select(clear = True)
     return joints
@@ -565,7 +568,7 @@ def replace_ctrl(src, dst):
         pm.error("Non-curve objects")
         return
 
-    import mf_autoRig.lib.get_curve_info as curve_info
+    import mf_autoRig.utils.get_curve_info as curve_info
 
     deg = cmds.getAttr(f'{src}.degree')
     form = cmds.getAttr(f'{src}.form')

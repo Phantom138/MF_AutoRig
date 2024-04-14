@@ -3,12 +3,12 @@ import importlib
 from itertools import chain
 from pprint import pprint
 
-import mf_autoRig.lib.defaults as df
-from mf_autoRig.lib.useful_functions import *
-from mf_autoRig.lib.color_tools import set_color, auto_color
+import mf_autoRig.utils.defaults as df
+from mf_autoRig.utils.useful_functions import *
+from mf_autoRig.utils.color_tools import set_color, auto_color
 import mf_autoRig.modules.meta as mdata
 from mf_autoRig.modules.Module import Module
-import mf_autoRig.lib.mirrorJoint as mirrorUtils
+import mf_autoRig.utils.mirrorJoint as mirrorUtils
 from mf_autoRig import log
 
 class Hand(Module):

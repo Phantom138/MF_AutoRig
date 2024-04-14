@@ -6,7 +6,7 @@ from PySide2.QtWidgets import QStyleFactory
 
 from mf_autoRig.UI.utils.UI_Template import UITemplate, delete_workspace_control
 import pymel.core as pm
-from mf_autoRig.lib.useful_functions import *
+from mf_autoRig.utils.useful_functions import *
 
 WORK_PATH = pathlib.Path(__file__).parent.resolve()
 

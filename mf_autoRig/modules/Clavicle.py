@@ -1,6 +1,6 @@
-from mf_autoRig.lib.useful_functions import *
-import mf_autoRig.lib.defaults as df
-from mf_autoRig.lib.color_tools import set_color
+from mf_autoRig.utils.useful_functions import *
+import mf_autoRig.utils.defaults as df
+from mf_autoRig.utils.color_tools import set_color
 import mf_autoRig.modules.meta as mdata
 from mf_autoRig.modules.Module import Module
 

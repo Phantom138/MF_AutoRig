@@ -1,5 +1,5 @@
 import pymel.core as pm
-from mf_autoRig.lib.useful_functions import CtrlGrp
+from mf_autoRig.utils.useful_functions import CtrlGrp
 
 
 # Small script to create clusters for every point in a curve and then parent controllers to them

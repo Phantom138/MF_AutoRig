@@ -41,6 +41,7 @@ def orient_joints(joints, aimVector, upVector):
         raise ValueError("Need at least two joints to orient")
 
     parent = joints[0].getParent()
+
     # Unparent all joints
     for jnt in joints:
         pm.parent(jnt, parent)
@@ -49,7 +50,7 @@ def orient_joints(joints, aimVector, upVector):
     if len(joints) >= 3:
         worldUpVector = get_joint_normal(joints[0:3])
     else:
-        worldUpVector = (0, 1, 0)
+        worldUpVector = (0, 1, 0) #Orient so that z is facing forward
 
     # Orient joints
     for i in range(len(joints) - 1):

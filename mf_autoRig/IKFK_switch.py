@@ -1,5 +1,5 @@
-from mf_autoRig.lib.useful_functions import *
-import mf_autoRig.lib.defaults as df
+from mf_autoRig.utils.useful_functions import *
+import mf_autoRig.utils.defaults as df
 
 def create_IKFK_switch(joints):
     # IK

@@ -1,7 +1,7 @@
 from unload_packages import unload_packages
 unload_packages(silent=True, packages=["mf_autoRig"])
 from mf_autoRig.modules.Body import Body
-import mf_autoRig.lib.defaults as df
+import mf_autoRig.utils.defaults as df
 import maya.cmds as cmds
 
 from datetime import datetime

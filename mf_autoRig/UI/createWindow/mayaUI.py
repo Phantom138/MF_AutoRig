@@ -7,7 +7,7 @@ from mf_autoRig.UI.utils.UI_Template import UITemplate, delete_workspace_control
 from mf_autoRig.modules import Limb, Spine, Clavicle, Hand, Body, FKFoot
 from mf_autoRig.modules.Toon import BendyLimb
 import mf_autoRig.modules.module_tools as crMod
-import mf_autoRig.lib.defaults as df
+import mf_autoRig.utils.defaults as df
 
 WORK_PATH = pathlib.Path(__file__).parent.resolve()
 

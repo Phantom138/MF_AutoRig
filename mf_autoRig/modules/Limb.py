@@ -2,14 +2,14 @@ from pprint import pprint
 
 import pymel.core as pm
 
-from mf_autoRig.lib.get_curve_info import save_curve_info, apply_curve_info
-from mf_autoRig.lib.useful_functions import *
-from mf_autoRig.lib.color_tools import set_color
+from mf_autoRig.utils.get_curve_info import save_curve_info, apply_curve_info
+from mf_autoRig.utils.useful_functions import *
+from mf_autoRig.utils.color_tools import set_color
 import mf_autoRig.modules.meta as mdata
 from mf_autoRig.modules import module_tools
 from mf_autoRig.modules.Module import Module
 from mf_autoRig.modules.IKFoot import Foot
-import mf_autoRig.lib.mirrorJoint as mirrorUtils
+import mf_autoRig.utils.mirrorJoint as mirrorUtils
 from mf_autoRig import log
 
 class Limb(Module):
@@ -227,27 +227,3 @@ class Limb(Module):
 
         if not force:
             self.connect_metadata(dest, 0)
-
-
-    def save_guides(self):
-        saved_guides = []
-        info = pm.xform(self.guides[0], query=True, worldSpace=True, matrix=True)
-        saved_guides.append(info)
-
-        # Get the ucoord and vcoord
-        info = [self.guides[1].uCoord.get(), self.guides[1].uCoord.get()]
-        saved_guides.append(info)
-
-        info = pm.xform(self.guides[2], query=True, worldSpace=True, matrix=True)
-        saved_guides.append(info)
-
-        return saved_guides
-
-    def load_saved_guides(self, saved_guides):
-        for guide, saved in zip(self.guides, saved_guides):
-            if len(saved) == 2:
-                guide.uCoord.set(saved[0])
-                guide.vCoord.set(saved[1])
-            else:
-                pm.xform(guide, m=saved)
-

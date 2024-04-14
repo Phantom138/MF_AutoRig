@@ -3,7 +3,7 @@ from PySide2 import QtWidgets
 
 from mf_autoRig import log
 from mf_autoRig.UI.utils.loadUI import loadUi
-import mf_autoRig.lib.defaults as df
+import mf_autoRig.utils.defaults as df
 from mf_autoRig.modules import module_tools
 
 

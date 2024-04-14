@@ -2,12 +2,12 @@ from pprint import pprint
 
 import pymel.core as pm
 
-from mf_autoRig.lib.color_tools import auto_color
-from mf_autoRig.lib.useful_functions import *
+from mf_autoRig.utils.color_tools import auto_color
+from mf_autoRig.utils.useful_functions import *
 from mf_autoRig.modules.Module import Module
 
-import mf_autoRig.lib.defaults as df
-import mf_autoRig.lib.mirrorJoint as mirrorUtils
+import mf_autoRig.utils.defaults as df
+import mf_autoRig.utils.mirrorJoint as mirrorUtils
 
 
 class FKFoot(Module):
