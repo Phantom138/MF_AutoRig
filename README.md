@@ -3,13 +3,12 @@
 Supports saving metadata to scene for further editing
 
 **Current working body modules:**  
-• Arm  
-• Leg  
 • Limb  
 • Foot  
 • Hand  
 • Clavicle  
 • Spine  
 
-**Facials modules:**  
-• EyeAim  
+**Roadmap:**  
+• Facial Modules
+• Polish up current modules and add more functionality 
