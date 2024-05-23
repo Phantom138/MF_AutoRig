@@ -10,5 +10,5 @@ Supports saving metadata to scene for further editing
 • Spine  
 
 **Roadmap:**  
-• Facial Modules
+• Facial Modules  
 • Polish up current modules and add more functionality 
