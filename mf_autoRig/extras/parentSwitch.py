@@ -7,9 +7,9 @@ def get_base_name(name):
     return search.group(1)
 
 
-def parent_switch_locators(object, drivers, hasGroup=True):
+def parent_switch_locators(obj, drivers, hasGroup=True):
     # Get nice name for object
-    object_match = re.search(r'^[a-zA-Z]_*[a-zA-Z]+\d*', object.name())
+    object_match = re.search(r'^[a-zA-Z]_*[a-zA-Z]+\d*', obj.name())
     object_name = object_match.group(0)
 
     # Create Locators
@@ -17,9 +17,9 @@ def parent_switch_locators(object, drivers, hasGroup=True):
     enum_names = ''
 
     if hasGroup:
-        grp = object.getParent(1)
+        grp = obj.getParent(1)
     else:
-        grp = object
+        grp = obj
 
     for driver in drivers:
         # Get nice name for drivers, to be used in enum
@@ -41,7 +41,7 @@ def parent_switch_locators(object, drivers, hasGroup=True):
         locators.append(loc)
 
     # Create enum attributes, enum_names = Root:World:...
-    pm.addAttr(object, ln='parentSwitch', attributeType='enum', en=enum_names, k=True)
+    pm.addAttr(obj, ln='parentSwitch', attributeType='enum', en=enum_names, k=True)
 
     # Create parent constraint
     print(locators)
@@ -56,7 +56,7 @@ def parent_switch_locators(object, drivers, hasGroup=True):
         # Create condition and connect it accordingly
         condition = pm.createNode('condition', name=weight_name+'_condition')
 
-        object.parentSwitch.connect(condition.firstTerm)
+        obj.parentSwitch.connect(condition.firstTerm)
 
         condition.secondTerm.set(index)
         condition.colorIfTrueR.set(1)

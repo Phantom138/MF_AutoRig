@@ -1,15 +1,10 @@
-from pprint import pprint
+from mf_autoRig.utils.controllers_tools import save_curve_info, apply_curve_info
+from mf_autoRig.utils.general import *
+from mf_autoRig.utils.color_tools import set_color
 
-import pymel.core as pm
-
-from mf_autoRig.lib.get_curve_info import save_curve_info, apply_curve_info
-from mf_autoRig.lib.useful_functions import *
-from mf_autoRig.lib.color_tools import set_color
-import mf_autoRig.modules.meta as mdata
-from mf_autoRig.modules import module_tools
 from mf_autoRig.modules.Module import Module
-from mf_autoRig.modules.IKFoot import Foot
-import mf_autoRig.lib.mirrorJoint as mirrorUtils
+
+import mf_autoRig.utils as utils
 from mf_autoRig import log
 
 class Limb(Module):
@@ -65,6 +60,11 @@ class Limb(Module):
     def __init__(self, name, meta=True):
         super().__init__(name, self.meta_args, meta)
 
+        self.reset()
+
+    def reset(self):
+        super().reset()
+
         self.joints = None
         self.guides = None
 
@@ -84,7 +84,7 @@ class Limb(Module):
     def update_from_meta(self):
         super().update_from_meta()
 
-        if self.guides is not None and len(self.guides) is not 3:
+        if self.guides is not None and len(self.guides) != 3:
             log.warning(f"For {self.name}, couldn't find all guides. Found only: {self.guides}")
             self.guides = None
 
@@ -109,7 +109,7 @@ class Limb(Module):
         if pos is None:
             pos = [(0, 10, 0), (0, 0, 0)]
 
-        self.guides = create_joint_chain(3, self.name, pos[0], pos[1], defaultValue=self.default_pin_value)
+        self.guides = utils.create_joint_chain(3, self.name, pos[0], pos[1], defaultValue=self.default_pin_value)
 
         pm.select(cl=True)
 
@@ -119,7 +119,7 @@ class Limb(Module):
     def create_joints(self, mirror_from = None):
         self.joints = []
 
-        self.joints = create_joints_from_guides(self.name, self.guides)
+        self.joints = utils.create_joints_from_guides(self.name, self.guides)
 
         if self.meta:
             self.save_metadata()
@@ -127,13 +127,13 @@ class Limb(Module):
     def rig(self, ik_ctrl_trans=False):
         self.skin_jnts = self.joints[:-1]
         # IK
-        self.ik_joints, self.ik_ctrls, self.ik_ctrls_grp, self.ikHandle = create_ik(self.joints, ik_ctrl_trans)
+        self.ik_joints, self.ik_ctrls, self.ik_ctrls_grp, self.ikHandle = utils.create_ik(self.joints, ik_ctrl_trans)
         # FK
-        self.fk_joints = create_fk_jnts(self.joints)
-        self.fk_ctrls = create_fk_ctrls(self.fk_joints)
+        self.fk_joints = utils.create_fk_jnts(self.joints)
+        self.fk_ctrls = utils.create_fk_ctrls(self.fk_joints)
 
-        self.ikfk_constraints = constraint_ikfk(self.joints, self.ik_joints, self.fk_joints)
-        self.switch = ikfk_switch(self.ik_ctrls_grp, self.fk_ctrls, self.ikfk_constraints, self.joints[-1])
+        self.ikfk_constraints = utils.constraint_ikfk(self.joints, self.ik_joints, self.fk_joints)
+        self.switch = utils.ikfk_switch(self.ik_ctrls_grp, self.fk_ctrls, self.ikfk_constraints, self.joints[-1])
 
         self.all_ctrls.extend(self.fk_ctrls)
         self.all_ctrls.extend(self.ik_ctrls)
@@ -181,33 +181,7 @@ class Limb(Module):
         # Clear selection
         pm.select(clear=True)
 
-    def mirror(self, rig=True):
-        """
-        Return a class of the same type that is mirrored on the YZ plane
-        """
-        #TODO: add possibility to mirror on different plane
-        name = self.name.replace(f'{self.side}_', f'{self.side.opposite}_')
-        mir_module = self.__class__(name)
-
-        # # Mirror Guides
-        # mir_module.create_guides()
-        # mir_module.load_saved_guides(self.save_guides())
-
-        mir_module.joints = mirrorUtils.mirrorJoints(self.joints, (self.side.side, self.side.opposite))
-
-        if rig:
-            mir_module.rig()
-
-        # Mirror Ctrls
-        for src, dst in zip(self.all_ctrls, mir_module.all_ctrls):
-            control_shape_mirror(src, dst)
-
-        # Do mirror connection for metadata
-        self.metaNode.message.connect(mir_module.metaNode.mirrored_from)
-
-        return mir_module
-
-    def connect(self, dest, attachment=None, force=False):
+    def connect(self, dest, attach_index=0, force=False):
         if self.check_if_connected(dest) and not force:
             log.warning(f"{self.name} already connected to {dest.name}")
             return
@@ -216,28 +190,29 @@ class Limb(Module):
         if dest_class not in self.connectable_to:
             log.warning(f"{self.name} not connectable to {dest.name}")
             return
-        print(f"connecting to {attachment}")
 
 
         if dest_class == 'Spine':
-            if attachment == 'Chest':
+            attach_pt = dest.attachment_pts[attach_index]
+            log.info(f"Connecting {self.name} to {dest_class}.{attach_pt}")
+
+            if attach_pt == 'Chest':
                 pm.parentConstraint(dest.fk_ctrls[-1], self.ik_joints[0], maintainOffset=True)
                 pm.parentConstraint(dest.fk_ctrls[-1], self.fk_ctrls[0].getParent(1), maintainOffset=True)
 
-                self.connect_metadata(dest)
-                return
-
-            if attachment == 'Hip':
+            elif attach_pt == 'Hip':
                 ctrl_grp = self.fk_ctrls[0].getParent(1)
 
                 pm.parentConstraint(dest.fk_ctrls[0], ctrl_grp, maintainOffset=True)
                 pm.parentConstraint(dest.hip_ctrl, self.ik_joints[0], maintainOffset=True)
 
-                self.connect_metadata(dest)
-                return
+            else:
+                raise NotImplementedError(f"Method for attaching {self.name} to point {attach_pt} from {dest_class} not implemented yet.")
 
         # Connect to clavicle
         if dest_class == 'Clavicle':
+            log.info(f"Connecting {self.name} to {dest.name}")
+
             ctrl_grp = self.fk_ctrls[0].getParent(1)
             print(ctrl_grp, dest.joints[-1])
 
@@ -245,114 +220,5 @@ class Limb(Module):
             pm.parentConstraint(dest.clavicle_ctrl, ctrl_grp, maintainOffset=True)
             pm.parentConstraint(dest.joints[-1], self.ik_joints[0])
 
-            self.connect_metadata(dest)
-
-        log.info(f"Successfully connected {self.name} to {dest.name}")
-
-    def save_guides(self):
-        saved_guides = []
-        info = pm.xform(self.guides[0], query=True, worldSpace=True, matrix=True)
-        saved_guides.append(info)
-
-        # Get the ucoord and vcoord
-        info = [self.guides[1].uCoord.get(), self.guides[1].uCoord.get()]
-        saved_guides.append(info)
-
-        info = pm.xform(self.guides[2], query=True, worldSpace=True, matrix=True)
-        saved_guides.append(info)
-
-        return saved_guides
-
-    def load_saved_guides(self, saved_guides):
-        for guide, saved in zip(self.guides, saved_guides):
-            if len(saved) == 2:
-                guide.uCoord.set(saved[0])
-                guide.vCoord.set(saved[1])
-            else:
-                pm.xform(guide, m=saved)
-
-
-class Arm(Limb):
-    connectable_to = ['Clavicle', 'Chest', 'Hip']
-    def __init__(self, name, meta=True):
-        super().__init__(name, meta)
-        self.default_pin_value = 51
-
-
-class Leg(Limb):
-    """
-    Class representing a leg module for character rigging, inheriting from Limb.
-
-    Attributes:
-        foot (Foot): Instance of the Foot class associated with the leg.
-
-    Methods:
-        __init__(self, name, meta=True):
-            Initializes a Leg instance.
-
-        create_from_meta(cls, metaNode):
-            Creates a Leg instance from existing metadata node.
-
-        create_guides(self, pos=None):
-            Creates guides for the leg, including the foot guide.
-
-        create_joints(self, mirror_from=None):
-            Creates joints for the leg, including the foot joints.
-
-        rig(self):
-            Sets up the rigging for the leg, including the foot rigging.
-
-        connect(self, dest):
-            Connects the leg to the specified destination module.
-
-        mirror(self):
-            Creates a mirrored instance of the Leg class.
-    """
-    connectable_to = ['Spine']
-    def __init__(self, name, meta=True):
-        super().__init__(name, meta)
-        self.default_pin_value = 49
-        self.foot = Foot(f'{self.name}_foot', meta)
-
-    @classmethod
-    def create_from_meta(cls, metaNode):
-        obj = super().create_from_meta(metaNode)
-
-        # Get metadata for foot
-        foot_metaNode = metaNode.affects.get()[0]
-        obj.foot = Foot.create_from_meta(foot_metaNode)
-
-        return obj
-
-    def create_guides(self, pos=None):
-        super().create_guides(pos)
-        self.foot.create_guides(ankle_guide=self.guides[-1])
-
-    def create_joints(self, mirror_from = None):
-        super().create_joints(mirror_from)
-        if mirror_from is None:
-            self.foot.create_joints()
-
-    def rig(self):
-        super().rig(ik_ctrl_trans=True)
-        self.foot.rig()
-        self.foot.connect(self)
-
-    def connect(self, dest):
-        if self.check_if_connected(dest):
-            pm.warning(f"{self.name} already connected to {dest.name}")
-            return
-
-        ctrl_grp = self.fk_ctrls[0].getParent(1)
-
-        pm.parentConstraint(ctrl_grp, dest.hip_ctrl, maintainOffset=True)
-        pm.parentConstraint(dest.hip_ctrl, self.ik_joints[0], maintainOffset=True)
-
-        self.connect_metadata(dest)
-
-    def mirror(self):
-        mir_module = super().mirror(rig=False)
-        self.foot.mirror(rig=False, outputModule=mir_module.foot)
-        mir_module.rig()
-
-        return mir_module
+        if not force:
+            self.connect_metadata(dest, 0)

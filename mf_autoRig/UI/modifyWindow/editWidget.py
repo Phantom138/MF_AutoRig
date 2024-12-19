@@ -1,7 +1,9 @@
 import pathlib
 from PySide2 import QtWidgets
+
+from mf_autoRig import log
 from mf_autoRig.UI.utils.loadUI import loadUi
-import mf_autoRig.modules.module_tools as crMod
+import mf_autoRig.utils.defaults as df
 from mf_autoRig.modules import module_tools
 
 
@@ -15,9 +17,12 @@ class EditWidget(QtWidgets.QDialog):
         self.run_when_finished = run_when_finished
         self.module = module
 
-        highest_parent = self.module.get_connections(direction='up')[-1]
-        self.edited_modules = module_tools.get_connections(highest_parent.metaNode)
-        self.label_module.setText(f'Editing {highest_parent.name}')
+        self.label_module.setText(f'Editing {self.module.name}')
+
+        self.edited_modules = [self.module]
+        self.edited_modules.extend(self.module.get_all_children())
+
+        print(self.edited_modules)
 
         self.btn_editMode.clicked.connect(self.edit_item)
 
@@ -25,28 +30,45 @@ class EditWidget(QtWidgets.QDialog):
         self.btn_apply.setEnabled(False)
 
     def edit_item(self):
+
+
         for child in self.edited_modules:
             if child.mirrored_from is None:
-                child.destroy_rig()
+                child.destroy_rig(disconnect=False)
 
         self.btn_apply.setEnabled(True)
 
     def apply_changes(self):
-        print("Applying changes")
-        print(self.edited_modules)
-        modules = [module for module in self.edited_modules if module.mirrored_from is None]
+        log.info(f"Applied changes for {self.edited_modules}")
 
-        for edit_mdl in modules:
-            print(f"Rebuilding {edit_mdl.name}")
+        for edit_mdl in self.edited_modules:
+            # The rebuild rig function automatically skips the mirrored modules
             edit_mdl.rebuild_rig()
 
-        # # Redo connections
-        # for module in modules:
-        #     meta_connect_to = module.metaNode.affectedBy.get()
-        #     print(meta_connect_to)
-        #     if len(meta_connect_to) == 1:
-        #         connect_to = module_tools.createModule(meta_connect_to[0])
-        #         module.connect(connect_to, force=True)
+        def reconnect_module(module):
+            connect_to = module.get_parent()
+            if connect_to is None:
+                return
+
+            # Get the index of the connection, this is relevant for connecting the limbs to the spine
+            meta_connect_to = module.metaNode.connected_to.listConnections(p=True)[0]
+            index = meta_connect_to.logicalIndex()
+
+            if index == 0:
+                module.connect(connect_to, force=True)
+            else:
+                module.connect(connect_to, index=index, force=True)
+
+
+        not_mirrored_mdls = [module for module in self.edited_modules if module.mirrored_from is None]
+
+        # Redo connections
+        for module in not_mirrored_mdls:
+            reconnect_module(module)
+
+            # If existing, also connect the mirrored module
+            if module.mirrored_to is not None:
+                reconnect_module(module_tools.createModule(module.mirrored_to))
 
 
         self.run_when_finished()

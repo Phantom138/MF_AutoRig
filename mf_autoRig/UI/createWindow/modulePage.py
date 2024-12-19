@@ -1,9 +1,10 @@
 import pathlib
 
+import pymel.core as pm
 from PySide2 import QtWidgets, QtGui, QtCore
 from PySide2.QtGui import QIntValidator
 from mf_autoRig.UI.utils.loadUI import loadUi
-
+from mf_autoRig.utils.undo import UndoStack
 
 class ModulePage(QtWidgets.QWidget):
     def __init__(self, base_module, parent=None):
@@ -31,19 +32,16 @@ class ModulePage(QtWidgets.QWidget):
     def mdl_createGuides(self):
         name = self.mdl_name.text()
 
-        self.module = self.base_module(name)
-        self.module.create_guides()
+        with UndoStack(f"Create {name} guides"):
+            self.module = self.base_module(name)
+            self.module.create_guides()
+
         self.btn_rig.setEnabled(True)
 
     def mdl_rig(self):
-        if self.module.moduleType == 'Hand':
+        with UndoStack(f"Rigged {self.module.name}"):
             self.module.create_joints()
-            self.module.create_hand()
             self.module.rig()
-            return None
-
-        self.module.create_joints()
-        self.module.rig()
 
     def nameChanged(self):
         name = self.mdl_name.text()
@@ -73,8 +71,9 @@ class SpinePage(ModulePage):
     def mdl_createGuides(self):
         name = self.mdl_name.text()
 
-        self.module = self.base_module(name, num=self.num.value())
-        self.module.create_guides()
+        with UndoStack(f"Create {name} guides"):
+            self.module = self.base_module(name, num=self.num.value())
+            self.module.create_guides()
         self.btn_rig.setEnabled(True)
 
 
@@ -129,17 +128,19 @@ class HandPage(ModulePage):
     def mdl_createGuides(self):
         name = self.mdl_name.text()
 
-        self.module = self.base_module(name,
-                finger_num = self.fingers.input.value(),
-                finger_joints = self.finger_jnts.input.value(),
-                thumb_joints = self.thumb_jnts.input.value())
+        with UndoStack(f"Create {name} guides"):
+            self.module = self.base_module(name,
+                    finger_num = self.fingers.input.value(),
+                    finger_joints = self.finger_jnts.input.value(),
+                    thumb_joints = self.thumb_jnts.input.value())
 
-        self.module.create_guides()
+            self.module.create_guides()
         self.btn_rig.setEnabled(True)
 
     def mdl_rig(self):
-        self.module.create_joints()
-        self.module.rig(spread = self.spread.isChecked(), curl = self.curl.isChecked())
+        with UndoStack(f"Rigged {self.module.name}"):
+            self.module.create_joints()
+            self.module.rig(spread = self.spread.isChecked(), curl = self.curl.isChecked())
 
 class BendyLimbPage(ModulePage):
     def __init__(self, base_module, parent=None):
@@ -170,5 +171,6 @@ class BendyLimbPage(ModulePage):
 
 
     def mdl_rig(self):
-        self.module.create_joints()
-        self.module.rig(bend_joints=int(self.bend_joints_input.text()))
+        with UndoStack(f"Rigged {self.module.name}"):
+            self.module.create_joints()
+            self.module.rig(bend_joints=int(self.bend_joints_input.text()))

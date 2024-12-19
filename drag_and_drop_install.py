@@ -47,6 +47,10 @@ def addShelf(maya_path, source_path, forceInstall=False):
         if forceInstall is False:
             del sys.modules["drag_and_drop_install"]
             return
+        try:
+            mel.eval(f'loadNewShelf {shelf}')
+        except:
+            pass
         # Force delete shelf
         f = open(os.path.join(source_path, "force_deleteShelfTab.mel"), "r")
         script = f.read()

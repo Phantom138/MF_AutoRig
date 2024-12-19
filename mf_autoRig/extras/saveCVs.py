@@ -15,7 +15,7 @@ file = 'C:/Users/332770/Documents/Maya-Scripts/mf_autoRig/cvsInfo.json'
 def save_cvs():
         start = time.time()
         ctrls = cmds.ls(type='nurbsCurve')
-        dict = {}
+        info = {}
         for ctrl in ctrls:
                 cvs = []
                 # Get transformation info for each ctrl cv
@@ -24,11 +24,11 @@ def save_cvs():
                         cv = cmds.xform(tar, query = True, translation = True, objectSpace = True)
                         cvs.append(cv)
                 # Add to dictionary
-                dict[ctrl] = cvs
+                info[ctrl] = cvs
 
         # Save to json
         json_file = open(file,"w")
-        json.dump(dict, json_file, indent=6)
+        json.dump(info, json_file, indent=6)
         json_file.close()
 
         # Check how long it took

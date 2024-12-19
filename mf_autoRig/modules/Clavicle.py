@@ -1,7 +1,7 @@
-from mf_autoRig.lib.useful_functions import *
-import mf_autoRig.lib.defaults as df
-from mf_autoRig.lib.color_tools import set_color
-import mf_autoRig.modules.meta as mdata
+from mf_autoRig.utils.general import *
+import mf_autoRig.utils.defaults as df
+import mf_autoRig.utils as utils
+from mf_autoRig.utils.color_tools import set_color
 from mf_autoRig.modules.Module import Module
 
 class Clavicle(Module):
@@ -16,6 +16,10 @@ class Clavicle(Module):
     def __init__(self, name, meta=True):
         super().__init__(name, self.meta_args, meta)
 
+        self.reset()
+
+    def reset(self):
+        super().reset()
         self.clavicle_ctrl = None
         self.joints = None
         self.guides = None
@@ -23,7 +27,6 @@ class Clavicle(Module):
 
         self.control_grp = None
         self.joints_grp = None
-
 
     def update_from_meta(self):
         super().update_from_meta()
@@ -64,7 +67,7 @@ class Clavicle(Module):
             self.guides.append(shoulder)
 
         # Create joints
-        self.joints = create_joints_from_guides(self.name, self.guides)
+        self.joints = utils.create_joints_from_guides(self.name, self.guides)
 
         # Parent Joints under Joint_grp
         pm.parent(self.joints[0], get_group(df.joints_grp))
@@ -78,8 +81,8 @@ class Clavicle(Module):
             pm.error('Can only create clavicle with 2 joints')
 
         # Create ctrl and group
-        axis = get_joint_orientation(self.joints[0], self.joints[1])
-        clav = CtrlGrp(self.name, 'arc', axis=axis)
+        axis = utils.get_joint_orientation(self.joints[0], self.joints[1])
+        clav = utils.CtrlGrp(self.name, 'arc', axis=axis)
 
         # Match ctrl to first joint
         jnt = self.joints[0]
@@ -117,34 +120,5 @@ class Clavicle(Module):
 
         pm.parentConstraint(torso.fk_ctrls[-1], self.clavicle_ctrl.getParent(1), maintainOffset=True)
 
-        self.connect_metadata(torso)
-
-    def mirror(self):
-        """
-        Return a class of the same type that is mirrored on the YZ plane
-        """
-        name = self.name.replace(f'{self.side}_', f'{self.side.opposite}_')
-        mir_module = self.__class__(name)
-
-        # Mirror Joints
-        mirrored_jnts = pm.mirrorJoint(self.joints[0], mirrorYZ=True, mirrorBehavior=True,
-                                       searchReplace=(self.side, self.side.opposite))
-        mir_joints = list(map(pm.PyNode, mirrored_jnts))
-        mir_module.joints = []
-        for obj in mir_joints:
-            if isinstance(obj, pm.nt.Joint):
-                mir_module.joints.append(obj)
-            else:
-                pm.delete(obj)
-
-        mir_module.rig()
-
-        # Mirror Ctrls
-        for src, dst in zip(self.all_ctrls, mir_module.all_ctrls):
-            control_shape_mirror(src, dst)
-
-        # Do mirror connection for metadata
-        self.metaNode.message.connect(mir_module.metaNode.mirrored_from)
-
-        return mir_module
-
+        if not force:
+            self.connect_metadata(torso)

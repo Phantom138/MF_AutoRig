@@ -1,5 +1,5 @@
 from maya import cmds
-from mf_autoRig.lib import useful_functions as uf
+from mf_autoRig.utils import general as uf
 
 def getCurve(curve, rounding_val = 2):
     # Degree

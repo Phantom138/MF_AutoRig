@@ -4,21 +4,20 @@ import pymel.core as pm
 import pymel.core.datatypes as dt
 import re
 
-from mf_autoRig.lib.defaults import *
+from mf_autoRig.utils.defaults import *
 import importlib
 
-from mf_autoRig.lib.useful_functions import *
+from mf_autoRig.utils.general import *
 
 
 # Import Modules
 from mf_autoRig.modules.Hand import Hand
-from mf_autoRig.modules.Limb import Arm, Limb
+from mf_autoRig.modules.Limb import Limb
 from mf_autoRig.modules.FKFoot import FKFoot
 from mf_autoRig.modules.Module import Module
 from mf_autoRig.modules.Spine import Spine
 from mf_autoRig.modules.Clavicle import Clavicle
 
-from mf_autoRig.lib.mirrorJoint import xformMirror
 
 from mf_autoRig import log
 

@@ -1,12 +1,11 @@
 import pymel.core as pm
 
-from mf_autoRig.lib.VectorNodes import VectorNodes
-from mf_autoRig.lib.useful_functions import *
+from mf_autoRig.utils.VectorNodes import VectorNodes
+from mf_autoRig.utils.general import *
 from mf_autoRig.modules.Module import Module
-from mf_autoRig.lib.joint_inBetweener import inBetweener
+import mf_autoRig.utils as utils
 
-from mf_autoRig.lib.color_tools import set_color
-import mf_autoRig.lib.mirrorJoint as mirrorUtils
+from mf_autoRig.utils.color_tools import set_color
 
 def stretchy_splineIK(joints, name=None):
     # Create 2 degree curve
@@ -93,14 +92,14 @@ class BendyLimb(Module):
         if pos is None:
             pos = [(0, 10, 0), (0, 0, 0)]
 
-        self.guides = create_joint_chain(3, self.name, pos[0], pos[1], defaultValue=51)
+        self.guides = utils.create_joint_chain(3, self.name, pos[0], pos[1], defaultValue=51)
 
         pm.select(cl=True)
         if self.meta:
             self.save_metadata()
 
     def create_joints(self):
-        self.joints = create_joints_from_guides(f"{self.name}", self.guides, suffix='_driver')
+        self.joints = utils.create_joints_from_guides(f"{self.name}", self.guides, suffix='_driver')
 
         #inBetweener(first_part[0], first_part[1], 5)
         #inBetweener(second_part[0], second_part[1], 5)
@@ -109,7 +108,7 @@ class BendyLimb(Module):
 
     def rig(self, bend_joints=7):
         self.bend_joints = bend_joints
-        ik_joints, ik_ctrls, ik_ctrl_grp, ikHandle = create_ik(self.joints, create_new=False)
+        ik_joints, ik_ctrls, ik_ctrl_grp, ikHandle = utils.create_ik(self.joints, create_new=False)
 
         # Add bendy attribute to the ik_ctrl
         pm.addAttr(ik_ctrls[0], ln="upperArmBendyWeight", at="double", min=0, max=1, dv=0.5, k=True)
@@ -147,10 +146,10 @@ class BendyLimb(Module):
         pm.select(cl=True)
 
         # Create joint chain between Shoulder and Elbow
-        shoulder_chain = inBetweener(joints[0], joints[1], self.bend_joints, name=f"{self.name}",
-                                     suffix='_bendy01'+df.skin_sff+df.jnt_sff, end_suffix='_bendy01'+df.end_sff+df.jnt_sff)
-        wrist_chain = inBetweener(joints[1], joints[2], self.bend_joints, name=f"{self.name}",
-                                  suffix='_bendy02'+df.skin_sff+df.jnt_sff, end_suffix='_bendy01'+df.end_sff+df.jnt_sff)
+        shoulder_chain = utils.joint_inbetweener(joints[0], joints[1], self.bend_joints, name=f"{self.name}",
+                                                 suffix='_bendy01'+df.skin_sff+df.jnt_sff, end_suffix='_bendy01'+df.end_sff+df.jnt_sff)
+        wrist_chain = utils.joint_inbetweener(joints[1], joints[2], self.bend_joints, name=f"{self.name}",
+                                              suffix='_bendy02'+df.skin_sff+df.jnt_sff, end_suffix='_bendy01'+df.end_sff+df.jnt_sff)
 
 
         # Set color
@@ -236,12 +235,12 @@ class BendyLimb(Module):
         mir_module = self.__class__(name)
 
         # Mirror Joints
-        mir_module.joints = mirrorUtils.mirrorJoints(self.joints, (self.side.side, self.side.opposite))
+        mir_module.joints = utils.mirrorJoints(self.joints, (self.side.side, self.side.opposite))
         print("Mirrored joints:", mir_module.joints)
         mir_module.rig()
 
         # Mirror Ctrls
         for src, dst in zip(self.all_ctrls, mir_module.all_ctrls):
-            control_shape_mirror(src, dst)
+            utils.control_shape_mirror(src, dst)
 
         return mir_module

@@ -11,6 +11,7 @@ class Side:
         elif side in right:
             self.opposite = left[right.index(side)]
         elif side in mid:
+            self.opposite = None
             pass
         else:
             raise ValueError(f'Side not named properly -> {side}')
