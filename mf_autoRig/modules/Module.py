@@ -243,7 +243,7 @@ class Module(abc.ABC):
                 return []
             return [module_tools.createModule(child) for child in children]
 
-    def get_info(self) -> tuple[bool, bool, bool]:
+    def get_info(self):
         """
         Utility method to get information about the module
         """
