@@ -32,12 +32,15 @@ def get_base_name(name):
     else:
         base_name = match.group(1)
 
-    #print(f"For {name} base name is {base_name}")
+    # print(f"For {name} base name is {base_name}")
 
     return base_name
 
 def create_offset_grp(ctrls):
     colors = [0, 255, 0]
+
+    if not isinstance(ctrls, list):
+        ctrls = [ctrls]
 
     offset_grps = []
     for ctl in ctrls:
@@ -61,7 +64,10 @@ def create_offset_grp(ctrls):
     # Clear selection
     pm.select(clear=True)
 
-    return offset_grps
+    if len(offset_grps) == 1:
+        return offset_grps[0]
+    else:
+        return offset_grps
 
 
 def lock_and_hide(obj, translate=True, rotation=True, scale=True):
