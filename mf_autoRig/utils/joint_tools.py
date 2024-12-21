@@ -118,6 +118,19 @@ def mirrorJoints(joints, searchReplace, plane='YZ'):
 
     return dup_joints
 
+def duplicate_joints(joints, suffix):
+        orig_names = []
+        for joint in joints:
+            orig_names.append(joint.name())
+
+        dup_joints = pm.duplicate(joints, parentOnly=True)
+
+        # iterate over duplicates and rename them
+        for joint,name in zip(dup_joints, orig_names):
+            joint.rename(name + suffix)
+
+        return dup_joints
+
 def joint_inbetweener(start_jnt, end_jnt, num, name=None, duplicate_jnts=True, suffix=None, end_suffix=None):
     """
     Function that creates joints in between two joints
