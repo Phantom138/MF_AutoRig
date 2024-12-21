@@ -1,8 +1,10 @@
 import pathlib
 
-import pymel.core as pm
-from PySide2 import QtWidgets, QtGui, QtCore
-from PySide2.QtGui import QIntValidator
+try:
+    from PySide2 import QtWidgets, QtGui, QtCore
+except ImportError:
+    from PySide6 import QtWidgets, QtGui, QtCore
+
 from mf_autoRig.UI.utils.loadUI import loadUi
 from mf_autoRig.utils.undo import UndoStack
 

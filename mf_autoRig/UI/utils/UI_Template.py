@@ -3,8 +3,14 @@ File adapted from tanaydimri
 """
 
 import maya.cmds as cmds
-from shiboken2 import wrapInstance
-from PySide2 import QtGui, QtCore, QtUiTools, QtWidgets
+
+try:
+    from PySide2 import QtGui, QtCore, QtUiTools, QtWidgets
+    from shiboken2 import wrapInstance
+except ImportError:
+    from PySide6 import QtGui, QtCore, QtUiTools, QtWidgets
+    from shiboken6 import wrapInstance
+
 import maya.OpenMayaUI as omui
 from maya.app.general.mayaMixin import MayaQWidgetDockableMixin
 

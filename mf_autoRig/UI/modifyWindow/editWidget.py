@@ -1,5 +1,8 @@
 import pathlib
-from PySide2 import QtWidgets
+try:
+    from PySide2 import QtWidgets
+except ImportError:
+    from PySide6 import QtWidgets
 
 from mf_autoRig import log
 from mf_autoRig.UI.utils.loadUI import loadUi

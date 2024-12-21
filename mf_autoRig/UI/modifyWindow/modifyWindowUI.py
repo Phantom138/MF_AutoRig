@@ -1,18 +1,20 @@
-from PySide2 import QtGui
-from PySide2.QtGui import QFont
-from PySide2.QtWidgets import QMenu, QAction, QTreeWidgetItem, QStyledItemDelegate
-from PySide2.QtCore import Qt
-from functools import partial
+try:
+    from PySide2 import QtGui
+    from PySide2.QtGui import QFont
+    from PySide2.QtWidgets import QMenu, QAction, QTreeWidgetItem, QStyledItemDelegate
+    from PySide2.QtCore import Qt
+except ImportError:
+    from PySide6 import QtGui
+    from PySide6.QtGui import QFont, QAction
+    from PySide6.QtWidgets import QMenu, QTreeWidgetItem, QStyledItemDelegate
+    from PySide6.QtCore import Qt
 
+from functools import partial
+import pathlib
 
 from mf_autoRig.UI.modifyWindow.editWidget import EditWidget
 from mf_autoRig.UI.utils.UI_Template import delete_workspace_control, UITemplate
 import mf_autoRig.modules.module_tools as module_tools
-import pymel.core as pm
-
-
-import pathlib
-
 from mf_autoRig.utils.undo import UndoStack
 
 WORK_PATH = pathlib.Path(__file__).parent.resolve()
@@ -52,8 +54,7 @@ class ModifyWindow(UITemplate):
         # Button connections
         self.ui.btn_updateLists.clicked.connect(self.update_tree)
         self.update_tree()
-
-
+    
     def update_tree(self):
         # Store expanded state
         expanded_items = self.get_expanded_items()
