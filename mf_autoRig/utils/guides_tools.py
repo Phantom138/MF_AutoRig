@@ -120,13 +120,21 @@ def create_joint_chain(jnt_number, name, start_pos, end_pos, rot=None, defaultVa
         pts.append(pt)
 
     curve = pm.curve(d=1, p=pts, name=f'{name}_guide_crv')
+
     pm.parent(curve, driven_grp)
     for i in range(curve.numCVs()):
         cluster = pm.cluster(curve.cv[i], name=f'{curve.name()}_{i + 1:02}_cluster')[1]
         cluster.visibility.set(0)
         pm.parent(cluster, joints[i])
 
+    # color curve
+    from mf_autoRig.utils.color_tools import set_color
+    curve.lineWidth.set(2)
+    curve.alwaysDrawOnTop.set(1)
+    set_color(curve, viewport='black')
 
+    # Color guide joints
+    set_color(joints, viewport='cyan')
 
     # Group start and end jnt
     grp = pm.createNode('transform', name=f'{name}_grp')
@@ -136,8 +144,8 @@ def create_joint_chain(jnt_number, name, start_pos, end_pos, rot=None, defaultVa
     # Parent to rig grp
     pm.parent(grp, get_group(df.rig_guides_grp))
 
-
     return joints
+
 
 def create_joints_from_guides(name, guides, suffix=None, endJnt=True):
     pm.select(clear=True)
