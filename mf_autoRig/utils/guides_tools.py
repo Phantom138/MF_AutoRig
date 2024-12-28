@@ -3,6 +3,7 @@ import mf_autoRig.utils.defaults as df
 from mf_autoRig.utils.general import lock_and_hide, get_group
 from mf_autoRig.utils.joint_tools import orient_joints
 
+
 def __create_guides(pos):
     # Parent new guide shape under ctrl
     knots = [i for i in range(len(pos))]
@@ -70,7 +71,6 @@ def create_joint_chain(jnt_number, name, start_pos, end_pos, rot=None, defaultVa
         UVpin = pm.createNode('uvPin', name=f'{name}{i}_uvPin')
         planeShape.worldMesh.connect(UVpin.deformedGeometry)
         planeOrig.outMesh.connect(UVpin.originalGeometry)
-
 
         # Create jnt and coords attributes
         jnt = pm.createNode('joint', name=f'{name}{i}')
