@@ -29,15 +29,12 @@ class AutoClavicleArm(Module):
         self.ik_jnts_guides = None
 
 
-        pass
-
     def create_guides(self):
         # Create the clavicle and arm guides
         self.arm.create_guides()
         self.clavicle.create_guides(pos=(0,10,-5))
 
         # Add shoulder guide to clavicle
-        #pm.delete(self.clavicle.guides[1])
         self.clavicle.guides.append(self.arm.guides[0])
         self.clavicle.save_metadata()
 
@@ -68,11 +65,11 @@ class AutoClavicleArm(Module):
         # AUTO CLAVICLE LOGIC
         # Create joint at clavicle start
         clav_pos = self.clavicle.joints[0].getTranslation(space='world')
-        self.clav_aim_jnt = pm.createNode("joint", name='clavicle_aim')
+        self.clav_aim_jnt = pm.createNode("joint", name=self.name+'_aim')
         self.clav_aim_jnt.setTranslation(clav_pos)
 
         # Create group for clav aim jnt
-        clav_aim_grp = pm.createNode('transform', name='clavicle_aim_grp')
+        clav_aim_grp = pm.createNode('transform', name=self.name + '_aim_grp')
         pm.matchTransform(clav_aim_grp, self.clav_aim_jnt)
         pm.parent(self.clav_aim_jnt, clav_aim_grp)
 
@@ -80,7 +77,7 @@ class AutoClavicleArm(Module):
         elbow_posV = dt.Vector(self.ik_jnts_guides[1].getTranslation(space='world'))
         clav_posV = dt.Vector(clav_pos)
         clav_aim_end_pos = (elbow_posV - clav_posV)/2 + clav_posV
-        self.clav_aim_end_loc = pm.spaceLocator(name='clavicle_aim_end_loc')
+        self.clav_aim_end_loc = pm.spaceLocator(name=self.name + '_aim_end_loc')
         self.clav_aim_end_loc.setTranslation(clav_aim_end_pos.get())
 
         # Elbow locator
@@ -88,8 +85,21 @@ class AutoClavicleArm(Module):
         pm.matchTransform(self.elbow_loc, self.ik_jnts_guides[1], position=True)
         pm.parent(self.elbow_loc, self.ik_jnts_guides[1])
 
-        self.clav_aim_loc = pm.spaceLocator(name='clavicle_aim_loc')
-        pm.pointConstraint(self.elbow_loc, self.clav_aim_end_loc, self.clav_aim_loc)
+        self.clav_aim_loc = pm.spaceLocator(name=self.name + '_aim_loc')
+        pointConst = pm.pointConstraint(self.elbow_loc, self.clav_aim_end_loc, self.clav_aim_loc)
+
+        # Add attribute for auto clavicle strength
+        self.clavicle.clavicle_ctrl.addAttr("autoClavicle", attributeType="float", defaultValue=1,
+                                            minValue=0, maxValue=1, keyable=True)
+
+        # Multiply with ikfk switch reverse
+        ikfk_reverse = self.arm.switch.IkFkSwitch.listConnections(type='reverse')[0]
+        mult_divide = pm.createNode('multiplyDivide', name=self.name + '_mult')
+
+        ikfk_reverse.outputX.connect(mult_divide.input1X)
+        self.clavicle.clavicle_ctrl.autoClavicle.connect(mult_divide.input2X)
+
+        mult_divide.outputX.connect(pointConst.getWeightAliasList()[0])
 
         # Clavicle aim
         pm.aimConstraint(self.clav_aim_loc, self.clav_aim_jnt, aim=(0, 1, 0), upVector=(1, 0, 0),
