@@ -1,6 +1,7 @@
 import pymel.core as pm
 
 colors = {
+    'black': (0, 0, 0),
     'yellow': (255, 255, 51),
     'orange': (255,140,0),
     'green': (0, 255, 0),
