@@ -16,6 +16,7 @@ from mf_autoRig.UI.modifyWindow.editWidget import EditWidget
 from mf_autoRig.UI.utils.UI_Template import delete_workspace_control, UITemplate
 import mf_autoRig.modules.module_tools as module_tools
 from mf_autoRig.utils.undo import UndoStack
+from mf_autoRig import log
 
 WORK_PATH = pathlib.Path(__file__).parent.resolve()
 
@@ -180,6 +181,8 @@ class ModifyWindow(UITemplate):
         else:
             self.__rig_menu()
 
+        self.__connect_menu()
+
         # Delete menu is for everything
         self.__delete_menu()
 
@@ -239,16 +242,16 @@ class ModifyWindow(UITemplate):
 
     def __rig_menu(self):
         rig_action = QAction('Rig', self)
-        rig_action.triggered.connect(self.rig_item)
+        rig_action.triggered.connect(self.recursive_rig)
         self.menu.addAction(rig_action)
 
     @run_update_tree
     def connect_module(self, module, index=None):
         with UndoStack(f"Connected {self.selected_module.name} to {module.name}"):
             if index is None:
-                self.selected_module.connect(module)
+                self.selected_module.connect_guides(module)
             elif isinstance(index, int):
-                self.selected_module.connect(module, index)
+                self.selected_module.connect_guides(module, index)
 
     @run_update_tree
     def mirror_item(self):
@@ -276,6 +279,20 @@ class ModifyWindow(UITemplate):
         with UndoStack(f"Rigged {self.selected_module.name}"):
             self.selected_module.create_joints()
             self.selected_module.rig()
+
+    @run_update_tree
+    def recursive_rig(self):
+        # Rig recursively
+        print("Running rig recursively")
+        mdl_to_rig = self.selected_module.get_all_children()
+        print(mdl_to_rig)
+        mdl_to_rig.reverse()
+        mdl_to_rig.append(self.selected_module)
+
+        log.info(f"Rigging: {mdl_to_rig}")
+        for module in mdl_to_rig:
+            module.create_joints()
+            module.rig()
 
     @run_update_tree
     def delete_item(self):
