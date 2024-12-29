@@ -57,8 +57,10 @@ class Limb(Module):
     }
 
     connectable_to = ['Clavicle', 'Spine']
+
     def __init__(self, name, meta=True):
         super().__init__(name, self.meta_args, meta)
+        self.connected_to = None
 
         self.reset()
 
@@ -88,6 +90,7 @@ class Limb(Module):
             log.warning(f"For {self.name}, couldn't find all guides. Found only: {self.guides}")
             self.guides = None
 
+        #print(self.__dict__)
         if self.joints is not None:
             # Get ikHandle
             iks = self.ik_joints[0].message.listConnections(d=True, type='ikHandle')
@@ -99,7 +102,6 @@ class Limb(Module):
             # Recreate all_ctrls
             self.all_ctrls = self.fk_ctrls + self.ik_ctrls
             self.all_ctrls.append(self.switch)
-
 
     def create_guides(self, pos=None):
         """
@@ -144,6 +146,8 @@ class Limb(Module):
         if self.meta:
             self.save_metadata()
 
+        self.serialize()
+        self.do_rig_connections()
         pm.select(clear=True)
 
     def __clean_up(self):
@@ -181,7 +185,8 @@ class Limb(Module):
         # Clear selection
         pm.select(clear=True)
 
-    def connect(self, dest, attach_index=0, force=False):
+    def connect_guides(self, dest, force=False):
+        # Connection checks
         if self.check_if_connected(dest) and not force:
             log.warning(f"{self.name} already connected to {dest.name}")
             return
@@ -191,6 +196,25 @@ class Limb(Module):
             log.warning(f"{self.name} not connectable to {dest.name}")
             return
 
+        # Do the connection
+        pm.parentConstraint(self.guides[0],dest.guides[-1])
+        pm.hide(dest.guides[-1])
+        set_color(self.guides[0], "green")
+
+        self.connected_to = dest
+        self.connect_metadata(dest, 0)
+
+    def do_rig_connections(self):
+        print(f"DOING CONNECTION {self.connected_to}")
+        if self.connected_to is not None:
+            self.connect(self.connected_to)
+
+    def connect(self, dest, attach_index=0, force=False):
+        # if self.check_if_connected(dest) and not force:
+        #     log.warning(f"{self.name} already connected to {dest.name}")
+        #     return
+
+        dest_class = dest.__class__.__name__
 
         if dest_class == 'Spine':
             attach_pt = dest.attachment_pts[attach_index]
@@ -222,3 +246,13 @@ class Limb(Module):
 
         if not force:
             self.connect_metadata(dest, 0)
+
+    def serialize(self):
+        data = {}
+
+        data['name'] = self.name
+        data['type'] = type(self).__name__
+        data['guides_pos'] = [pm.xform(jnt, q=True, t=True, ws=True) for jnt in self.guides]
+
+        print(data)
+
