@@ -8,7 +8,7 @@ from mf_autoRig.utils.controllers_tools import apply_curve_info, save_curve_info
 from mf_autoRig.utt.Side import Side
 import mf_autoRig.utils as utils
 from mf_autoRig.modules import module_tools
-
+from mf_autoRig.utils import defaults as df
 from pprint import pprint
 
 class Module(abc.ABC):
@@ -51,12 +51,19 @@ class Module(abc.ABC):
     """
 
     df_meta_args = {
+        'children': {'attributeType': 'message', 'm': True, 'w': False},
+        'parent': {'attributeType': 'message', 'r': False},
         'joints_grp': {'attributeType': 'message'},
         'control_grp': {'attributeType': 'message'},
     }
 
+    # Class level dictionary that keeps track of all instances
+    instances = {}
+
     def __init__(self, name, args, meta):
         self.name = name
+        self.parent = None
+        self.children = []
         self.meta = meta
         self.meta_args = args
 
@@ -75,11 +82,14 @@ class Module(abc.ABC):
         if meta is True:
             log.debug(f"Creating metadata for {name}")
             self.metaNode = mdata.create_metadata(name, self.moduleType, args, True)
+
         if isinstance(meta, pm.nt.Network):
             # Using existing metadata node
             self.metaNode = meta
             # TODO: Validate metadata
 
+        # Save instance
+        self.instances[self.metaNode.name()] = self
 
     @abstractmethod
     def reset(self):
@@ -120,13 +130,12 @@ class Module(abc.ABC):
         """
 
         name = metaNode.Name.get()
-        general_obj = cls(name, meta=False)
+        general_obj = cls(name, meta=metaNode)
 
         general_obj.moduleType = metaNode.moduleType.get()
 
         general_obj.metaNode = metaNode
         general_obj.meta = True
-
         general_obj.update_from_meta()
 
         return general_obj
@@ -146,6 +155,11 @@ class Module(abc.ABC):
             # If list is empty, set to None
             if isinstance(data, list) and not data:
                 data = None
+
+            if isinstance(data, pm.nt.Network) and data.name().startswith(df.meta_prf):
+                data_class = module_tools.createModule(data)
+                setattr(self, attribute, data_class)
+                continue
 
             setattr(self, attribute, data)
 
@@ -171,7 +185,7 @@ class Module(abc.ABC):
     def connect_metadata(self, dest, index=0):
         # Connect meta nodes
         if self.meta:
-            dest.metaNode.attach_pts[index].connect(self.metaNode.connected_to)
+            dest.metaNode.children[index].connect(self.metaNode.connected_to)
             log.info(f"Successfully connected {self.name} to {dest.name}")
 
     def check_if_connected(self, dest):
@@ -223,8 +237,10 @@ class Module(abc.ABC):
         Returns:
             Parent module if it exists, None otherwise
         """
+        return self.parent
+
         if self.meta:
-            parent = self.metaNode.connected_to.get()
+            parent = self.metaNode.parent.get()
             if parent is None:
                 return None
             else:
@@ -237,8 +253,10 @@ class Module(abc.ABC):
             List of children modules
             List is empty if there are no children
         """
+        return self.children
+
         if self.meta:
-            children = self.metaNode.attach_pts.get()
+            children = self.metaNode.children.get()
             if len(children) == 0:
                 return []
             return [module_tools.createModule(child) for child in children]
