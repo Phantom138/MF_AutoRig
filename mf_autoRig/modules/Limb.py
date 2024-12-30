@@ -47,6 +47,7 @@ class Limb(Module):
 
     """
     meta_args = {
+        'attach_index': {'attributeType': 'long'},
         'switch': {'attributeType': 'message'},
         'guides': {'attributeType': 'message', 'm': True},
         'joints': {'attributeType': 'message', 'm': True},
@@ -60,25 +61,26 @@ class Limb(Module):
 
     def __init__(self, name, meta=True):
         super().__init__(name, self.meta_args, meta)
-        self.connected_to = None
+        self.parent = None
 
         self.reset()
 
     def reset(self):
         super().reset()
+        self.attach_index = 0
 
-        self.joints = None
-        self.guides = None
+        self.joints = []
+        self.guides = []
 
         # IK FK stuff
-        self.ik_joints = None
-        self.ik_ctrls = None
-        self.fk_joints = None
-        self.fk_ctrls = None
-        self.switch = None
+        self.ik_joints = []
+        self.ik_ctrls = []
+        self.fk_joints = []
+        self.fk_ctrls = []
+        self.switch = []
 
-        self.control_grp = None
-        self.joints_grp = None
+        self.control_grp = []
+        self.joints_grp = []
         self.all_ctrls = []
 
         self.default_pin_value = 51
@@ -86,12 +88,12 @@ class Limb(Module):
     def update_from_meta(self):
         super().update_from_meta()
 
-        if self.guides is not None and len(self.guides) != 3:
+        if len(self.guides) != 3:
             log.warning(f"For {self.name}, couldn't find all guides. Found only: {self.guides}")
-            self.guides = None
+            self.guides = []
 
         #print(self.__dict__)
-        if self.joints is not None:
+        if len(self.joints) != 0:
             # Get ikHandle
             iks = self.ik_joints[0].message.listConnections(d=True, type='ikHandle')
             if len(iks) == 1:
@@ -143,11 +145,12 @@ class Limb(Module):
 
         self.__clean_up()
 
+        self.connect_children()
+
         if self.meta:
             self.save_metadata()
 
         self.serialize()
-        self.do_rig_connections()
         pm.select(clear=True)
 
     def __clean_up(self):
@@ -201,18 +204,14 @@ class Limb(Module):
         pm.hide(dest.guides[-1])
         set_color(self.guides[0], "green")
 
-        self.connected_to = dest
+        self.parent = dest
         self.connect_metadata(dest, 0)
 
-    def do_rig_connections(self):
-        print(f"DOING CONNECTION {self.connected_to}")
-        if self.connected_to is not None:
-            self.connect(self.connected_to)
 
     def connect(self, dest, attach_index=0, force=False):
-        # if self.check_if_connected(dest) and not force:
-        #     log.warning(f"{self.name} already connected to {dest.name}")
-        #     return
+        if not self.check_if_connected(dest):
+            log.warning(f"{self.name} not connected to {dest.name}")
+            return
 
         dest_class = dest.__class__.__name__
 
@@ -244,8 +243,8 @@ class Limb(Module):
             pm.parentConstraint(dest.clavicle_ctrl, ctrl_grp, maintainOffset=True)
             pm.parentConstraint(dest.joints[-1], self.ik_joints[0])
 
-        if not force:
-            self.connect_metadata(dest, 0)
+        # if not force:
+        #     self.connect_metadata(dest, 0)
 
     def serialize(self):
         data = {}

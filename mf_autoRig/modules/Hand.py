@@ -50,32 +50,24 @@ class Hand(Module):
         super().reset()
 
         # Guides
-        self.orient_guides = None
-        self.jnt_guides = None
+        self.orient_guides = []
+        self.jnt_guides = []
         self.wrist_guide = None
-        self.guides = None
+        self.guides = []
 
         # Controllers
         self.hand_ctrl = None
-        self.all_ctrls = []
 
         # Joints
-        self.joints = None
-        self.finger_jnts = None
-        self.hand_jnts = None
-
-        # Groups - for deletion
-        self.control_grp = None
-        self.joints_grp = None
+        self.joints = []
+        self.finger_jnts = []
+        self.hand_jnts = []
 
 
     def update_from_meta(self):
         super().update_from_meta()
 
-        if self.all_ctrls is None:
-            self.all_ctrls = []
-
-        if self.guides is None:
+        if not self.guides:
             return
 
         # Get orient_guides from guides

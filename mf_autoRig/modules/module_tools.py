@@ -28,6 +28,7 @@ def createModule(metaNode):
     module = modules[metaNode.moduleType.get()]
     obj = module.create_from_meta(metaNode)
     print("NEW", obj.name)
+    print(obj.__dict__)
     return obj
 
 def get_all_modules(module_types=None, create=False):

@@ -64,6 +64,7 @@ class Module(abc.ABC):
         self.name = name
         self.parent = None
         self.children = []
+
         self.meta = meta
         self.meta_args = args
 
@@ -93,7 +94,7 @@ class Module(abc.ABC):
 
     @abstractmethod
     def reset(self):
-        self.all_ctrls = None
+        self.guides = []
 
         self.control_grp = None
         self.joints_grp = None
@@ -101,8 +102,8 @@ class Module(abc.ABC):
         self.mirrored_from = None
         self.mirrored_to = None
 
-        self.curve_info = None
-
+        self.curve_info = []
+        self.all_ctrls = []
 
     @abstractmethod
     def create_guides(self):
@@ -152,14 +153,21 @@ class Module(abc.ABC):
         for attribute in self.meta_args:
             data = self.metaNode.attr(attribute).get()
 
-            # If list is empty, set to None
-            if isinstance(data, list) and not data:
-                data = None
-
+            # If it's a metadata node, create the corresponding class
             if isinstance(data, pm.nt.Network) and data.name().startswith(df.meta_prf):
                 data_class = module_tools.createModule(data)
                 setattr(self, attribute, data_class)
                 continue
+
+            # If it's a list of metadata nodes, create the corresponding classes
+            if isinstance(data, list) and len(data) != 0:
+                is_meta_list = all(isinstance(d, pm.nt.Network) and d.name().startswith(df.meta_prf) for d in data)
+                if is_meta_list:
+                    print("FOUND META LIST", data)
+                    # Means we have a list of network nodes
+                    result = [module_tools.createModule(d) for d in data]
+                    setattr(self, attribute, result)
+                    continue
 
             setattr(self, attribute, data)
 
@@ -185,14 +193,22 @@ class Module(abc.ABC):
     def connect_metadata(self, dest, index=0):
         # Connect meta nodes
         if self.meta:
-            dest.metaNode.children[index].connect(self.metaNode.connected_to)
+            # Connect children one by one
+            length = len(dest.children)
+            dest.metaNode.children[length].connect(self.metaNode.parent)
             log.info(f"Successfully connected {self.name} to {dest.name}")
 
     def check_if_connected(self, dest):
         if self.meta:
-            if self.metaNode.connected_to.get() == dest.metaNode:
+            if self.metaNode.parent.get() == dest.metaNode:
                 return True
         return False
+
+    def connect_children(self):
+        print(f"Connecting parent {self.__dict__}")
+        print(f"Connecting children {self.children}")
+        for child in self.children:
+            child.connect(self)
 
     def get_connections(self, direction='up'):
         connections = []
@@ -265,9 +281,9 @@ class Module(abc.ABC):
         """
         Utility method to get information about the module
         """
-        self.update_from_meta()
+        # self.update_from_meta()
 
-        if self.all_ctrls is None or len(self.all_ctrls) == 0:
+        if len(self.all_ctrls) == 0:
             # This means the module is not rigged
             is_rigged = False
         else:
@@ -298,7 +314,7 @@ class Module(abc.ABC):
                 c.disconnect()
 
         # Delete stuff
-        if self.guides is not None:
+        if len(self.guides) != 0:
             log.debug(f"Deleting {self.guides}")
             pm.delete(self.guides)
 
@@ -329,7 +345,7 @@ class Module(abc.ABC):
 
         if disconnect:
             # Disconnect
-            self.metaNode.connected_to.disconnect()
+            self.metaNode.parent.disconnect()
 
         if self.mirrored_to is not None:
             mirrored_to = module_tools.createModule(self.mirrored_to)

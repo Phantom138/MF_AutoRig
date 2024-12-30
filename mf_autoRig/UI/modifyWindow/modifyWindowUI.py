@@ -57,13 +57,14 @@ class ModifyWindow(UITemplate):
         self.update_tree()
     
     def update_tree(self):
+        print("UPDATING UI TREE")
         # Store expanded state
         expanded_items = self.get_expanded_items()
 
         self.ui.tree.clear()
 
         self.modules = module_tools.get_all_modules(create=True)
-
+        print("FOUND MODULES", self.modules)
         if self.modules is None:
             return
 
@@ -71,7 +72,7 @@ class ModifyWindow(UITemplate):
 
         # Get root modules (the ones with no parents)
         root_modules = [module for module in self.modules if module.get_parent() is None]
-
+        print("ROOT_ MODULES", root_modules)
         def validate(tree_item, module):
             # Get information about the selected module
             is_rigged, is_connected, is_mirrored = module.get_info()
@@ -110,14 +111,14 @@ class ModifyWindow(UITemplate):
 
             # add children recursively
             def add_children(parent_item, parent_mdl):
-                for child in parent_mdl.get_children():
-                    child_item = QTreeWidgetItem([child.name, child.moduleType])
+                for child_mdl in parent_mdl.get_children():
+                    child_item = QTreeWidgetItem([child_mdl.name, child_mdl.moduleType])
 
                     parent_item.addChild(child_item)
                     # Validate item
-                    validate(child_item, child)
+                    validate(child_item, child_mdl)
 
-                    add_children(child_item, child)
+                    add_children(child_item, child_mdl)
 
             # Run the recursive function
             add_children(item, mdl)
@@ -138,7 +139,6 @@ class ModifyWindow(UITemplate):
             item = self.ui.tree.topLevelItem(i)
             if item.text(0) in expanded_items:
                 item.setExpanded(True)
-
 
     def on_selection_changed(self):
         if self.ui.tree.currentItem() is None:

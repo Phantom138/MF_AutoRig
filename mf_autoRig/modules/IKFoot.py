@@ -26,8 +26,6 @@ class Foot(Module):
         self.locators_guides = None
         self.locators = None
 
-        self.control_grp = None
-        self.joints_grp = None
 
     @classmethod
     def create_from_meta(cls, metaNode):

@@ -21,9 +21,8 @@ class Clavicle(Module):
     def reset(self):
         super().reset()
         self.clavicle_ctrl = None
-        self.joints = None
-        self.guides = None
-        self.all_ctrls = []
+        self.joints = []
+        self.guides = []
 
         self.control_grp = None
         self.joints_grp = None
@@ -33,21 +32,17 @@ class Clavicle(Module):
         if self.clavicle_ctrl is not None:
             self.all_ctrls.append(self.clavicle_ctrl)
 
-
     def create_guides(self, pos = None):
         """
         Creates clavicle guides at pos, pos should be a list of xyz values
         """
         self.guides = []
-        # If there are no guides, it means that the class is ran individually, so there is no guide for the shoulder
         if pos is None:
             pos = [(0,0,0), (5,0,0)]
-            for p in pos:
-                self.guides.append(pm.joint(name=f'{self.name}', position=p))
-        else:
-            # Create new joint at pos
-            self.guides.append(pm.joint(name=f'{self.name}', position=pos))
-            
+
+        for p in pos:
+            self.guides.append(pm.joint(name=f'{self.name}', position=p))
+
         grp = pm.group(self.guides, name=f'{self.name}_guides{df.grp_sff}')
         pm.parent(grp, get_group(df.rig_guides_grp))
 
@@ -57,6 +52,13 @@ class Clavicle(Module):
         # Save guides
         if self.meta:
             self.save_metadata()
+
+    def connect_guides(self, torso):
+        if self.check_if_connected(torso):
+            pm.warning(f"{self.name} already connected to {torso.name}")
+            return
+
+        self.connect_metadata(torso)
 
     def create_joints(self, shoulder=None):
         """
@@ -109,16 +111,13 @@ class Clavicle(Module):
 
         self.joints_grp = self.joints[0]
 
+        self.connect_children()
         if self.meta:
             self.save_metadata()
 
-
     def connect(self, torso, force=False):
-        if self.check_if_connected(torso) and not force:
-            pm.warning(f"{self.name} already connected to {torso.name}")
+        if not self.check_if_connected(torso):
+            pm.warning(f"{self.name} not connected to {torso.name}")
             return
 
         pm.parentConstraint(torso.fk_ctrls[-1], self.clavicle_ctrl.getParent(1), maintainOffset=True)
-
-        if not force:
-            self.connect_metadata(torso)

@@ -27,14 +27,11 @@ class Spine(Module):
     def reset(self):
         super().reset()
 
-        self.guides = None
-        self.joints = None
+        self.guides = []
+        self.joints = []
         self.hip_ctrl = None
         self.hip_jnt = None
-        self.fk_ctrls = None
-
-        self.control_grp = None
-        self.joints_grp = None
+        self.fk_ctrls = []
 
     def update_from_meta(self):
         super().update_from_meta()
@@ -66,7 +63,6 @@ class Spine(Module):
         pm.parent(self.joints[0], self.hip_jnt, self.joints_grp)
         pm.parent(self.joints_grp, utils.get_group(df.joints_grp))
 
-
         # Add joints
         if self.meta:
             self.save_metadata()
@@ -87,6 +83,8 @@ class Spine(Module):
 
         self.control_grp = self.fk_ctrls[0].getParent(1)
         self.all_ctrls = self.fk_ctrls
+
+        self.connect_children()
         # Add joints
         if self.meta:
             self.save_metadata()
