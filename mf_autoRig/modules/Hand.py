@@ -88,22 +88,23 @@ class Hand(Module):
         for i in range(0, len(tmp_jnt_guides), self.finger_joints):
             self.jnt_guides.append(tmp_jnt_guides[i:i + self.finger_joints])
 
-
-    def create_guides(self, start_pos=None):
+    def create_guides(self, wrist_pos=None):
         # TODO: better default placement for wrist guide
-        # TODO: Heavy rewrite, maybe having separate modules for each finger
+        # TODO: rewrite, maybe having separate modules for each finger
         finger_grps = []
         fingers_jnts = []
         self.guides = []
 
-        if start_pos is None:
-            start_pos = [0,0,0]
+        if wrist_pos is None:
+            wrist_pos = [0, 0, 0]
+
+        hand_pos = wrist_pos[0], wrist_pos[1] - 5, wrist_pos[2]
 
         # initialize constants
         fingers = ['thumb', 'index', 'middle', 'ring', 'pinky']
         fingers = fingers[:self.finger_num]
 
-        zPos = start_pos[2]
+        zPos = hand_pos[2]
         spacing = 1.5
         # Create finger guides
         for index, name in enumerate(fingers):
@@ -116,7 +117,7 @@ class Hand(Module):
                 zPos -= spacing
 
             # Do fingers
-            fingerPos = start_pos[0], start_pos[1], zPos
+            fingerPos = hand_pos[0], hand_pos[1], zPos
             yPos = fingerPos[1]
 
             offset = 4
@@ -174,10 +175,9 @@ class Hand(Module):
         pm.parent(hand_grp, get_group(df.rig_guides_grp))
 
         # Create Wrist
-        if start_pos == [0,0,0]:
-            self.wrist_guide = pm.createNode('joint', name=f'{self.name}_wrist_{df.jnt_sff}')
-            pm.xform(self.wrist_guide, t=[0, 5, 0], ws=True)
-            pm.parent(self.wrist_guide, hand_grp)
+        self.wrist_guide = pm.createNode('joint', name=f'{self.name}_wrist_{df.jnt_sff}')
+        pm.xform(self.wrist_guide, t=wrist_pos, ws=True)
+        pm.parent(self.wrist_guide, hand_grp)
 
         self.__create_orient_guides()
 
@@ -205,6 +205,18 @@ class Hand(Module):
             pm.parent(orient_guide, finger_guide[1])
 
             self.orient_guides.append(orient_guide)
+
+    def connect_guides(self, arm):
+        if self.check_if_connected(arm):
+            pm.warning(f"{self.name} already connected to {arm.name}")
+            return
+
+        # Do the connection
+        pm.parentConstraint(arm.guides[-1], self.wrist_guide)
+        pm.hide(self.wrist_guide)
+        set_color(arm.guides[-1], "green")
+
+        self.connect_metadata(arm)
 
     def create_joints(self, wrist = None):
         """
@@ -460,8 +472,8 @@ class Hand(Module):
         return mir_module
 
     def connect(self, arm, force=False):
-        if self.check_if_connected(arm) and not force:
-            pm.warning(f"{self.name} already connected to {arm.name}")
+        if not self.check_if_connected(arm):
+            pm.warning(f"{self.name} not connected to {arm.name}")
             return
 
         self.handJnt = self.hand_jnts[0]
@@ -508,4 +520,3 @@ class Hand(Module):
             elif df.ik_sff in weight.name():
                 reverseNode.outputX.connect(weight)
 
-        super().connect_metadata(arm)

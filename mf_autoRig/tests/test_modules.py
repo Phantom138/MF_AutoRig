@@ -30,10 +30,12 @@ if __name__ == '__main__':
     L_arm = Limb.Limb('L_arm')
     spine = Spine.Spine('M_spine', num=3)
     L_clavicle = Clavicle.Clavicle('L_clavicle')
+    L_hand = Hand.Hand('L_hand')
 
     L_arm.create_guides(pos=default_pos['arm'])
     spine.create_guides(pos=default_pos['torso'])
     L_clavicle.create_guides(pos=default_pos['clavicle'])
+    L_hand.create_guides(wrist_pos=default_pos['hand_start'])
 
     L_arm.connect_guides(L_clavicle)
     L_clavicle.connect_guides(spine)

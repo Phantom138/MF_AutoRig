@@ -72,7 +72,7 @@ class ModifyWindow(UITemplate):
 
         # Get root modules (the ones with no parents)
         root_modules = [module for module in self.modules if module.get_parent() is None]
-        print("ROOT_ MODULES", root_modules)
+        print("ROOT_MODULES", root_modules)
         def validate(tree_item, module):
             # Get information about the selected module
             is_rigged, is_connected, is_mirrored = module.get_info()
@@ -274,11 +274,11 @@ class ModifyWindow(UITemplate):
         self.edit_widget.setGeometry(mouse_pos.x(), mouse_pos.y(), self.edit_widget.width(), self.edit_widget.height() )
         self.edit_widget.show()
 
-    @run_update_tree
-    def rig_item(self):
-        with UndoStack(f"Rigged {self.selected_module.name}"):
-            self.selected_module.create_joints()
-            self.selected_module.rig()
+    # @run_update_tree
+    # def rig_item(self):
+    #     with UndoStack(f"Rigged {self.selected_module.name}"):
+    #         self.selected_module.create_joints()
+    #         self.selected_module.rig()
 
     @run_update_tree
     def recursive_rig(self):

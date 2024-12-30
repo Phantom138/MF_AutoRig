@@ -198,6 +198,9 @@ class Module(abc.ABC):
             dest.metaNode.children[length].connect(self.metaNode.parent)
             log.info(f"Successfully connected {self.name} to {dest.name}")
 
+        self.parent = dest
+        dest.children.append(self)
+
     def check_if_connected(self, dest):
         if self.meta:
             if self.metaNode.parent.get() == dest.metaNode:
