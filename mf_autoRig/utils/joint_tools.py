@@ -39,7 +39,7 @@ def __get_joint_normal(joints):
 
     return normal
 
-def orient_joints(joints, aimVector, upVector):
+def orient_joints(joints, aimVector, upVector, useNormal=False):
     """
     Created this based on info from:
     https://www.riggingdojo.com/2014/10/03/everything-thought-knew-maya-joint-orient-wrong/
@@ -58,10 +58,13 @@ def orient_joints(joints, aimVector, upVector):
         pm.parent(jnt, parent)
 
     # Get the world up vector
-    if len(joints) >= 3:
-        worldUpVector = __get_joint_normal(joints[0:3])
+    if useNormal:
+        if len(joints) >= 3:
+            worldUpVector = __get_joint_normal(joints[0:3])
+        else:
+            worldUpVector = (0, 1, 0) #Orient so that z is facing forward
     else:
-        worldUpVector = (0, 1, 0) #Orient so that z is facing forward
+        worldUpVector = (0, 0, 1)
 
     # Orient joints
     for i in range(len(joints) - 1):

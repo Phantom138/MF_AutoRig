@@ -2,9 +2,10 @@ import time
 from maya import cmds
 import pymel.core as pm
 from mf_autoRig.modules import Limb, Hand, Clavicle, Spine, FKFoot
-from unload_packages import unload_packages
-import mf_autoRig.UI.modifyWindow.modifyWindowUI as modifyWindow
-unload_packages(silent=True, packages=["mf_autoRig"])
+# from unload_packages import unload_packages
+# import mf_autoRig.UI.modifyWindow.modifyWindowUI as modifyWindow
+# modifyWindow.showWindow()
+# unload_packages(silent=True, packages=["mf_autoRig"])
 
 default_pos = {
     # template: start pos, end pos
@@ -20,13 +21,7 @@ default_pos = {
     'clavicle': [[2.65, 143.59, 0.0], [19.18, 142.85, -0.82]]
 }
 
-if __name__ == '__main__':
-    cmds.file(new=True, f=True)
-
-    time.sleep(2)
-
-
-
+def test_body():
     L_arm = Limb.Limb('L_arm')
     spine = Spine.Spine('M_spine', num=3)
     L_clavicle = Clavicle.Clavicle('L_clavicle')
@@ -40,7 +35,45 @@ if __name__ == '__main__':
     L_arm.connect_guides(L_clavicle)
     L_clavicle.connect_guides(spine)
 
-    modifyWindow.showWindow()
+    # L_arm.mirror_guides()
+    # L_hand.mirror_guides()
+
+
+def test_hand():
+    L_hand = Hand.Hand('L_hand')
+    L_hand.create_guides()
+    # R_hand = Hand.Hand('R_hand')
+    # R_hand.create_guides()
+    R_hand = L_hand.mirror_guides()
+    pm.move(pm.PyNode('L_hand_guide_grp'), [5, 0, 0])
+
+    L_hand.create_joints()
+    L_hand.rig()
+    R_hand.create_joints()
+    R_hand.rig()
+
+
+def test_mirror():
+    L_arm = Limb.Limb('L_arm')
+    L_arm.create_guides()
+
+    L_hand = Hand.Hand('L_hand')
+    L_hand.create_guides()
+
+    L_arm.mirror_guides()
+    L_hand.mirror_guides()
+
+def main():
+    cmds.file(new=True, f=True)
+
+    time.sleep(2)
+
+    test_mirror()
+
+if __name__ == '__main__':
+    main()
+
+
 
 
 

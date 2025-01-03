@@ -96,11 +96,15 @@ class Module(abc.ABC):
     def reset(self):
         self.guides = []
 
+        self.guide_grp = None
         self.control_grp = None
         self.joints_grp = None
 
         self.mirrored_from = None
         self.mirrored_to = None
+
+        self.jnt_orient_main = (0,1,0)
+        self.jnt_orient_secondary = (0,0,1)
 
         self.curve_info = []
         self.all_ctrls = []
@@ -258,13 +262,6 @@ class Module(abc.ABC):
         """
         return self.parent
 
-        if self.meta:
-            parent = self.metaNode.parent.get()
-            if parent is None:
-                return None
-            else:
-                return module_tools.createModule(parent)
-
     def get_children(self) -> list:
         """
         Get all children of the module
@@ -273,12 +270,6 @@ class Module(abc.ABC):
             List is empty if there are no children
         """
         return self.children
-
-        if self.meta:
-            children = self.metaNode.children.get()
-            if len(children) == 0:
-                return []
-            return [module_tools.createModule(child) for child in children]
 
     def get_info(self):
         """
@@ -333,10 +324,10 @@ class Module(abc.ABC):
         if not keep_meta_node:
             pm.delete(self.metaNode)
 
-    def destroy_rig(self, disconnect=True):
+    def destroy_rig(self):
         # Save curve info
         log.info(f"{self.name}: Destroying rig")
-        self.curve_info = save_curve_info(self.all_ctrls)
+        #self.curve_info = save_curve_info(self.all_ctrls)
 
 
         to_delete = [self.joints_grp, self.control_grp]
@@ -346,13 +337,9 @@ class Module(abc.ABC):
 
         self.update_from_meta()
 
-        if disconnect:
-            # Disconnect
-            self.metaNode.parent.disconnect()
-
         if self.mirrored_to is not None:
             mirrored_to = module_tools.createModule(self.mirrored_to)
-            mirrored_to.destroy_rig(disconnect = disconnect)
+            mirrored_to.destroy_rig()
 
     def rebuild_rig(self):
         log.info(f"{self.name}: Rebuilding rig")
@@ -370,6 +357,46 @@ class Module(abc.ABC):
         if self.mirrored_to is not None:
             mirrored_to = module_tools.createModule(self.mirrored_to)
             mirrored_to.update_mirrored(destroy=False)
+
+    def mirror_guides(self):
+        name = self.name.replace(f'{self.side.side}_', f'{self.side.opposite}_')
+        mir_module = self.__class__(name)
+        mir_module.create_guides()
+
+        # Change orient
+        if self.jnt_orient_main == (0,1,0):
+            mir_module.jnt_orient_main = (0,-1,0)
+        if self.jnt_orient_secondary == (0,0,1):
+            mir_module.jnt_orient_secondary = (0,0,-1)
+
+        print(mir_module.jnt_orient_main)
+        identity_mtx = [1, 0, 0, 0,
+                        0, 1, 0, 0,
+                        0, 0, 1, 0,
+                        0, 0, 0, 1]
+
+        utils.mirror_guides_transforms([self.guide_grp], [mir_module.guide_grp])
+
+        # Get guide hierarchy
+        keep = ['joint', 'transform']
+        guide_hierarchy = []
+        for h in (self.guide_grp.getChildren(ad=True)):
+            if h.type() in keep and not h.endswith('_clusterHandle'):
+                guide_hierarchy.append(h)
+
+        # Get mir hierarchy
+        mir_hierarchy = []
+        for h in mir_module.guide_grp.getChildren(ad=True):
+            if h.type() in keep and not h.endswith('_clusterHandle'):
+                mir_hierarchy.append(h)
+
+        for guide, mir_guide in zip(guide_hierarchy, mir_hierarchy):
+            pm.xform(mir_guide, m=identity_mtx)
+            utils.lock_and_hide(mir_guide)
+            guide.xformMatrix.connect(mir_guide.offsetParentMatrix)
+
+        mir_module.save_metadata()
+        return  mir_module
 
     def mirror(self):
         """

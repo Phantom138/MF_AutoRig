@@ -8,8 +8,8 @@ from mf_autoRig import log
 class Hand(Module):
     meta_args = {
         'finger_num': {'attributeType': 'long'},
-        'finger_joints': {'attributeType': 'long'},
-        'thumb_joints': {'attributeType': 'long'},
+        'finger_joints_num': {'attributeType': 'long'},
+        'thumb_joints_num': {'attributeType': 'long'},
         'hand_ctrl': {'attributeType': 'message'},
         'wrist_guide': {'attributeType': 'message'},
         'guides': {'attributeType': 'message', 'm': True},
@@ -41,8 +41,8 @@ class Hand(Module):
             finger_joints = 3
         # Parameters
         self.finger_num = finger_num
-        self.finger_joints = finger_joints
-        self.thumb_joints = thumb_joints
+        self.finger_joints_num = finger_joints
+        self.thumb_joints_num = thumb_joints
 
         self.reset()
 
@@ -81,109 +81,86 @@ class Hand(Module):
         self.jnt_guides = []
 
         # Get thumb joints
-        self.jnt_guides.append(tmp_jnt_guides[:self.thumb_joints])
-        tmp_jnt_guides = tmp_jnt_guides[self.thumb_joints:]
+        self.jnt_guides.append(tmp_jnt_guides[:self.thumb_joints_num])
+        tmp_jnt_guides = tmp_jnt_guides[self.thumb_joints_num:]
 
         # Get the rest of the fingers
-        for i in range(0, len(tmp_jnt_guides), self.finger_joints):
-            self.jnt_guides.append(tmp_jnt_guides[i:i + self.finger_joints])
+        for i in range(0, len(tmp_jnt_guides), self.finger_joints_num):
+            self.jnt_guides.append(tmp_jnt_guides[i:i + self.finger_joints_num])
 
-    def create_guides(self, wrist_pos=None):
+    def create_guides(self, wrist_pos=None, pos=None):
         # TODO: better default placement for wrist guide
         # TODO: rewrite, maybe having separate modules for each finger
-        finger_grps = []
-        fingers_jnts = []
-        self.guides = []
-
+        if pos is None:
+            pos = []
         if wrist_pos is None:
             wrist_pos = [0, 0, 0]
-
-        hand_pos = wrist_pos[0], wrist_pos[1] - 5, wrist_pos[2]
 
         # initialize constants
         fingers = ['thumb', 'index', 'middle', 'ring', 'pinky']
         fingers = fingers[:self.finger_num]
 
-        zPos = hand_pos[2]
-        spacing = 1.5
-        # Create finger guides
-        for index, name in enumerate(fingers):
-            jnt_num = self.finger_joints
-            if index == 0:
-                # Thumb has less joints
-                jnt_num = self.thumb_joints
-            else:
-                # Offset fingers
-                zPos -= spacing
+        # Create positions array
+        if len(pos) == 0:
+            hand_pos = wrist_pos[0], wrist_pos[1] - 5, wrist_pos[2]
+            zPos = hand_pos[2]
+            spacing = 1.5
 
-            # Do fingers
-            fingerPos = hand_pos[0], hand_pos[1], zPos
-            yPos = fingerPos[1]
+            finger_positions = []
+            for index, name in enumerate(fingers):
+                jnt_num = self.finger_joints_num
+                if index == 0:
+                    jnt_num = self.thumb_joints_num
+                else:
+                    # Offset fingers
+                    zPos -= spacing
 
-            offset = 4
-            finger = []
-            for i in range(jnt_num):
-                jnt = pm.createNode('joint', name=f'{self.name}_{name}_{i}{df.jnt_sff}')
-                finger.append(jnt)
+                # Do fingers
+                fingerPos = hand_pos[0], hand_pos[1], zPos
+                yPos = fingerPos[1]
+                offset = 4
 
-                # Create more space for the knuckles
-                if i == 1:
+                pos = []
+                for i in range(jnt_num):
+                    # Create more space for the knuckles
+                    if i == 1:
+                        yPos -= offset
+
+                    # Set jnt position
+                    p = fingerPos[0], yPos, fingerPos[2]
                     yPos -= offset
+                    pos.append(p)
 
-                # Set jnt position
-                pos = fingerPos[0], yPos, fingerPos[2]
-                jnt.translate.set(pos)
+                finger_positions.append(pos)
+        else:
+            finger_positions = pos
 
-                yPos -= offset
-            fingers_jnts.append(finger)
+        # Create guides
+        guide_finger_grps = []
+        for index, name in enumerate(fingers):
+            guide_finger_grp = pm.createNode('transform', name=f'{self.side}_{name}_guide_grp')
 
-            # Group fingers
-            finger_grp = pm.createNode('transform', name=f'{self.side}_{name}_grp')
-            finger_grps.append(finger_grp)
+            guide = utils.create_guide_chain(f'{self.name}_{name}', len(finger_positions[index]), finger_positions[index])
+            pm.matchTransform(guide_finger_grp, guide[0])
+            pm.parent(guide, guide_finger_grp)
+            guide_finger_grps.append(guide_finger_grp)
 
-            pm.matchTransform(finger_grp, finger[0])
-            pm.parent(finger, finger_grp)
+            self.jnt_guides.append(guide)
 
-            # Rotate Thumb
-            if index == 0:
-                pm.rotate(finger_grp, (-25, -30, 0))
+        # Create wrist guide
+        self.wrist_guide = utils.Guide(f'{self.name}_wrist_guide', wrist_pos).guide
 
-        self.jnt_guides = fingers_jnts
-
-        # Create prettier guides
-        for finger_guide in self.jnt_guides:
-            # Get transforms for each guide
-            transforms = []
-            for guide in finger_guide:
-                trs = pm.xform(guide, q=True, ws=True, t=True)
-                transforms.append(trs)
-
-            # Create nurbs curve
-            curve = pm.curve(name=f'{finger_guide[0].name()}_crv' ,d=1, p=transforms)
-
-            # Create clusters for each point and parent them under the guide
-            for i in range(curve.numCVs()):
-                cluster = pm.cluster(curve.cv[i], name=f'{curve.name()}_{i + 1:02}_cluster')[1]
-                cluster.visibility.set(0)
-                pm.parent(cluster, finger_guide[i])
-            pm.parent(curve, get_group(df.driven_grp))
-
-        # Group clean-up
-        hand_grp = pm.createNode('transform', name=f'{self.name}_grp')
-        pm.matchTransform(hand_grp, finger_grps[int(len(fingers) / 2)])
-        pm.parent(finger_grps, hand_grp)
-        pm.parent(hand_grp, get_group(df.rig_guides_grp))
-
-        # Create Wrist
-        self.wrist_guide = pm.createNode('joint', name=f'{self.name}_wrist_{df.jnt_sff}')
-        pm.xform(self.wrist_guide, t=wrist_pos, ws=True)
-        pm.parent(self.wrist_guide, hand_grp)
+        # Create guide grp
+        self.guide_grp = pm.createNode('transform', name=f'{self.name}_guide_grp')
+        pm.matchTransform(self.guide_grp, self.wrist_guide)
+        pm.parent(self.wrist_guide, self.guide_grp)
+        pm.parent(guide_finger_grps, self.guide_grp)
+        pm.parent(self.guide_grp, get_group(df.rig_guides_grp))
 
         self.__create_orient_guides()
-
-        # Add orient guides to guides
         from itertools import chain
         self.guides = self.orient_guides + list(chain.from_iterable(self.jnt_guides))
+
 
         if self.meta:
             self.save_metadata()
@@ -219,14 +196,9 @@ class Hand(Module):
         self.connect_metadata(arm)
 
     def create_joints(self, wrist = None):
-        """
-        mirror_from - nested list with info for fingers, starting with the thumb
-        """
-        # TODO: orient joints based on orientation guide
-
         # List of fingers
         finger_names = ['thumb', 'index', 'middle', 'ring', 'pinky']
-
+        print(self.jnt_guides)
         self.__create_fingers()
         self.__create_hand(wrist=wrist)
 
@@ -319,8 +291,8 @@ class Hand(Module):
         self.hand_jnts.append(hand_end)
 
         # Orient Joints
-        pm.joint(self.hand_jnts[0], edit=True, orientJoint='yzx', secondaryAxisOrient='zup', children=True)
-        pm.joint(self.hand_jnts[-1], edit=True, orientJoint='none')
+        utils.orient_joints(self.hand_jnts, self.jnt_orient_main, self.jnt_orient_secondary)
+
 
     def __clean_up_joints(self):
         # Create hand grp

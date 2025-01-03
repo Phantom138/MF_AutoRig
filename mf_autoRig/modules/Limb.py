@@ -112,8 +112,12 @@ class Limb(Module):
         """
         if pos is None:
             pos = [(0, 10, 0), (0, 0, 0)]
+        self.guide_grp = pm.createNode('transform', name=f'{self.name}_guide_grp')
+        pm.parent(self.guide_grp, get_group(df.rig_guides_grp))
 
-        self.guides = utils.create_joint_chain(3, self.name, pos[0], pos[1], defaultValue=self.default_pin_value)
+        self.guides = utils.create_guide_chain(self.name, 3, pos)
+        pm.parent(self.guides, self.guide_grp)
+
 
         pm.select(cl=True)
 

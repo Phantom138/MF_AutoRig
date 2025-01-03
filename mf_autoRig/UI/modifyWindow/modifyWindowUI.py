@@ -164,24 +164,22 @@ class ModifyWindow(UITemplate):
         # Create context menu
         self.menu = QMenu()
 
+        if is_connected:
+            # This means we cannot connect to another module, only disconnect
+            self.__disconnect_menu()
+        else:
+            self.__connect_menu()
+
         if is_rigged:
             # Show rig menu
-            if is_connected:
-                # This means we cannot connect to another module, only disconnect
-                self.__disconnect_menu()
-            else:
-                self.__connect_menu()
-
-            if not is_mirrored:
-                # We cannot mirror or edit a mirrored module
-                self.__edit_menu()
-                if self.selected_module.mirrored_to is None:
-                    self.__mirror_menu()
-
+            self.__destroy_rig_menu()
         else:
             self.__rig_menu()
 
-        self.__connect_menu()
+        if not is_mirrored:
+            if self.selected_module.mirrored_to is None:
+                self.__mirror_menu()
+
 
         # Delete menu is for everything
         self.__delete_menu()
@@ -245,6 +243,11 @@ class ModifyWindow(UITemplate):
         rig_action.triggered.connect(self.recursive_rig)
         self.menu.addAction(rig_action)
 
+    def __destroy_rig_menu(self):
+        destroy_rig_action = QAction('Destroy Rig', self)
+        destroy_rig_action.triggered.connect(partial(self.recursive_rig, destroy=True))
+        self.menu.addAction(destroy_rig_action)
+
     @run_update_tree
     def connect_module(self, module, index=None):
         with UndoStack(f"Connected {self.selected_module.name} to {module.name}"):
@@ -281,13 +284,17 @@ class ModifyWindow(UITemplate):
     #         self.selected_module.rig()
 
     @run_update_tree
-    def recursive_rig(self):
+    def recursive_rig(self, destroy=False):
         # Rig recursively
-        print("Running rig recursively")
         mdl_to_rig = self.selected_module.get_all_children()
-        print(mdl_to_rig)
         mdl_to_rig.reverse()
         mdl_to_rig.append(self.selected_module)
+
+        if destroy is True:
+            log.info(f"Destroying Rig: {mdl_to_rig}")
+            for module in mdl_to_rig:
+                module.destroy_rig()
+            return
 
         log.info(f"Rigging: {mdl_to_rig}")
         for module in mdl_to_rig:
