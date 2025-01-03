@@ -57,11 +57,17 @@ def test_mirror():
     L_arm = Limb.Limb('L_arm')
     L_arm.create_guides()
 
-    L_hand = Hand.Hand('L_hand')
-    L_hand.create_guides()
+    # L_hand = Hand.Hand('L_hand')
+    # L_hand.create_guides()
 
     L_arm.mirror_guides()
-    L_hand.mirror_guides()
+    # L_hand.mirror_guides()
+
+def test_config():
+    L_arm = Limb.Limb('L_arm')
+    L_arm.create_guides()
+    R_arm = Limb.Limb('R_arm')
+    R_arm.create_guides()
 
 def main():
     cmds.file(new=True, f=True)

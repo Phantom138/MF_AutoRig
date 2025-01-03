@@ -47,14 +47,15 @@ class Limb(Module):
 
     """
     meta_args = {
-        'attach_index': {'attributeType': 'long'},
-        'switch': {'attributeType': 'message'},
-        'guides': {'attributeType': 'message', 'm': True},
-        'joints': {'attributeType': 'message', 'm': True},
-        'ik_joints': {'attributeType': 'message', 'm': True},
-        'ik_ctrls': {'attributeType': 'message', 'm': True},
-        'fk_joints': {'attributeType': 'message', 'm': True},
-        'fk_ctrls': {'attributeType': 'message', 'm': True}
+        'info_attrs':{
+            'switch': {'attributeType': 'message'},
+            'guides': {'attributeType': 'message', 'm': True},
+            'joints': {'attributeType': 'message', 'm': True},
+            'ik_joints': {'attributeType': 'message', 'm': True},
+            'ik_ctrls': {'attributeType': 'message', 'm': True},
+            'fk_joints': {'attributeType': 'message', 'm': True},
+            'fk_ctrls': {'attributeType': 'message', 'm': True}
+        }
     }
 
     connectable_to = ['Clavicle', 'Spine']
@@ -64,6 +65,7 @@ class Limb(Module):
         self.parent = None
 
         self.reset()
+        self.save_metadata()
 
     def reset(self):
         super().reset()
@@ -124,10 +126,15 @@ class Limb(Module):
         if self.meta:
             self.save_metadata()
 
-    def create_joints(self, mirror_from = None):
-        self.joints = []
+    def mirror_guides(self):
+        mir_module = super().mirror_guides()
+        # Particularity for Limb, secondary axis stays the same
+        mir_module.jnt_orient_secondary = self.jnt_orient_secondary
+        return mir_module
 
-        self.joints = utils.create_joints_from_guides(self.name, self.guides)
+    def create_joints(self, mirror_from = None):
+        self.joints = utils.create_joints_from_guides(self.name, self.guides,
+                                                      aimVector=self.jnt_orient_main, upVector=self.jnt_orient_secondary)
 
         if self.meta:
             self.save_metadata()

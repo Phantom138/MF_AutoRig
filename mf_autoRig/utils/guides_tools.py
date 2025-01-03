@@ -262,7 +262,7 @@ def create_guide_chain(name: str, number: int, pos: list, interpolate=True):
     pm.select(clear=True)
     return guides
 
-def create_joints_from_guides(name, guides, suffix=None, endJnt=True):
+def create_joints_from_guides(name, guides, aimVector, upVector, suffix=None, endJnt=True):
     pm.select(clear=True)
     radius = guides[0].radius.get()
     joints = []
@@ -279,18 +279,7 @@ def create_joints_from_guides(name, guides, suffix=None, endJnt=True):
         pm.matchTransform(jnt, tmp, pos=True)
         joints.append(jnt)
 
-    orient_joints(joints, aimVector=(0, 1, 0), upVector=(1, 0, 0), useNormal=True)
-    # for i in range(len(joints) - 1, 0, -1):
-    #     pm.parent(joints[i], joints[i - 1])
-    #
-    # # Orient joints
-    # pm.joint(joints[0], edit=True, orientJoint='yzx', secondaryAxisOrient='zup', children=True)
-    # pm.joint(joints[-1], edit=True, orientJoint='none')
-    #
-    # # HACK: sometimes the x axis of the last joint gets very minimal values. This messes up the IK
-    # # This is more of a bandaid, the problem is somewhere in the code above
-    # # TODO: Fix this
-    # joints[-1].translateX.set(0)
+    orient_joints(joints, aimVector=aimVector, upVector=upVector, useNormal=True)
 
     pm.select(clear = True)
     return joints

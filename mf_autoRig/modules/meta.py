@@ -1,29 +1,29 @@
 import pymel.core as pm
 
-def create_metadata(name, moduleType, info_args, can_mirror):
+def create_metadata(name, moduleType, meta_attrs, can_mirror):
     metaNode = pm.createNode('network', name="META_" + name)
 
-    # Mirror attributes
-    if can_mirror:
-        metaNode.addAttr('mirrored_to', at='message')
-        metaNode.addAttr('mirrored_from', at='message')
+    attrs = meta_attrs
 
-    # Default args
-    metaNode.addAttr('Name', type='string')
-    metaNode.Name.set(name)
+    # Config args
+    for typ in attrs:
+        for key in attrs[typ]:
+            attr = attrs[typ][key]
+            metaNode.addAttr(key, **attr)
+            # Add extra attrs for double3
+            if 'attributeType' in attr and attr['attributeType'] == 'double3':
+                for axis in ['X', 'Y', 'Z']:
+                    metaNode.addAttr(key + axis, **{'attributeType': 'double', 'p': key})
 
-    metaNode.addAttr('moduleType', type='string')
-    metaNode.moduleType.set(moduleType)
-
-    # Create separator
-    metaNode.addAttr('info', at='compound', nc=len(info_args))
-
-    # Custom args
-    for key in info_args:
-        # Parent to info attr
-        info_args[key]['p'] = 'info'
-
-        metaNode.addAttr(key, **info_args[key])
+    # # Create separator
+    # metaNode.addAttr('info', at='compound', nc=len(info_args))
+    #
+    # # Custom args
+    # for key in info_args:
+    #     # Parent to info attr
+    #     info_args[key]['p'] = 'info'
+    #
+    #     metaNode.addAttr(key, **info_args[key])
 
 
     return metaNode
@@ -43,6 +43,10 @@ def add(nodes, dst):
             dest.set(src)
 
         elif isinstance(src, bool):
+            dest.set(src)
+
+        # Set vector type variables
+        elif isinstance(src, tuple) and len(src) == 3:
             dest.set(src)
 
     # If it's a list of nodes connect each one to the destination
