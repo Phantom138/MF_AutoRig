@@ -7,44 +7,62 @@ from mf_autoRig import log
 
 class Hand(Module):
     meta_args = {
-        'finger_num': {'attributeType': 'long'},
-        'finger_joints_num': {'attributeType': 'long'},
-        'thumb_joints_num': {'attributeType': 'long'},
-        'hand_ctrl': {'attributeType': 'message'},
-        'wrist_guide': {'attributeType': 'message'},
-        'guides': {'attributeType': 'message', 'm': True},
-        'hand_jnts': {'attributeType': 'message', 'm': True},
-        'finger_jnts': {'attributeType': 'message', 'm': True},
-        'all_ctrls': {'attributeType': 'message', 'm': True}
+        'creation_attrs': {
+            **Module.meta_args['creation_attrs'],
+            'finger_num': {'attributeType': 'long'},
+            'finger_joints_num': {'attributeType': 'long'},
+            'thumb_joints_num': {'attributeType': 'long'},
+        },
+
+        'module_attrs': {
+            **Module.meta_args['module_attrs'],
+        },
+
+        'config_attrs': {
+            **Module.meta_args['config_attrs'],
+        },
+
+        'info_attrs': {
+            **Module.meta_args['info_attrs'],
+            'hand_ctrl': {'attributeType': 'message'},
+            'wrist_guide': {'attributeType': 'message'},
+            'guides': {'attributeType': 'message', 'm': True},
+            'hand_jnts': {'attributeType': 'message', 'm': True},
+            'finger_jnts': {'attributeType': 'message', 'm': True},
+        }
     }
 
     connectable_to = ['Arm', 'Limb']
 
-    def __init__(self, name, meta=True, finger_num: int=5, finger_joints: int=5, thumb_joints: int=4):
+    def __init__(self, name, meta=True, **kwargs):
         super().__init__(name, self.meta_args, meta)
 
+        # Get attrs from kwargs
+        default_args = {'finger_num': 5, 'finger_joints_num': 5, 'thumb_joints_num': 4}
+        default_args.update(kwargs)
+
+        for key, value in default_args.items():
+            setattr(self, key, value)
+
         # Validate finger_num
-        if finger_num > 5:
+        if self.finger_num > 5:
             log.warning(f"For {self.name} too many fingers, setting to 5")
-            finger_num = 5
+            self.finger_num = 5
 
-        elif finger_num < 1:
+        elif self.finger_num < 1:
             log.warning(f"For {self.name} too few fingers, setting to 1")
-            finger_num = 1
+            self.finger_num = 1
 
-        elif not isinstance(finger_num, int):
+        elif not isinstance(self.finger_num, int):
             log.warning(f"For {self.name} invalid finger number, setting to 5")
-            finger_num = 5
+            self.finger_num = 5
 
-        if finger_joints < 3:
+        if self.finger_joints_num < 3:
             log.warning(f"For {self.name} too few finger joints, setting to 3")
-            finger_joints = 3
-        # Parameters
-        self.finger_num = finger_num
-        self.finger_joints_num = finger_joints
-        self.thumb_joints_num = thumb_joints
+            self.finger_joints_num = 3
 
         self.reset()
+        self.save_metadata()
 
     def reset(self):
         super().reset()
@@ -246,7 +264,8 @@ class Hand(Module):
                 next_jnt = jnts[j+1]
 
                 # Set right orientation
-                constraint = pm.aimConstraint(next_jnt, jnt, aim = [0,1,0], upVector=[1,0,0], worldUpObject=self.orient_guides[i], worldUpType="objectrotation", worldUpVector=[0,1,0])
+                constraint = pm.aimConstraint(next_jnt, jnt, aim = self.jnt_orient_main, upVector=self.jnt_orient_secondary, worldUpObject=self.orient_guides[i],
+                                              worldUpType="objectrotation", worldUpVector = [1,0,0])
                 pm.delete(constraint)
 
                 # Freeze rotation of jnt

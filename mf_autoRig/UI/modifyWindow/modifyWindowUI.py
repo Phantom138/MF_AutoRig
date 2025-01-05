@@ -64,6 +64,8 @@ class ModifyWindow(UITemplate):
         self.ui.tree.clear()
 
         self.modules = module_tools.get_all_modules(create=True)
+
+
         print("FOUND MODULES", self.modules)
         if self.modules is None:
             return
@@ -77,12 +79,12 @@ class ModifyWindow(UITemplate):
             # Get information about the selected module
             is_rigged, is_connected, is_mirrored = module.get_info()
 
-
+            # print(tree_item, module)
             if is_mirrored:
                 # Mirrored modules are grey
                 color = QtGui.QColor("#737373")
-                toolTip = f"Module mirrored from {module.mirrored_from.Name.get()}, cannot be edited"
-                tree_item.setText(1, f'Mirrored from {module.mirrored_from.Name.get()}')
+                toolTip = f"Module mirrored from {module.mirrored_from.name}, cannot be edited"
+                tree_item.setText(1, f'Mirrored from {module.mirrored_from.name}')
 
             elif module.guides is None or len(module.guides) < 2:
                 # Modules with no guides are red
@@ -147,11 +149,13 @@ class ModifyWindow(UITemplate):
         key = self.ui.tree.currentItem().text(0)
         self.selected_module = self.modules_ref[key]
 
-        if self.selected_module.joints_grp is not None:
-            # When the joint group gets recreated, the selection is reset and pymel loses the selection
-            # HACK: Uses cmds to select based on name instead
+        # is_rigged, is_connected, is_mirrored = self.selected_module.get_info()
+        print(self.selected_module.guide_grp)
+        if self.selected_module.guide_grp is not None:
             import maya.cmds as cmds
-            cmds.select(self.selected_module.joints_grp.name())
+            cmds.select(clear=True)
+            cmds.select(self.selected_module.guide_grp.name())
+            cmds.select(self.selected_module.metaNode.name(), add=True)
             # pm.viewFit()
 
     def context_menu(self, position):
@@ -183,6 +187,7 @@ class ModifyWindow(UITemplate):
 
         # Delete menu is for everything
         self.__delete_menu()
+        self.__print_rig_pos()
 
         # Show context menu
         self.menu.exec_(self.ui.tree.mapToGlobal(position))
@@ -248,6 +253,12 @@ class ModifyWindow(UITemplate):
         destroy_rig_action.triggered.connect(partial(self.recursive_rig, destroy=True))
         self.menu.addAction(destroy_rig_action)
 
+    def __print_rig_pos(self):
+        print_rig_action = QAction('Print Rig Pos', self)
+        print_rig_action.triggered.connect(self.selected_module.print_class)
+        self.menu.addAction(print_rig_action)
+
+
     @run_update_tree
     def connect_module(self, module, index=None):
         with UndoStack(f"Connected {self.selected_module.name} to {module.name}"):
@@ -259,7 +270,7 @@ class ModifyWindow(UITemplate):
     @run_update_tree
     def mirror_item(self):
         with UndoStack(f"Mirrored {self.selected_module.name}"):
-            self.selected_module.mirror()
+            self.selected_module.mirror_guides()
 
     @run_update_tree
     def disconnect_item(self):

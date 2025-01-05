@@ -15,6 +15,8 @@ def create_metadata(name, moduleType, meta_attrs, can_mirror):
                 for axis in ['X', 'Y', 'Z']:
                     metaNode.addAttr(key + axis, **{'attributeType': 'double', 'p': key})
 
+    metaNode.attr('name').set(name)
+    metaNode.moduleType.set(moduleType)
     # # Create separator
     # metaNode.addAttr('info', at='compound', nc=len(info_args))
     #
@@ -46,7 +48,7 @@ def add(nodes, dst):
             dest.set(src)
 
         # Set vector type variables
-        elif isinstance(src, tuple) and len(src) == 3:
+        elif isinstance(src, pm.dt.Vector):
             dest.set(src)
 
     # If it's a list of nodes connect each one to the destination

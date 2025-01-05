@@ -210,36 +210,35 @@ class Guide:
         set_color(self.guide, viewport='cyan')
 
 
-class GuideCurve:
-    def __init__(self, name, guides):
-        # Create curve driven by the guides
-        crv_pts = []
-        for guide in guides:
-            crv_pt = pm.xform(guide, query=True, translation=True, worldSpace=True)
-            crv_pts.append(crv_pt)
+def create_guide_curve(name, guides, display=2):
+    # Create curve driven by the guides
+    crv_pts = []
+    for guide in guides:
+        crv_pt = pm.xform(guide, query=True, translation=True, worldSpace=True)
+        crv_pts.append(crv_pt)
 
-        self.curve = pm.curve(d=1, p=crv_pts, name=f'{name}_guide_crv')
+    curve = pm.curve(d=1, p=crv_pts, name=f'{name}_guide_crv')
 
-        # Parent under driven grp
-        driven_grp = get_group(df.driven_grp)
-        pm.parent(self.curve, driven_grp)
+    # Parent under driven grp
+    driven_grp = get_group(df.driven_grp)
+    pm.parent(curve, driven_grp)
 
-        # Create clusters
-        for i in range(self.curve.numCVs()):
-            cluster = pm.cluster(self.curve.cv[i], name=f'{self.curve.name()}_{i + 1:02}_cluster')[1]
-            cluster.visibility.set(0)
-            pm.parent(cluster, guides[i])
+    # Create clusters
+    for i in range(curve.numCVs()):
+        cluster = pm.cluster(curve.cv[i], name=f'{curve.name()}_{i + 1:02}_cluster')[1]
+        cluster.visibility.set(0)
+        pm.parent(cluster, guides[i])
 
-        self.curve.lineWidth.set(2)
-        self.curve.alwaysDrawOnTop.set(1)
-        self.curve.overrideEnabled.set(1)
-        self.curve.overrideDisplayType.set(2) # Reference
-        # set_color(self.curve, viewport='black')
-        lock_and_hide(self.curve)
+    curve.lineWidth.set(2)
+    curve.alwaysDrawOnTop.set(1)
+    curve.overrideEnabled.set(1)
+    curve.overrideDisplayType.set(display) # Reference
+    # set_color(self.curve, viewport='black')
+    lock_and_hide(curve)
 
 
 def create_guide_chain(name: str, number: int, pos: list, interpolate=True):
-    if interpolate and len(pos) == 2:
+    if interpolate and len(pos) == 2 and number > len(pos):
         new_pos = []
         start = pm.dt.Vector(pos[0])
         end = pm.dt.Vector(pos[1])
@@ -258,7 +257,7 @@ def create_guide_chain(name: str, number: int, pos: list, interpolate=True):
         guide = Guide(f'{name}_{i}_guide', pos[i])
         guides.append(guide.guide)
 
-    GuideCurve(name, guides)
+    create_guide_curve(name, guides)
     pm.select(clear=True)
     return guides
 

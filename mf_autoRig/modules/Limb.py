@@ -47,7 +47,19 @@ class Limb(Module):
 
     """
     meta_args = {
+        'creation_attrs': {
+            **Module.meta_args['creation_attrs']
+        },
+
+        'module_attrs': {
+            **Module.meta_args['module_attrs'],
+        },
+
+        'config_attrs': {
+            **Module.meta_args['config_attrs'],
+        },
         'info_attrs':{
+            **Module.meta_args['info_attrs'],
             'switch': {'attributeType': 'message'},
             'guides': {'attributeType': 'message', 'm': True},
             'joints': {'attributeType': 'message', 'm': True},
@@ -65,12 +77,13 @@ class Limb(Module):
         self.parent = None
 
         self.reset()
-        self.save_metadata()
+        self.attach_index = 0
+        self.default_pin_value = 51
+
+        # self.save_metadata()
 
     def reset(self):
         super().reset()
-        self.attach_index = 0
-
         self.joints = []
         self.guides = []
 
@@ -81,11 +94,6 @@ class Limb(Module):
         self.fk_ctrls = []
         self.switch = []
 
-        self.control_grp = []
-        self.joints_grp = []
-        self.all_ctrls = []
-
-        self.default_pin_value = 51
 
     def update_from_meta(self):
         super().update_from_meta()
@@ -130,6 +138,7 @@ class Limb(Module):
         mir_module = super().mirror_guides()
         # Particularity for Limb, secondary axis stays the same
         mir_module.jnt_orient_secondary = self.jnt_orient_secondary
+        self.save_metadata()
         return mir_module
 
     def create_joints(self, mirror_from = None):
@@ -211,15 +220,18 @@ class Limb(Module):
             return
 
         # Do the connection
-        pm.parentConstraint(self.guides[0],dest.guides[-1])
-        pm.hide(dest.guides[-1])
-        set_color(self.guides[0], "green")
+        if not dest_class == 'Spine':
+            pm.parentConstraint(self.guides[0], dest.guides[-1])
+            pm.hide(dest.guides[-1])
+            set_color(self.guides[0], "green")
+        else:
+            # Symbolic connection
+            utils.create_guide_curve(self.name, [dest.guides[0],self.guides[0]], display=1)
 
-        self.parent = dest
-        self.connect_metadata(dest, 0)
+        self.connect_metadata(dest)
 
 
-    def connect(self, dest, attach_index=0, force=False):
+    def connect(self, dest):
         if not self.check_if_connected(dest):
             log.warning(f"{self.name} not connected to {dest.name}")
             return
@@ -227,7 +239,7 @@ class Limb(Module):
         dest_class = dest.__class__.__name__
 
         if dest_class == 'Spine':
-            attach_pt = dest.attachment_pts[attach_index]
+            attach_pt = dest.attachment_pts[self.attach_index]
             log.info(f"Connecting {self.name} to {dest_class}.{attach_pt}")
 
             if attach_pt == 'Chest':
@@ -235,9 +247,7 @@ class Limb(Module):
                 pm.parentConstraint(dest.fk_ctrls[-1], self.fk_ctrls[0].getParent(1), maintainOffset=True)
 
             elif attach_pt == 'Hip':
-                ctrl_grp = self.fk_ctrls[0].getParent(1)
-
-                pm.parentConstraint(dest.fk_ctrls[0], ctrl_grp, maintainOffset=True)
+                pm.parentConstraint(dest.fk_ctrls[0], self.fk_ctrls[0].getParent(1), maintainOffset=True)
                 pm.parentConstraint(dest.hip_ctrl, self.ik_joints[0], maintainOffset=True)
 
             else:
@@ -254,8 +264,6 @@ class Limb(Module):
             pm.parentConstraint(dest.clavicle_ctrl, ctrl_grp, maintainOffset=True)
             pm.parentConstraint(dest.joints[-1], self.ik_joints[0])
 
-        # if not force:
-        #     self.connect_metadata(dest, 0)
 
     def serialize(self):
         data = {}

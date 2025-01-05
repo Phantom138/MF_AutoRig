@@ -50,15 +50,16 @@ class Module(abc.ABC):
             Returns a string representation of the Module instance.
     """
 
-    df_meta_args = {
-        'creation_attr':{
+    meta_args = {
+        'creation_attrs':{
             'name': {'type': 'string'},
             'moduleType': {'type': 'string'},
         },
 
+        # Attrs that connect to other modules (Meta nodes)
         'module_attrs': {
-            'mirrored_to': {'attributeType': 'message'},
-            'mirrored_from': {'attributeType': 'message'},
+            'mirrored_to': {'attributeType': 'message', 'w':False},
+            'mirrored_from': {'attributeType': 'message', 'r': False},
             'children': {'attributeType': 'message', 'm': True, 'w': False},
             'parent': {'attributeType': 'message', 'r': False},
         },
@@ -72,8 +73,10 @@ class Module(abc.ABC):
 
         # Attributes for keeping track of nodes created by the rig
         'info_attrs':{
+            'guide_grp': {'attributeType': 'message'},
             'joints_grp': {'attributeType': 'message'},
             'control_grp': {'attributeType': 'message'},
+            'all_ctrls': {'attributeType': 'message', 'm': True},
         }
 
     }
@@ -92,13 +95,6 @@ class Module(abc.ABC):
         else:
             can_mirror = True
 
-        # Add default args to meta_args
-        self.meta_args = self.df_meta_args.copy()
-        for key in self.meta_args:
-            if key in args:
-                self.meta_args[key].update(args[key])
-
-        print(f"Meta args: {self.meta_args}")
         self.meta = meta
         if isinstance(meta, pm.nt.Network):
             # Using existing metadata node
@@ -111,6 +107,11 @@ class Module(abc.ABC):
         # Parent - child
         self.parent = None
         self.children = []
+        self.attach_index = 0
+
+        # Joint orient
+        self.jnt_orient_main = pm.dt.Vector([0,1,0])
+        self.jnt_orient_secondary = pm.dt.Vector([0,0,1])
 
         # Save instance
         self.instances[self.metaNode.name()] = self
@@ -126,9 +127,6 @@ class Module(abc.ABC):
 
         self.mirrored_from = None
         self.mirrored_to = None
-
-        self.jnt_orient_main = (0,1,0)
-        self.jnt_orient_secondary = (0,0,1)
 
         self.curve_info = []
         self.all_ctrls = []
@@ -165,35 +163,64 @@ class Module(abc.ABC):
 
         general_obj.metaNode = metaNode
         general_obj.meta = True
+        # general_obj.update_from_meta(only=['creation_attrs', 'config_attrs', 'info_attrs']) # Skip module_attrs
         general_obj.update_from_meta()
 
         return general_obj
 
-    def update_from_meta(self):
+    def update_from_meta(self, only=None):
         # Reset the class so we start with clean values
         self.reset()
 
+        if only is None:
+            only = []
+        elif isinstance(only, str):
+            only = [only]
+
+        # Validate skip attr
+        for o in only:
+            if o not in self.meta_args:
+                raise ValueError(f"Invalid skip value: {o}")
+
         # Get the attributes from the saved metadata
         for typ in self.meta_args:
-            for attribute in self.meta_args[typ]:
-                data = self.metaNode.attr(attribute).get()
-
-                # If it's a metadata node, create the corresponding class
-                if isinstance(data, pm.nt.Network) and data.name().startswith(df.meta_prf):
-                    data_class = module_tools.createModule(data)
-                    setattr(self, attribute, data_class)
-                    continue
-
-                # If it's a list of metadata nodes, create the corresponding classes
-                if isinstance(data, list) and len(data) != 0:
-                    is_meta_list = all(isinstance(d, pm.nt.Network) and d.name().startswith(df.meta_prf) for d in data)
-                    if is_meta_list:
-                        # Means we have a list of network nodes
-                        result = [module_tools.createModule(d) for d in data]
-                        setattr(self, attribute, result)
+            if typ == 'module_attrs':
+                for attribute in self.meta_args[typ]:
+                    # Skip children and mirrored_from attr to avoid cycles
+                    if attribute in ['children', 'mirrored_to']:
                         continue
 
+                    data = self.metaNode.attr(attribute).get()
+
+                    # If it's a metadata node, create the corresponding class
+                    if isinstance(data, pm.nt.Network) and data.name().startswith(df.meta_prf):
+                        data_class = module_tools.createModule(data)
+                        setattr(self, attribute, data_class)
+                        if attribute == 'parent' and self not in data_class.children:
+                            data_class.children.append(self)
+
+                        elif attribute == 'mirrored_from':
+                            data_class.mirrored_to = self
+
+                    elif data is not None:
+                        raise ValueError(f"Invalid data type for {attribute}: {data}, module_attrs should link to a meta node")
+
+                continue
+
+            for attribute in self.meta_args[typ]:
+                data = self.metaNode.attr(attribute).get()
                 setattr(self, attribute, data)
+
+                # # If it's a list of metadata nodes, create the corresponding classes
+                # if isinstance(data, list) and len(data) != 0:
+                #     is_meta_list = all(isinstance(d, pm.nt.Network) and d.name().startswith(df.meta_prf) for d in data)
+                #     if is_meta_list:
+                #         # Means we have a list of network nodes
+                #         result = [module_tools.createModule(d) for d in data]
+                #         setattr(self, attribute, result)
+                #         continue
+                # else:
+
 
     def save_metadata(self):
         """
@@ -203,6 +230,7 @@ class Module(abc.ABC):
         for typ in self.meta_args:
             for attribute in self.meta_args[typ]:
                 src = getattr(self, attribute)
+                dst = self.metaNode.attr(attribute)
                 if isinstance(src, list) and not src:
                     # Skip if list is empty
                     continue
@@ -210,12 +238,14 @@ class Module(abc.ABC):
                 if src is None:
                     continue
 
-                dst = self.metaNode.attr(attribute)
+                if isinstance(src, Module):
+                    continue
+
                 mdata.add(src, dst)
                 log.debug(f"{self.name} - Metadata connected {src} to {dst}")
 
     # CONNECTION METHODS
-    def connect_metadata(self, dest, index=0):
+    def connect_metadata(self, dest):
         # Connect meta nodes
         if self.meta:
             # Connect children one by one
@@ -225,6 +255,7 @@ class Module(abc.ABC):
 
         self.parent = dest
         dest.children.append(self)
+
 
     def check_if_connected(self, dest):
         if self.meta:
@@ -329,9 +360,9 @@ class Module(abc.ABC):
                 c.disconnect()
 
         # Delete stuff
-        if len(self.guides) != 0:
-            log.debug(f"Deleting {self.guides}")
-            pm.delete(self.guides)
+        if self.guide_grp is not None:
+            log.debug(f"Deleting {self.guide_grp}")
+            pm.delete(self.guide_grp)
 
         if self.joints_grp is not None:
             log.debug(f"Deleting {self.joints_grp}")
@@ -381,14 +412,25 @@ class Module(abc.ABC):
 
     def mirror_guides(self):
         name = self.name.replace(f'{self.side.side}_', f'{self.side.opposite}_')
-        mir_module = self.__class__(name)
-        mir_module.create_guides()
+        print("mirror for class", self.__class__)
+        # Copy creation args
+        creation_args = {}
+        for key in self.meta_args['creation_attrs']:
+            if key == 'name' or key == 'moduleType':
+                continue
+            creation_args[key] = self.metaNode.attr(key).get()
+
+        mir_module = self.__class__(name, **creation_args)
+
+        # Copy attributes
+        for attr in self.meta_args['config_attrs']:
+            setattr(mir_module, attr, getattr(self, attr))
 
         # Change orient
-        if self.jnt_orient_main == (0,1,0):
-            mir_module.jnt_orient_main = (0,-1,0)
-        if self.jnt_orient_secondary == (0,0,1):
-            mir_module.jnt_orient_secondary = (0,0,-1)
+        mir_module.jnt_orient_main = self.jnt_orient_main * -1
+        mir_module.jnt_orient_secondary = self.jnt_orient_secondary * -1
+
+        mir_module.create_guides()
 
         identity_mtx = [1, 0, 0, 0,
                         0, 1, 0, 0,
@@ -415,7 +457,15 @@ class Module(abc.ABC):
             utils.lock_and_hide(mir_guide)
             guide.xformMatrix.connect(mir_guide.offsetParentMatrix)
 
+        self.mirrored_to = mir_module
+        mir_module.mirrored_from = self
+
+        self.save_metadata()
         mir_module.save_metadata()
+
+        # Do mirror connection for metadata
+        self.metaNode.mirrored_to.connect(mir_module.metaNode.mirrored_from)
+
         return  mir_module
 
     def mirror(self):
@@ -472,6 +522,15 @@ class Module(abc.ABC):
         self.rig()
 
         self.mirror_ctrls(source)
+
+
+    # DEBUG METHODS
+    def print_guides_pos(self):
+        for guide in self.guides:
+            print(guide.getTranslation(ws=True), end=", ")
+
+    def print_class(self):
+        print(self)
 
     def __str__(self):
         return str(self.__dict__)

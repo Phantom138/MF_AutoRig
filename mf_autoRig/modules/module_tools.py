@@ -19,16 +19,15 @@ def createModule(metaNode):
         'Spine': Spine.Spine,
         'BendyLimb': BendyLimb.BendyLimb
     }
-    print("Creating for", metaNode)
+
     if metaNode.name() in Module.Module.instances:
         obj = Module.Module.instances[metaNode.name()]
-        print("from save", obj.name)
-        return obj
+        obj.update_from_meta()
+    else:
+        module = modules[metaNode.moduleType.get()]
+        obj = module.create_from_meta(metaNode)
 
-    module = modules[metaNode.moduleType.get()]
-    obj = module.create_from_meta(metaNode)
-    print("NEW", obj.name)
-    print(obj.__dict__)
+
     return obj
 
 def get_all_modules(module_types=None, create=False):

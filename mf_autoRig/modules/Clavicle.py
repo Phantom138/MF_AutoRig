@@ -6,9 +6,24 @@ from mf_autoRig.modules.Module import Module
 
 class Clavicle(Module):
     meta_args = {
-        'guides': {'attributeType': 'message', 'm': True},
-        'joints': {'attributeType': 'message', 'm': True},
-        'clavicle_ctrl': {'attributeType': 'message'},
+        'creation_attrs':{
+            **Module.meta_args['creation_attrs']
+        },
+
+        'module_attrs': {
+            **Module.meta_args['module_attrs'],
+        },
+
+        'config_attrs':{
+            **Module.meta_args['config_attrs'],
+            'auto_clavicle': {'attributeType': 'bool'}
+        },
+        'info_attrs':{
+            **Module.meta_args['info_attrs'],
+            'guides': {'attributeType': 'message', 'm': True},
+            'joints': {'attributeType': 'message', 'm': True},
+            'clavicle_ctrl': {'attributeType': 'message'},
+        }
     }
 
     connectable_to = ['Spine']
@@ -20,6 +35,8 @@ class Clavicle(Module):
 
     def reset(self):
         super().reset()
+        self.auto_clavicle = False
+
         self.clavicle_ctrl = None
         self.joints = []
         self.guides = []
@@ -36,15 +53,14 @@ class Clavicle(Module):
         """
         Creates clavicle guides at pos, pos should be a list of xyz values
         """
-        self.guides = []
+        # self.guides = []
         if pos is None:
             pos = [(0,0,0), (5,0,0)]
 
-        for p in pos:
-            self.guides.append(pm.joint(name=f'{self.name}', position=p))
+        self.guides = utils.create_guide_chain(self.name, 2, pos)
 
-        grp = pm.group(self.guides, name=f'{self.name}_guides{df.grp_sff}')
-        pm.parent(grp, get_group(df.rig_guides_grp))
+        self.guide_grp = pm.group(self.guides, name=f'{self.name}_guides{df.grp_sff}')
+        pm.parent(self.guide_grp, get_group(df.rig_guides_grp))
 
         # Clear Selection
         pm.select(clear=True)
@@ -58,6 +74,10 @@ class Clavicle(Module):
             pm.warning(f"{self.name} already connected to {torso.name}")
             return
 
+        # Symbolic connection
+        utils.create_guide_curve(self.name, [self.guides[0], torso.guides[-1]], display=1)
+
+        self.save_metadata()
         self.connect_metadata(torso)
 
     def create_joints(self, shoulder=None):
@@ -69,7 +89,8 @@ class Clavicle(Module):
             self.guides.append(shoulder)
 
         # Create joints
-        self.joints = utils.create_joints_from_guides(self.name, self.guides)
+        self.joints = utils.create_joints_from_guides(self.name, self.guides,
+                                                      aimVector=self.jnt_orient_main, upVector=self.jnt_orient_secondary)
 
         # Parent Joints under Joint_grp
         pm.parent(self.joints[0], get_group(df.joints_grp))
