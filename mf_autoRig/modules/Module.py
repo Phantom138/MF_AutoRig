@@ -443,13 +443,13 @@ class Module(abc.ABC):
         keep = ['joint', 'transform']
         guide_hierarchy = []
         for h in (self.guide_grp.getChildren(ad=True)):
-            if h.type() in keep and not h.endswith('_clusterHandle'):
+            if h.type() in keep and not h.endswith('_clusterHandle') and not h.endswith('_guide_crv'):
                 guide_hierarchy.append(h)
 
         # Get mir hierarchy
         mir_hierarchy = []
         for h in mir_module.guide_grp.getChildren(ad=True):
-            if h.type() in keep and not h.endswith('_clusterHandle'):
+            if h.type() in keep and not h.endswith('_clusterHandle') and not h.endswith('_guide_crv'):
                 mir_hierarchy.append(h)
 
         for guide, mir_guide in zip(guide_hierarchy, mir_hierarchy):

@@ -17,6 +17,7 @@ from mf_autoRig.UI.utils.UI_Template import delete_workspace_control, UITemplate
 import mf_autoRig.modules.module_tools as module_tools
 from mf_autoRig.utils.undo import UndoStack
 from mf_autoRig import log
+from mf_autoRig.UI.createWindow.modulePage import ConfigPage
 
 WORK_PATH = pathlib.Path(__file__).parent.resolve()
 
@@ -39,6 +40,7 @@ class ModifyWindow(UITemplate):
     def __init__(self, title):
         ui_path = f'{WORK_PATH}\modifyWindow.ui'
         super().__init__(widget_title=title, ui_path=ui_path)
+        self.config_widget = None
 
         font = QFont()
         font.setPointSize(8)
@@ -143,20 +145,31 @@ class ModifyWindow(UITemplate):
                 item.setExpanded(True)
 
     def on_selection_changed(self):
+        if self.config_widget is not None:
+            self.ui.verticalLayout.removeWidget(self.config_widget)
+            self.config_widget.deleteLater()
+            self.config_widget = None
+
         if self.ui.tree.currentItem() is None:
             return
 
         key = self.ui.tree.currentItem().text(0)
-        self.selected_module = self.modules_ref[key]
 
-        # is_rigged, is_connected, is_mirrored = self.selected_module.get_info()
-        print(self.selected_module.guide_grp)
+        self.selected_module = self.modules_ref[key] # TODO: this could be changed to query _instances dict on Module class
+
+
+        # Select the module in the scene
         if self.selected_module.guide_grp is not None:
             import maya.cmds as cmds
             cmds.select(clear=True)
             cmds.select(self.selected_module.guide_grp.name())
             cmds.select(self.selected_module.metaNode.name(), add=True)
             # pm.viewFit()
+
+        # Create config widget
+        self.config_widget = ConfigPage(self.selected_module, parent=self)
+        self.ui.verticalLayout.addWidget(self.config_widget)
+
 
     def context_menu(self, position):
         if self.ui.tree.currentItem() is None:
