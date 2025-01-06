@@ -210,7 +210,7 @@ class Guide:
         set_color(self.guide, viewport='cyan')
 
 
-def create_guide_curve(name, guides, display=2):
+def create_guide_curve(name, guides, display=2, parent: pm.nt.Transform = None):
     # Create curve driven by the guides
     crv_pts = []
     for guide in guides:
@@ -220,8 +220,9 @@ def create_guide_curve(name, guides, display=2):
     curve = pm.curve(d=1, p=crv_pts, name=f'{name}_guide_crv')
 
     # Parent under driven grp
-    driven_grp = get_group(df.driven_grp)
-    pm.parent(curve, driven_grp)
+    if parent is not None:
+        pm.parent(curve, parent, relative=True)
+        parent.worldInverseMatrix.connect(curve.offsetParentMatrix)
 
     # Create clusters
     for i in range(curve.numCVs()):
@@ -237,7 +238,7 @@ def create_guide_curve(name, guides, display=2):
     lock_and_hide(curve)
 
 
-def create_guide_chain(name: str, number: int, pos: list, interpolate=True):
+def create_guide_chain(name: str, number: int, pos: list, interpolate=True, parent: pm.nt.Transform = None):
     if interpolate and len(pos) == 2 and number > len(pos):
         new_pos = []
         start = pm.dt.Vector(pos[0])
@@ -257,7 +258,11 @@ def create_guide_chain(name: str, number: int, pos: list, interpolate=True):
         guide = Guide(f'{name}_{i}_guide', pos[i])
         guides.append(guide.guide)
 
-    create_guide_curve(name, guides)
+    if parent is not None:
+        pm.matchTransform(parent, guides[0])
+        pm.parent(guides, parent)
+
+    create_guide_curve(name, guides, parent = parent)
     pm.select(clear=True)
     return guides
 

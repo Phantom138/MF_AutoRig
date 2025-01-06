@@ -20,6 +20,8 @@ class Hand(Module):
 
         'config_attrs': {
             **Module.meta_args['config_attrs'],
+            'curl': {'attributeType': 'bool'},
+            'spread': {'attributeType': 'bool'},
         },
 
         'info_attrs': {
@@ -62,10 +64,14 @@ class Hand(Module):
             self.finger_joints_num = 3
 
         self.reset()
-        self.save_metadata()
+        # self.save_metadata()
 
     def reset(self):
         super().reset()
+
+        # From config
+        self.curl = True
+        self.spread = True
 
         # Guides
         self.orient_guides = []
@@ -158,9 +164,8 @@ class Hand(Module):
         for index, name in enumerate(fingers):
             guide_finger_grp = pm.createNode('transform', name=f'{self.side}_{name}_guide_grp')
 
-            guide = utils.create_guide_chain(f'{self.name}_{name}', len(finger_positions[index]), finger_positions[index])
-            pm.matchTransform(guide_finger_grp, guide[0])
-            pm.parent(guide, guide_finger_grp)
+            guide = utils.create_guide_chain(f'{self.name}_{name}', len(finger_positions[index]), finger_positions[index], parent= guide_finger_grp)
+            # pm.parent(guide, guide_finger_grp)
             guide_finger_grps.append(guide_finger_grp)
 
             self.jnt_guides.append(guide)
@@ -327,7 +332,10 @@ class Hand(Module):
 
         pm.select(clear=True)
 
-    def rig(self, curl=True, spread=True):
+    def rig(self):
+        curl = self.curl
+        spread = self.spread
+
         # Create hand ctrl
         self.hand = utils.CtrlGrp(self.name, shape='circle')
         self.handJnt = self.hand_jnts[0]
