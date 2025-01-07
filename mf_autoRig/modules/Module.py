@@ -75,6 +75,7 @@ class Module(abc.ABC):
         'info_attrs':{
             'guide_grp': {'attributeType': 'message'},
             'joints_grp': {'attributeType': 'message'},
+            'drivers_grp': {'attributeType': 'message'},
             'control_grp': {'attributeType': 'message'},
             'all_ctrls': {'attributeType': 'message', 'm': True},
         }
@@ -112,6 +113,7 @@ class Module(abc.ABC):
         # Joint orient
         self.jnt_orient_main = pm.dt.Vector([0,1,0])
         self.jnt_orient_secondary = pm.dt.Vector([0,0,1])
+        self.jnt_orient_third = pm.dt.Vector([1,0,0])
 
         # Save instance
         self.instances[self.metaNode.name()] = self
@@ -123,6 +125,7 @@ class Module(abc.ABC):
 
         self.guide_grp = None
         self.control_grp = None
+        self.drivers_grp = None
         self.joints_grp = None
 
         self.mirrored_from = None
@@ -211,15 +214,8 @@ class Module(abc.ABC):
                 data = self.metaNode.attr(attribute).get()
                 setattr(self, attribute, data)
 
-                # # If it's a list of metadata nodes, create the corresponding classes
-                # if isinstance(data, list) and len(data) != 0:
-                #     is_meta_list = all(isinstance(d, pm.nt.Network) and d.name().startswith(df.meta_prf) for d in data)
-                #     if is_meta_list:
-                #         # Means we have a list of network nodes
-                #         result = [module_tools.createModule(d) for d in data]
-                #         setattr(self, attribute, result)
-                #         continue
-                # else:
+        # Get jnt orient third based on the others
+        self.jnt_orient_third = pm.dt.Vector([1,1,1]) - abs(self.jnt_orient_main) - abs(self.jnt_orient_secondary)
 
 
     def save_metadata(self):
