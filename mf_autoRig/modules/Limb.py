@@ -57,6 +57,7 @@ class Limb(Module):
 
         'config_attrs': {
             **Module.meta_args['config_attrs'],
+            'forearm_twist': {'attributeType': 'bool'}
         },
         'info_attrs':{
             **Module.meta_args['info_attrs'],
@@ -80,7 +81,6 @@ class Limb(Module):
         self.attach_index = 0
         self.default_pin_value = 51
 
-        # self.save_metadata()
 
     def reset(self):
         super().reset()
@@ -93,6 +93,8 @@ class Limb(Module):
         self.fk_joints = []
         self.fk_ctrls = []
         self.switch = []
+
+        self.forearm_twist = False
 
 
     def update_from_meta(self):
@@ -165,6 +167,9 @@ class Limb(Module):
 
         self.__clean_up()
 
+        if self.forearm_twist:
+            self.__do_forearm_twist()
+
         self.connect_children()
 
         if self.meta:
@@ -207,6 +212,61 @@ class Limb(Module):
 
         # Clear selection
         pm.select(clear=True)
+
+    def __do_forearm_twist(self):
+        # Get first hand from the children
+        hand = None
+        for child in self.children:
+            if child.moduleType == 'Hand':
+                hand = child
+                break
+        if hand is None:
+            log.warning(f'Cannot do forearm twist for {self.name}, no hand found in children')
+            return
+
+        # Create twist joint and parent it under the elbow
+        twist_jnt = pm.createNode('joint', n=self.name + '_twist_skin_jnt')
+        twist_jnt.radius.set(self.joints[1].radius.get())
+
+        _tmp_const = pm.parentConstraint(self.joints[1], self.joints[-1], twist_jnt)
+        pm.delete(_tmp_const)
+
+        pm.parent(twist_jnt, self.joints[1])
+        pm.makeIdentity(twist_jnt, apply=True, r=True)
+        # pm.joint(twist_jnt, orientation=(0,0,0), edit=True)
+        # twist_jnt.jointOrient.set(0,0,0)
+
+        # Create locator at arm end
+        wrist_aim_loc = pm.spaceLocator(name = self.name + '_wrist_aim_loc')
+        pm.matchTransform(wrist_aim_loc, self.joints[-1])
+        # Offset on Z axis
+        pm.move(wrist_aim_loc, self.jnt_orient_third * -2, relative=True, objectSpace=True)
+
+        # Parent to hand
+        pm.parentConstraint(hand.hand_jnts[0], wrist_aim_loc, maintainOffset=True)
+
+        pm.select(clear=True)
+
+        # Create aim constraint and aim jnt
+        aim_jnt = pm.createNode('joint', n=self.name + '_wrist_aim_jnt')
+        aim_jnt.radius.set(self.joints[-1].radius.get())
+        pm.matchTransform(aim_jnt, self.joints[-1])
+        pm.makeIdentity(aim_jnt, apply=True, r=True)
+        pm.parent(aim_jnt, self.joints[-1])
+
+        pm.aimConstraint(self.joints[1], aim_jnt, aimVector=self.jnt_orient_main * -1, upVector=self.jnt_orient_third * -1, worldUpType='object', worldUpObject=wrist_aim_loc)
+
+        # Connect aim_jnt rotataion to twist jnt
+        mult_divide = pm.createNode('multiplyDivide', n=self.name + '_twist_mult')
+        mult_divide.input2Y.set(0.5) # divide by 2
+
+        aim_jnt.rotateY.connect(mult_divide.input1Y)
+        mult_divide.outputY.connect(twist_jnt.rotateY)
+
+        # Create drivers grp
+        self.drivers_grp = pm.createNode('transform', name=f'{self.name}_{df.drivers_grp}')
+        pm.parent(self.drivers_grp, get_group(df.drivers_grp))
+        pm.parent(wrist_aim_loc, self.drivers_grp)
 
     def connect_guides(self, dest, force=False):
         # Connection checks
