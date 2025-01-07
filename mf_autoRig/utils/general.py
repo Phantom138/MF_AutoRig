@@ -83,3 +83,17 @@ def lock_and_hide(obj, translate=True, rotation=True, scale=True):
         for trs in ['sx', 'sy', 'sz']:
             obj.attr(trs).lock()
             obj.attr(trs).setKeyable(0)
+
+def unlock_and_show(obj, translate=True, rotation=True, scale=True):
+    if translate:
+        for trs in ['tx', 'ty', 'tz']:
+            obj.attr(trs).unlock()
+            obj.attr(trs).setKeyable(1)
+    if rotation:
+        for trs in ['rx', 'ry', 'rz']:
+            obj.attr(trs).unlock()
+            obj.attr(trs).setKeyable(1)
+    if scale:
+        for trs in ['sx', 'sy', 'sz']:
+            obj.attr(trs).unlock()
+            obj.attr(trs).setKeyable(1)
