@@ -16,7 +16,8 @@ root = 'Root_Ctrl'
 joints_grp = 'Joints_Grp'
 ikHandle_grp = 'ikHandle_grp'
 rig_guides_grp = 'rig_guides_grp'
-driven_grp = 'DO_NOT_TOUCH_driven_guides_grp'
+drivers_grp = 'Drivers_grp'
+deprecated_driven_grp = 'DO_NOT_TOUCH_driven_guides_grp'
 meta_prf = "META_"
 
 # CTRL Shapes structure: Degree, Points, Knots

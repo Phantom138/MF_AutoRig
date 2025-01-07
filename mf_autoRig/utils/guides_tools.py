@@ -91,7 +91,7 @@ def create_joint_chain(jnt_number, name, start_pos, end_pos, rot=None, defaultVa
     # Create plane
     plane = pm.polyPlane(name=f'tmp_{name}_Plane', w=2, h=26, sh=1, sw=1)[0]
     plane.v.set(0)
-    driven_grp = get_group(df.driven_grp)
+    driven_grp = get_group(df.deprecated_driven_grp)
     pm.parent(plane, driven_grp)
 
     joints = []
