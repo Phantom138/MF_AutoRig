@@ -1,3 +1,4 @@
+from mf_autoRig import log
 from mf_autoRig.utils.general import *
 import mf_autoRig.utils.defaults as df
 import mf_autoRig.utils as utils
@@ -132,13 +133,99 @@ class Clavicle(Module):
 
         self.joints_grp = self.joints[0]
 
+        if self.auto_clavicle:
+            self.__auto_clavicle()
+
         self.connect_children()
         if self.meta:
             self.save_metadata()
+    
+    def __auto_clavicle(self):
+        # Get first arm from the children
+        arm = None
+        for child in self.children:
+            if child.moduleType == 'Limb':
+                arm = child
+                break
+                
+        if arm is None:
+            log.warning(f'Cannot do auto clavicle for {self.name}, no arm found in children')
+            return
+        
+        # Auto clavicle setup
+        # Duplicate arm ik chain
+        self.ik_jnts_guides = utils.duplicate_joints(arm.ik_joints, '_guide')
+        if len(self.ik_jnts_guides) != 3:
+            log.error("Only joint chains of 3 supported")
 
+        # Do ik for duplicated joints
+        handle_name = get_base_name(self.ik_jnts_guides[0].name()) + "_guides" + "_ikHandle"
+        dup_ikHandle = pm.ikHandle(name=handle_name, startJoint=self.ik_jnts_guides[0],
+                                   endEffector=self.ik_jnts_guides[2], solver='ikRPsolver')
+
+        ik_ctrl = arm.ik_ctrls[0]
+        pole_ctrl = arm.ik_ctrls[1]
+        pm.parentConstraint(ik_ctrl, dup_ikHandle[0])
+        pm.poleVectorConstraint(pole_ctrl, dup_ikHandle[0])
+
+        # AUTO CLAVICLE LOGIC
+        # Create joint at clavicle start
+        clav_pos = self.joints[0].getTranslation(space='world')
+        self.clav_aim_jnt = pm.createNode("joint", name=self.name + '_aim')
+        self.clav_aim_jnt.setTranslation(clav_pos)
+
+        # Create group for clav aim jnt
+        clav_aim_grp = pm.createNode('transform', name=self.name + '_aim_grp')
+        pm.matchTransform(clav_aim_grp, self.clav_aim_jnt)
+        pm.parent(self.clav_aim_jnt, clav_aim_grp)
+
+        # Clavicle aim end locator
+        elbow_posV = dt.Vector(self.ik_jnts_guides[1].getTranslation(space='world'))
+        clav_posV = dt.Vector(clav_pos)
+        clav_aim_end_pos = (elbow_posV - clav_posV) / 2 + clav_posV
+        self.clav_aim_end_loc = pm.spaceLocator(name=self.name + '_aim_end_loc')
+        self.clav_aim_end_loc.setTranslation(clav_aim_end_pos.get())
+
+        # Elbow locator
+        self.elbow_loc = pm.spaceLocator(name='elbow_loc')
+        pm.matchTransform(self.elbow_loc, self.ik_jnts_guides[1], position=True)
+        pm.parent(self.elbow_loc, self.ik_jnts_guides[1])
+
+        self.clav_aim_loc = pm.spaceLocator(name=self.name + '_aim_loc')
+        pointConst = pm.pointConstraint(self.elbow_loc, self.clav_aim_end_loc, self.clav_aim_loc)
+
+        # Add attribute for auto clavicle strength
+        self.clavicle_ctrl.addAttr("autoClavicle", attributeType="float", defaultValue=1,
+                                            minValue=0, maxValue=1, keyable=True)
+
+        # Multiply with ikfk switch reverse
+        ikfk_reverse = arm.switch.IkFkSwitch.listConnections(type='reverse')[0]
+        mult_divide = pm.createNode('multiplyDivide', name=self.name + '_mult')
+
+        ikfk_reverse.outputX.connect(mult_divide.input1X)
+        self.clavicle_ctrl.autoClavicle.connect(mult_divide.input2X)
+
+        mult_divide.outputX.connect(pointConst.getWeightAliasList()[0])
+
+        # Clavicle aim
+        pm.aimConstraint(self.clav_aim_loc, self.clav_aim_jnt, aim=(0, 1, 0), upVector=(1, 0, 0),
+                         worldUpVector=(0, 1, 0))
+
+        # Connect aim to offset group of main clav controller
+        clavicle_offset = create_offset_grp(self.clavicle_ctrl)
+        pm.orientConstraint(self.clav_aim_jnt, clavicle_offset, maintainOffset=True)
+        
+        
     def connect(self, torso, force=False):
         if not self.check_if_connected(torso):
             pm.warning(f"{self.name} not connected to {torso.name}")
             return
 
         pm.parentConstraint(torso.fk_ctrls[-1], self.clavicle_ctrl.getParent(1), maintainOffset=True)
+
+        if self.auto_clavicle:
+            # Connect Guide Ik arm
+            pm.parentConstraint(torso.joints[-1], self.ik_jnts_guides[0], maintainOffset=True)
+
+            pm.parentConstraint(torso.joints[-1], self.clav_aim_jnt.getParent(1), maintainOffset=True)
+            pm.parent(self.clav_aim_end_loc, torso.joints[-1])
