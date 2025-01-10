@@ -288,12 +288,7 @@ class ModifyWindow(UITemplate):
     @run_update_tree
     def disconnect_item(self):
         with UndoStack(f"Disconnected {self.selected_module.name}"):
-            if self.selected_module.mirrored_from is not None:
-                self.selected_module.update_mirrored(destroy=True)
-            else:
-                self.selected_module.destroy_rig()
-                self.selected_module.create_joints()
-                self.selected_module.rig()
+            self.selected_module.disconnect_guides()
 
     def edit_item(self):
         self.edit_widget = EditWidget(self.selected_module, self.update_tree, parent=self)

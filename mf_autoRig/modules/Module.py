@@ -252,6 +252,9 @@ class Module(abc.ABC):
         self.parent = dest
         dest.children.append(self)
 
+    def disconnect_metadata(self):
+        self.parent = None
+        self.metaNode.parent.disconnect()
 
     def check_if_connected(self, dest):
         if self.meta:

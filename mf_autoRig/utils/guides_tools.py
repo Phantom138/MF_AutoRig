@@ -237,6 +237,7 @@ def create_guide_curve(name, guides, display=2, parent: pm.nt.Transform = None):
     # set_color(self.curve, viewport='black')
     lock_and_hide(curve)
 
+    return curve
 
 def create_guide_chain(name: str, number: int, pos: list, interpolate=True, parent: pm.nt.Transform = None):
     if interpolate and len(pos) == 2 and number > len(pos):
@@ -287,3 +288,31 @@ def create_joints_from_guides(name, guides, aimVector, upVector, suffix=None, en
 
     pm.select(clear = True)
     return joints
+
+def connect_guides(source, dest, keepOffset=False):
+    # Unlock if locked
+    lock_dict = {}
+    for obj in (source, dest):
+        for channel in ['tx', 'ty', 'tz', 'rx', 'ry', 'rz']:
+            if obj.attr(channel).isLocked():
+                lock_dict[obj] = {}
+                lock_dict[obj][channel] = True
+                obj.attr(channel).unlock()
+
+    # Connection node is a node that when deleted it visually breaks the connection
+    con_node = None
+    if keepOffset:
+        # Symbolic connection
+        con_node = create_guide_curve(source+'_connection'+'_guide_crv', [source, dest], display=1, parent=source.getParent(1))
+    else:
+        con_node = pm.parentConstraint(source, dest)
+        pm.hide(dest)
+        set_color(source, "green")
+
+
+    # Lock again if was locked
+    for obj in lock_dict:
+        for channel in lock_dict[obj]:
+            obj.attr(channel).lock()
+
+    return con_node

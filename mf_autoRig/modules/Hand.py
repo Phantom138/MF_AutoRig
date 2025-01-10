@@ -211,12 +211,21 @@ class Hand(Module):
             pm.warning(f"{self.name} already connected to {arm.name}")
             return
 
-        # Do the connection
-        pm.parentConstraint(arm.guides[-1], self.wrist_guide)
-        pm.hide(self.wrist_guide)
-        set_color(arm.guides[-1], "green")
+        self.guide_conn_node = utils.connect_guides(arm.guides[-1], self.wrist_guide)
 
         self.connect_metadata(arm)
+
+    def disconnect_guides(self):
+        if self.parent is None:
+            pm.warning(f"{self.name} has no parent")
+            return
+
+        if self.guide_conn_node is not None:
+            pm.delete(self.guide_conn_node)
+
+        self.guide_conn_node = None
+
+        self.disconnect_metadata()
 
     def create_joints(self, wrist = None):
         # List of fingers
