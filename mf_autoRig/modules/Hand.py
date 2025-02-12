@@ -206,27 +206,6 @@ class Hand(Module):
 
             self.orient_guides.append(orient_guide)
 
-    def connect_guides(self, arm):
-        if self.check_if_connected(arm):
-            pm.warning(f"{self.name} already connected to {arm.name}")
-            return
-
-        self.guide_conn_node = utils.connect_guides(arm.guides[-1], self.wrist_guide)
-
-        self.connect_metadata(arm)
-
-    def disconnect_guides(self):
-        if self.parent is None:
-            pm.warning(f"{self.name} has no parent")
-            return
-
-        if self.guide_conn_node is not None:
-            pm.delete(self.guide_conn_node)
-
-        self.guide_conn_node = None
-
-        self.disconnect_metadata()
-
     def create_joints(self, wrist = None):
         # List of fingers
         finger_names = ['thumb', 'index', 'middle', 'ring', 'pinky']

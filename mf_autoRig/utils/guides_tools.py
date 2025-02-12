@@ -309,6 +309,15 @@ def connect_guides(source, dest, keepOffset=False):
         pm.hide(dest)
         set_color(source, "green")
 
+    print(f"Created con node: {con_node}")
+    # Save keepOffset type
+    con_node.addAttr('keepOffset', at='bool')
+    con_node.addAttr('source', at='message')
+    con_node.addAttr('dest', at='message')
+
+    con_node.keepOffset.set(keepOffset)
+    source.message.connect(con_node.source)
+    dest.message.connect(con_node.dest)
 
     # Lock again if was locked
     for obj in lock_dict:
@@ -316,3 +325,14 @@ def connect_guides(source, dest, keepOffset=False):
             obj.attr(channel).lock()
 
     return con_node
+
+def disconnect_guides(con_node):
+    keepOffset = con_node.keepOffset.get()
+
+    if keepOffset:
+        pm.delete(con_node)
+    else:
+        pm.showHidden(con_node.dest.get())
+        # reset color
+        set_color(con_node.source.get(), "cyan")
+        pm.delete(con_node)

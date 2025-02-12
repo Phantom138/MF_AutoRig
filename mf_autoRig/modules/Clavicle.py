@@ -70,17 +70,6 @@ class Clavicle(Module):
         if self.meta:
             self.save_metadata()
 
-    def connect_guides(self, torso):
-        if self.check_if_connected(torso):
-            pm.warning(f"{self.name} already connected to {torso.name}")
-            return
-
-        # Symbolic connection
-        utils.create_guide_curve(self.name, [self.guides[0], torso.guides[-1]], display=1)
-
-        self.save_metadata()
-        self.connect_metadata(torso)
-
     def create_joints(self, shoulder=None):
         """
         Create joints from starting guide to shoulder

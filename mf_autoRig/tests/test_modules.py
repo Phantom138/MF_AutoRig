@@ -57,7 +57,7 @@ def test_body(positions=pos):
 
     print(L_arm)
     print(L_clavicle)
-    L_leg.attach_index = 1
+    L_leg.attach_index = 0
     L_leg.save_metadata()
     L_arm.connect_guides(L_clavicle)
     L_clavicle.connect_guides(spine)

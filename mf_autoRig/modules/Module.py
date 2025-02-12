@@ -108,7 +108,7 @@ class Module(abc.ABC):
         # Parent - child
         self.parent = None
         self.children = []
-        self.attach_index = 0
+        self.attach_index = -1 # Index to attach to parent
 
         # Joint orient
         self.jnt_orient_main = pm.dt.Vector([0,1,0])
@@ -145,6 +145,47 @@ class Module(abc.ABC):
     @abstractmethod
     def rig(self):
         pass
+
+    # GUIDES METHODS
+    def connect_guides(self, dest):
+        if self.check_if_connected(dest):
+            pm.warning(f"{self.name} already connected to {dest.name}")
+            return
+
+        dest_class = dest.__class__.__name__
+        if dest_class not in self.connectable_to:
+            log.warning(f"{self.name} not connectable to {dest.name}")
+            return
+
+        # TODO: Maybe this logic should be inside the connectable_to list?
+        # this works for now since only when connecting to the spine you keep the offset
+        if dest_class == "Spine":
+            keepOffset = True
+        else:
+            keepOffset = False
+
+        # TODO: Maybe add the base_guide as an attribute inside every class? right now only the hand is special
+        if self.moduleType == 'Hand':
+            base_guide = self.wrist_guide
+        else:
+            base_guide = self.guides[0]
+
+        # TODO: Maybe attach index should be an attribute in connectable_to list?
+
+        self.guide_conn_node = utils.connect_guides(dest.guides[self.attach_index], base_guide, keepOffset)
+
+        self.connect_metadata(dest)
+
+    def disconnect_guides(self):
+        if self.parent is None:
+            pm.warning(f"{self.name} has no parent")
+            return
+
+        if self.guide_conn_node is not None:
+            utils.disconnect_guides(self.guide_conn_node)
+            self.guide_conn_node = None
+
+        self.disconnect_metadata()
 
     # METADATA METHODS
     @classmethod
@@ -253,6 +294,7 @@ class Module(abc.ABC):
         dest.children.append(self)
 
     def disconnect_metadata(self):
+        self.parent.children.remove(self)
         self.parent = None
         self.metaNode.parent.disconnect()
 

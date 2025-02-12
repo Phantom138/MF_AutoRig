@@ -78,7 +78,7 @@ class Limb(Module):
         self.parent = None
 
         self.reset()
-        self.attach_index = 0
+        self.attach_index = -1
         self.default_pin_value = 51
 
 
@@ -175,7 +175,6 @@ class Limb(Module):
         if self.meta:
             self.save_metadata()
 
-        self.serialize()
         pm.select(clear=True)
 
     def __clean_up(self):
@@ -268,27 +267,6 @@ class Limb(Module):
         pm.parent(self.drivers_grp, get_group(df.drivers_grp))
         pm.parent(wrist_aim_loc, self.drivers_grp)
 
-    def connect_guides(self, dest, force=False):
-        # Connection checks
-        if self.check_if_connected(dest) and not force:
-            log.warning(f"{self.name} already connected to {dest.name}")
-            return
-
-        dest_class = dest.__class__.__name__
-        if dest_class not in self.connectable_to:
-            log.warning(f"{self.name} not connectable to {dest.name}")
-            return
-
-        # Do the connection
-        if not dest_class == 'Spine':
-            pm.parentConstraint(self.guides[0], dest.guides[-1])
-            pm.hide(dest.guides[-1])
-            set_color(self.guides[0], "green")
-        else:
-            # Symbolic connection
-            utils.create_guide_curve(self.name, [dest.guides[0],self.guides[0]], display=1)
-
-        self.connect_metadata(dest)
 
 
     def connect(self, dest):
@@ -324,13 +302,4 @@ class Limb(Module):
             pm.parentConstraint(dest.clavicle_ctrl, ctrl_grp, maintainOffset=True)
             pm.parentConstraint(dest.joints[-1], self.ik_joints[0])
 
-
-    def serialize(self):
-        data = {}
-
-        data['name'] = self.name
-        data['type'] = type(self).__name__
-        data['guides_pos'] = [pm.xform(jnt, q=True, t=True, ws=True) for jnt in self.guides]
-
-        print(data)
 
