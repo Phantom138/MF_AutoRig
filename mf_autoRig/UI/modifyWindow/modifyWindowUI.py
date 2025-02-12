@@ -59,7 +59,6 @@ class ModifyWindow(UITemplate):
         self.update_tree()
     
     def update_tree(self):
-        print("UPDATING UI TREE")
         # Store expanded state
         expanded_items = self.get_expanded_items()
 
@@ -67,8 +66,6 @@ class ModifyWindow(UITemplate):
 
         self.modules = module_tools.get_all_modules(create=True)
 
-
-        print("FOUND MODULES", self.modules)
         if self.modules is None:
             return
 
@@ -76,7 +73,7 @@ class ModifyWindow(UITemplate):
 
         # Get root modules (the ones with no parents)
         root_modules = [module for module in self.modules if module.get_parent() is None]
-        print("ROOT_MODULES", root_modules)
+
         def validate(tree_item, module):
             # Get information about the selected module
             is_rigged, is_connected, is_mirrored = module.get_info()
@@ -179,33 +176,31 @@ class ModifyWindow(UITemplate):
         is_rigged, is_connected, is_mirrored = self.selected_module.get_info()
 
         # Create context menu
-        self.menu = QMenu()
-
-        if is_connected:
-            # This means we cannot connect to another module, only disconnect
-            self.__disconnect_menu()
-        else:
-            self.__connect_menu()
+        menu = QMenu()
 
         if is_rigged:
             # Show rig menu
-            self.__destroy_rig_menu()
+            self.__destroy_rig_menu(menu)
         else:
-            self.__rig_menu()
+            self.__rig_menu(menu)
 
-        if not is_mirrored:
-            if self.selected_module.mirrored_to is None:
-                self.__mirror_menu()
+            if is_connected:
+                self.__disconnect_menu(menu)
+            else:
+                self.__connect_menu(menu)
+
+            if not is_mirrored:
+                if self.selected_module.mirrored_to is None:
+                    self.__mirror_menu(menu)
 
 
         # Delete menu is for everything
-        self.__delete_menu()
-        self.__print_rig_pos()
+        self.__delete_menu(menu)
 
         # Show context menu
-        self.menu.exec_(self.ui.tree.mapToGlobal(position))
+        menu.exec_(self.ui.tree.mapToGlobal(position))
 
-    def __connect_menu(self):
+    def __connect_menu(self, menu):
         connect_menu = QMenu('Connect to', self)
         try:
             conn_to = self.selected_module.connectable_to
@@ -221,7 +216,7 @@ class ModifyWindow(UITemplate):
             if mdl_type == 'Spine' and self.selected_module.moduleType == 'Limb':
                 # HACKY way to do the Limb to Spine connection
                 # TODO: Make this more dynamic
-                for i, pt in enumerate(option.attachment_pts):
+                for i, pt in enumerate(option.guides):
                     action = QAction(f'{name} <{mdl_type}> {pt}', connect_menu)
                     connect_menu.addAction(action)
 
@@ -230,55 +225,55 @@ class ModifyWindow(UITemplate):
                 action = QAction(f'{name} <{mdl_type}>', connect_menu)
                 connect_menu.addAction(action)
 
-                action.triggered.connect(partial(self.connect_module, option))
+                action.triggered.connect(partial(self.connect_module, option, -1))
 
         if len(conn_to) != 0:
-            self.menu.addMenu(connect_menu)
+            menu.addMenu(connect_menu)
 
-    def __disconnect_menu(self):
+    def __disconnect_menu(self, menu):
         disconnect_action = QAction('Disconnect', self)
         disconnect_action.triggered.connect(self.disconnect_item)
-        self.menu.addAction(disconnect_action)
+        menu.addAction(disconnect_action)
 
-    def __edit_menu(self):
+    def __edit_menu(self, menu):
         edit_action = QAction('Edit', self)
         edit_action.triggered.connect(self.edit_item)
-        self.menu.addAction(edit_action)
+        menu.addAction(edit_action)
 
-    def __delete_menu(self):
+    def __delete_menu(self, menu):
         # TODO: Add a confirmation dialog
         delete_action = QAction('Delete', self)
         delete_action.triggered.connect(self.delete_item)
-        self.menu.addAction(delete_action)
+        menu.addAction(delete_action)
 
-    def __mirror_menu(self):
+    def __mirror_menu(self, menu):
         mirror_action = QAction('Mirror', self)
         mirror_action.triggered.connect(self.mirror_item)
-        self.menu.addAction(mirror_action)
+        menu.addAction(mirror_action)
 
-    def __rig_menu(self):
+    def __rig_menu(self, menu):
         rig_action = QAction('Rig', self)
         rig_action.triggered.connect(self.recursive_rig)
-        self.menu.addAction(rig_action)
+        menu.addAction(rig_action)
 
-    def __destroy_rig_menu(self):
+    def __destroy_rig_menu(self, menu):
         destroy_rig_action = QAction('Destroy Rig', self)
         destroy_rig_action.triggered.connect(partial(self.recursive_rig, destroy=True))
-        self.menu.addAction(destroy_rig_action)
+        menu.addAction(destroy_rig_action)
 
-    def __print_rig_pos(self):
+    def __print_rig_pos(self, menu):
         print_rig_action = QAction('Print Rig Pos', self)
         print_rig_action.triggered.connect(self.selected_module.print_class)
-        self.menu.addAction(print_rig_action)
+        menu.addAction(print_rig_action)
 
 
     @run_update_tree
-    def connect_module(self, module, index=None):
+    def connect_module(self, module, index):
+        print("CONNECTING MODULE", self.selected_module.name, module.name, index)
         with UndoStack(f"Connected {self.selected_module.name} to {module.name}"):
-            if index is None:
-                self.selected_module.connect_guides(module)
-            elif isinstance(index, int):
-                self.selected_module.connect_guides(module, index)
+            self.selected_module.attach_index = index
+            self.selected_module.metaNode.attach_index.set(index)
+            self.selected_module.connect_guides(module)
 
     @run_update_tree
     def mirror_item(self):

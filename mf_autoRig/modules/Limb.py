@@ -277,26 +277,25 @@ class Limb(Module):
         dest_class = dest.__class__.__name__
 
         if dest_class == 'Spine':
-            attach_pt = dest.attachment_pts[self.attach_index]
-            log.info(f"Connecting {self.name} to {dest_class}.{attach_pt}")
+            log.info(f"Connecting {self.name} to {dest_class}.{self.attach_index}")
 
-            if attach_pt == 'Chest':
+            if self.attach_index != 0:
                 pm.parentConstraint(dest.fk_ctrls[-1], self.ik_joints[0], maintainOffset=True)
                 pm.parentConstraint(dest.fk_ctrls[-1], self.fk_ctrls[0].getParent(1), maintainOffset=True)
 
-            elif attach_pt == 'Hip':
+            else:
+                # Connecting hip
                 pm.parentConstraint(dest.fk_ctrls[0], self.fk_ctrls[0].getParent(1), maintainOffset=True)
                 pm.parentConstraint(dest.hip_ctrl, self.ik_joints[0], maintainOffset=True)
 
-            else:
-                raise NotImplementedError(f"Method for attaching {self.name} to point {attach_pt} from {dest_class} not implemented yet.")
+            # else:
+            #     raise NotImplementedError(f"Method for attaching {self.name} to point {attach_pt} from {dest_class} not implemented yet.")
 
         # Connect to clavicle
         if dest_class == 'Clavicle':
             log.info(f"Connecting {self.name} to {dest.name}")
 
             ctrl_grp = self.fk_ctrls[0].getParent(1)
-            print(ctrl_grp, dest.joints[-1])
 
             # pm.matchTransform(ctrl_grp, dest.joints[-1], position=True)
             pm.parentConstraint(dest.clavicle_ctrl, ctrl_grp, maintainOffset=True)

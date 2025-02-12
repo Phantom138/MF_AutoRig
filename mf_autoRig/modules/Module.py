@@ -73,6 +73,7 @@ class Module(abc.ABC):
 
         # Attributes for keeping track of nodes created by the rig
         'info_attrs':{
+            'guide_conn_node': {'attributeType': 'message'},
             'guide_grp': {'attributeType': 'message'},
             'joints_grp': {'attributeType': 'message'},
             'drivers_grp': {'attributeType': 'message'},
@@ -109,6 +110,7 @@ class Module(abc.ABC):
         self.parent = None
         self.children = []
         self.attach_index = -1 # Index to attach to parent
+        self.guide_conn_node = None
 
         # Joint orient
         self.jnt_orient_main = pm.dt.Vector([0,1,0])
@@ -173,7 +175,7 @@ class Module(abc.ABC):
         # TODO: Maybe attach index should be an attribute in connectable_to list?
 
         self.guide_conn_node = utils.connect_guides(dest.guides[self.attach_index], base_guide, keepOffset)
-
+        self.save_metadata()
         self.connect_metadata(dest)
 
     def disconnect_guides(self):
@@ -184,7 +186,7 @@ class Module(abc.ABC):
         if self.guide_conn_node is not None:
             utils.disconnect_guides(self.guide_conn_node)
             self.guide_conn_node = None
-
+        self.save_metadata()
         self.disconnect_metadata()
 
     # METADATA METHODS
