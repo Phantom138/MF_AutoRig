@@ -59,6 +59,8 @@ def auto_color(objs):
             set_color(obj, viewport='red')
         if side == 'L':
             set_color(obj, viewport='blue')
+        if side == 'M':
+            set_color(obj, viewport='yellow')
 
 def color_objs(objs, color):
     #receives color in rgb (0-255) format
