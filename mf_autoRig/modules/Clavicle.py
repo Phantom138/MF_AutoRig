@@ -58,10 +58,12 @@ class Clavicle(Module):
         if pos is None:
             pos = [(0,0,0), (5,0,0)]
 
-        self.guides = utils.create_guide_chain(self.name, 2, pos)
-
-        self.guide_grp = pm.group(self.guides, name=f'{self.name}_guides{df.grp_sff}')
+        self.guide_grp = pm.createNode('transform', name=f'{self.name}_guide_grp')
         pm.parent(self.guide_grp, get_group(df.rig_guides_grp))
+
+        self.guides = utils.create_guide_chain(self.name, 2, pos, parent=self.guide_grp)
+
+        pm.parent(self.guides, self.guide_grp)
 
         # Clear Selection
         pm.select(clear=True)
