@@ -300,7 +300,6 @@ def connect_guides(source, dest, keepOffset=False):
                 obj.attr(channel).unlock()
 
     # Connection node is a node that when deleted it visually breaks the connection
-    con_node = None
     if keepOffset:
         # Symbolic connection
         con_node = create_guide_curve(source+'_connection'+'_guide_crv', [source, dest], display=1, parent=source.getParent(1))

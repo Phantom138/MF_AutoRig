@@ -5,7 +5,7 @@ import pathlib
 import mf_autoRig.UI.createWindow.modulePage as modPages
 from mf_autoRig.UI.createWindow.modulePage import CreatePage
 from mf_autoRig.UI.utils.UI_Template import UITemplate, delete_workspace_control
-from mf_autoRig.modules import Limb, Spine, Clavicle, Hand, Body, FKFoot
+from mf_autoRig.modules import Limb, Spine, Clavicle, Hand, Body, FKFoot, IKFoot
 from mf_autoRig.modules.Toon import BendyLimb
 import mf_autoRig.modules.module_tools as crMod
 import mf_autoRig.utils.defaults as df
@@ -20,7 +20,7 @@ class_name_map = {
     'Limb': Limb.Limb,
     # 'BendyLimb': BendyLimb.BendyLimb,
     'Hand': Hand.Hand,
-    # 'FKFoot': FKFoot.FKFoot,
+    'IKFoot': IKFoot.IKFoot,
 }
 
 

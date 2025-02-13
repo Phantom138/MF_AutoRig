@@ -57,7 +57,8 @@ class Limb(Module):
 
         'config_attrs': {
             **Module.meta_args['config_attrs'],
-            'forearm_twist': {'attributeType': 'bool'}
+            'forearm_twist': {'attributeType': 'bool'},
+            'world_ik': {'attributeType': 'bool'}
         },
         'info_attrs':{
             **Module.meta_args['info_attrs'],
@@ -77,9 +78,21 @@ class Limb(Module):
         super().__init__(name, self.meta_args, meta)
         self.parent = None
 
+        self.joints = []
+        self.guides = []
+
+        # IK FK stuff
+        self.ik_joints = []
+        self.ik_ctrls = []
+        self.fk_joints = []
+        self.fk_ctrls = []
+        self.switch = []
+        self.world_ik = False
+
+        self.forearm_twist = False
+
         self.reset()
         self.attach_index = -1
-        self.default_pin_value = 51
 
 
     def reset(self):
@@ -149,10 +162,10 @@ class Limb(Module):
         if self.meta:
             self.save_metadata()
 
-    def rig(self, ik_ctrl_trans=False):
+    def rig(self):
         self.skin_jnts = self.joints[:-1]
         # IK
-        self.ik_joints, self.ik_ctrls, self.ik_ctrls_grp, self.ikHandle = utils.create_ik(self.joints, ik_ctrl_trans)
+        self.ik_joints, self.ik_ctrls, self.ik_ctrls_grp, self.ikHandle = utils.create_ik(self.joints, world_ik=self.world_ik)
         # FK
         self.fk_joints = utils.create_fk_jnts(self.joints)
         self.fk_ctrls = utils.create_fk_ctrls(self.fk_joints)

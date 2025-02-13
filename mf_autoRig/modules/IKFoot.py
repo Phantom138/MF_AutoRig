@@ -61,18 +61,21 @@ class IKFoot(Module):
         self.all_ctrls = []
 
 
-    def create_guides(self, pos=None):
+    def create_guides(self, pos: dict=None):
         self.guides = []
         if pos is None:
-            pos = [(0,0,0), (0,-2,5), (0,-4,10)]
+            pos = {
+                'guides': [(0,0,0), (0,-2,5), (0,-4,10)],
+                'locators': [(2,-3,5), (-2,-3,5), (0,-3,-3)]
+            }
 
         self.guide_grp = pm.createNode('transform', name=f'{self.name}_guide_grp')
         pm.parent(self.guide_grp, get_group(df.rig_guides_grp))
 
-        self.guides = utils.create_guide_chain(self.name, 3, pos, parent=self.guide_grp)
+        self.guides = utils.create_guide_chain(self.name, 3, pos['guides'], parent=self.guide_grp)
 
         # Locators
-        loc_guides_grp = self.__create_locators_guides()
+        loc_guides_grp = self.__create_locators_guides(pos)
 
         # Group guides
         pm.parent(self.guides, self.guide_grp)
@@ -82,14 +85,14 @@ class IKFoot(Module):
         if self.meta:
             self.save_metadata()
 
-    def __create_locators_guides(self):
+    def __create_locators_guides(self, pos: dict):
         self.locators_guides = []
-        pos = [(2,-3,5), (-2,-3,5), (0,-3,-3)]
 
+        loc_pos = pos['locators']
         locator_names = ['outer_loc', 'inner_loc', 'heel_loc']
 
         # Create locators
-        for trs, loc_name in zip(pos, locator_names):
+        for trs, loc_name in zip(loc_pos, locator_names):
             loc = pm.spaceLocator(name=f'{self.name}_{loc_name}')
             pm.xform(loc, t=trs)
             self.locators_guides.append(loc)
@@ -97,6 +100,7 @@ class IKFoot(Module):
         # Group locator guides
         locator_grp = pm.group(self.locators_guides, name=f"{self.name}_locators_guides{df.grp_sff}")
 
+        color.set_color(self.locators_guides, "red")
         return locator_grp
 
     def __create_locators(self):

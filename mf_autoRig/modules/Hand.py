@@ -112,20 +112,25 @@ class Hand(Module):
         for i in range(0, len(tmp_jnt_guides), self.finger_joints_num):
             self.jnt_guides.append(tmp_jnt_guides[i:i + self.finger_joints_num])
 
-    def create_guides(self, wrist_pos=None, pos=None):
+    def create_guides(self, pos: dict = None):
         # TODO: better default placement for wrist guide
         # TODO: rewrite, maybe having separate modules for each finger
         if pos is None:
-            pos = []
-        if wrist_pos is None:
-            wrist_pos = [0, 0, 0]
+            pos = {
+                'wrist': [0,0,0],
+                'guides': [],
+                'orient_guides_rot': []
+            }
 
         # initialize constants
         fingers = ['thumb', 'index', 'middle', 'ring', 'pinky']
         fingers = fingers[:self.finger_num]
 
+        guides_pos = pos['guides']
+        wrist_pos = pos['wrist']
         # Create positions array
-        if len(pos) == 0:
+        if len(guides_pos) == 0:
+            # TODO: i think all of the code below could be in a dict with values directly
             hand_pos = wrist_pos[0], wrist_pos[1] - 5, wrist_pos[2]
             zPos = hand_pos[2]
             spacing = 1.5
@@ -144,7 +149,7 @@ class Hand(Module):
                 yPos = fingerPos[1]
                 offset = 4
 
-                pos = []
+                positions = []
                 for i in range(jnt_num):
                     # Create more space for the knuckles
                     if i == 1:
@@ -153,11 +158,11 @@ class Hand(Module):
                     # Set jnt position
                     p = fingerPos[0], yPos, fingerPos[2]
                     yPos -= offset
-                    pos.append(p)
+                    positions.append(p)
 
-                finger_positions.append(pos)
+                finger_positions.append(positions)
         else:
-            finger_positions = pos
+            finger_positions = guides_pos
 
         # Create guides
         guide_finger_grps = []
@@ -180,7 +185,7 @@ class Hand(Module):
         pm.parent(guide_finger_grps, self.guide_grp)
         pm.parent(self.guide_grp, get_group(df.rig_guides_grp))
 
-        self.__create_orient_guides()
+        self.__create_orient_guides(pos['orient_guides_rot'])
         from itertools import chain
         self.guides = self.orient_guides + list(chain.from_iterable(self.jnt_guides))
 
@@ -191,19 +196,26 @@ class Hand(Module):
         # Clear selection
         pm.select(clear=True)
 
-    def __create_orient_guides(self):
+    def __create_orient_guides(self, rot: list):
         self.orient_guides = []
-        for finger_guide in self.jnt_guides:
-            orient_guide = pm.nurbsPlane(name=f'{finger_guide[1].name()}_orient',lengthRatio=3)[0]
+        if len(rot) == 0:
+            rot_is_empty = True
+        else:
+            rot_is_empty = False
 
-            set_color(orient_guide, viewport='red')
-
+        for i, finger_guide in enumerate(self.jnt_guides):
             # Move where and parent where knuckles are
+            orient_guide = pm.nurbsPlane(name=f'{finger_guide[1].name()}_orient',lengthRatio=3)[0]
             pm.matchTransform(orient_guide, finger_guide[1], pos=True, rot=True, scale=False)
-            pm.rotate(orient_guide, [90, -90, 0], objectSpace=True, relative=True)
 
+            if rot_is_empty:
+                r = [90, -90, 0]
+            else:
+                r = rot[i]
+            pm.rotate(orient_guide, r, objectSpace=True, relative=True)
             pm.parent(orient_guide, finger_guide[1])
 
+            set_color(orient_guide, viewport='red')
             self.orient_guides.append(orient_guide)
 
     def create_joints(self, wrist = None):
@@ -487,12 +499,14 @@ class Hand(Module):
 
         # FK locator
         fk_loc = pm.spaceLocator(name=base_name + '_fk_space_loc')
+
         fk_loc_grp = pm.createNode('transform', name=base_name + '_ik_loc_grp')
         pm.parent(fk_loc, fk_loc_grp)
         pm.matchTransform(fk_loc_grp, self.handJnt)
         pm.parent(fk_loc_grp, arm.fk_ctrls[-1])
 
         # Create orient constraint and get weight list
+        pm.hide(ik_loc, fk_loc)
         constraint = pm.orientConstraint(ik_loc, fk_loc, hand_grp)
         weights = constraint.getWeightAliasList()
 

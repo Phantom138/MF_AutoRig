@@ -128,7 +128,7 @@ def create_pole_vector(joints):
 
     return pole
 
-def create_ik(joints, translation=False, create_new=True):
+def create_ik(joints, world_ik=False, create_new=True):
     if len(joints) > 3:
         pm.error("Only joint chains of 3 supported")
 
@@ -160,12 +160,20 @@ def create_ik(joints, translation=False, create_new=True):
     # Create group and controller for ikHandle
     ik = CtrlGrp(base_name + df.ik_sff, 'cube')
 
-    # TODO: orient grp the right way
-    # if translation is True, only match translation
-    if translation:
-        pm.matchTransform(ik.grp, ik_joints[-1], pos=True, rot=False, scale=True)
+    # if world_ik is True, only match translation
+    if world_ik:
+        pm.matchTransform(ik.grp, ik_joints[-1], pos=True, rot=False, scale=False)
     else:
-        pm.matchTransform(ik.grp, ik_joints[-1])
+        pm.matchTransform(ik.grp, ik_joints[-1], pos=True, rot=True, scale=False)
+
+        # #TODO: make this more dynamic? right now it's based on just x axis
+        # if ik.grp.t.get()[0] > 0:
+        #     aimVector = (-1, 0, 0)
+        # else:
+        #     aimVector = (1,0,0)
+        # tmp = pm.aimConstraint(ik_joints[-2], ik.grp, aimVector=aimVector, upVector=(0, 1, 0))
+        # pm.delete(tmp)
+        # pm.matchTransform(ik.grp, ik_joints[-1])
 
 
     pm.parentConstraint(ik.ctrl, ikHandle[0], maintainOffset=True)
