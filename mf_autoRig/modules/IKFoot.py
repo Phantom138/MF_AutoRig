@@ -4,68 +4,80 @@ import pymel.core as pm
 
 from mf_autoRig.utils.general import *
 from mf_autoRig.modules.Module import Module
+from mf_autoRig import log
 
 import mf_autoRig.utils.defaults as df
 import mf_autoRig.utils as utils
+import mf_autoRig.utils.color_tools as color
 
-
-class Foot(Module):
+class IKFoot(Module):
     meta_args = {
-        'guides': {'attributeType': 'message', 'm': True},
-        'joints': {'attributeType': 'message', 'm': True},
-        'fk_ctrls': {'attributeType': 'message', 'm': True},
-        'locators': {'attributeType': 'message', 'm': True},
-    }
+        'creation_attrs':{
+            **Module.meta_args['creation_attrs']
+        },
 
+        'module_attrs': {
+            **Module.meta_args['module_attrs'],
+        },
+
+        'config_attrs':{
+            **Module.meta_args['config_attrs'],
+        },
+        'info_attrs':{
+            **Module.meta_args['info_attrs'],
+            'guides': {'attributeType': 'message', 'm': True},
+            'locators_guides': {'attributeType': 'message', 'm': True},
+            'joints': {'attributeType': 'message', 'm': True},
+            'all_ctrls': {'attributeType': 'message', 'm': True},
+        }
+    }
+    connectable_to = ['Limb']
     def __init__(self, name, meta=True):
         super().__init__(name, self.meta_args, meta)
-        self.guides = None
 
-        self.joints = None
-        self.fk_ctrls = None
-        self.locators_guides = None
-        self.locators = None
+        self.guides = []
+        self.locators_guides = []
+
+        self.joints = []
+        self.fk_ctrls = []
+        self.ik_jnts = []
+        self.fk_jnts = []
+        self.locators = []
+        self.all_ctrls = []
+
+        self.reset()
+
+    def reset(self):
+        super().reset()
+        self.guides = []
+        self.locators_guides = []
+
+        self.joints = []
+        self.fk_ctrls = []
+        self.ik_jnts = []
+        self.fk_jnts = []
+        self.locators = []
+
+        self.all_ctrls = []
 
 
-    @classmethod
-    def create_from_meta(cls, metaNode):
-        foot = super().create_from_meta(metaNode)
-
-        return foot
-
-    def create_guides(self, ankle_guide=None, pos=None):
+    def create_guides(self, pos=None):
         self.guides = []
         if pos is None:
             pos = [(0,0,0), (0,-2,5), (0,-4,10)]
 
-        if ankle_guide is not None:
-            pos = pos[1:]
+        self.guide_grp = pm.createNode('transform', name=f'{self.name}_guide_grp')
+        pm.parent(self.guide_grp, get_group(df.rig_guides_grp))
 
-        # Create joint guides at the right pos
-        for i,p in enumerate(pos):
-            jnt = pm.createNode('joint', name=f"{self.name}{i+1:02}_guide{df.jnt_sff}")
-            pm.xform(jnt, translation=p)
-
-            self.guides.append(jnt)
+        self.guides = utils.create_guide_chain(self.name, 3, pos, parent=self.guide_grp)
 
         # Locators
         loc_guides_grp = self.__create_locators_guides()
 
         # Group guides
-        guides_grp = pm.createNode('transform', name=f"{self.name}_guide{df.grp_sff}")
-        pm.parent(self.guides, guides_grp)
-        pm.parent(loc_guides_grp, guides_grp)
-        pm.parent(guides_grp, get_group(df.rig_guides_grp))
-
-        # Constraint to ankle if there
-        if ankle_guide is not None:
-            pm.parentConstraint(ankle_guide, guides_grp, skipRotate=['x', 'y', 'z'], maintainOffset=False)
-            self.guides.insert(0,ankle_guide)
-
-        # Add to locators to guides
-        self.guides.extend(self.locators_guides)
-        # So, self.guides is going to be: [joint1, ... , outer_loc, inner_loc, heel_loc]
-
+        pm.parent(self.guides, self.guide_grp)
+        pm.parent(loc_guides_grp, self.guide_grp)
+        pm.parent(self.guide_grp, get_group(df.rig_guides_grp))
 
         if self.meta:
             self.save_metadata()
@@ -111,13 +123,9 @@ class Foot(Module):
 
 
     def create_joints(self):
-        print("FOOT GUIDES:", self.guides)
-        print("FOOT LOCATORS GUIDES:", self.locators_guides)
         # Get just the guides for the joints
-        jnt_guides = self.guides[:-3]
-        self.joints = utils.create_joints_from_guides(self.name, jnt_guides)
+        self.joints = utils.create_joints_from_guides(self.name, self.guides, aimVector=self.jnt_orient_main, upVector=self.jnt_orient_secondary)
 
-        self.locators_guides = self.guides[:3]
         self.__create_locators()
 
         pm.parent(self.locators, world=True)
@@ -130,15 +138,20 @@ class Foot(Module):
         pm.matchTransform(self.locator_grp, self.joints[0], position=True)
         pm.parent(self.locators[0], self.locator_grp)
 
+        # Create drivers grp
+        self.drivers_grp = pm.createNode('transform', name=f'{self.name}_{df.drivers_grp}')
+        pm.parent(self.drivers_grp, get_group(df.drivers_grp))
+        pm.parent(self.locator_grp, self.drivers_grp)
+
         if self.meta:
             self.save_metadata()
 
     def rig(self):
-        self.skin_jnts = self.joints[:-1]
-
         # Create FK
         self.fk_jnts = utils.create_fk_jnts(self.joints)
         self.fk_ctrls = utils.create_fk_ctrls(self.fk_jnts)
+        self.all_ctrls.extend(self.fk_ctrls)
+        color.auto_color(self.fk_ctrls)
 
         # Create ik joints for foot
         self.ik_jnts = pm.duplicate(self.joints)
@@ -157,6 +170,9 @@ class Foot(Module):
         pm.ikHandle(name=side + 'toe' + df.ik_sff + df.loc_sff, startJoint=self.ik_jnts[1], endEffector=self.ik_jnts[2],
                     solver='ikSCsolver')[0]
 
+        # Parent iks to ikHandle grp
+        pm.parent(self.ball_ikHandle, self.toe_ikHandle, get_group(df.ikHandle_grp))
+
         # Hide ik and fk joints
         self.ik_jnts[0].visibility.set(0)
         self.fk_jnts[0].visibility.set(0)
@@ -167,7 +183,7 @@ class Foot(Module):
 
         # Create control grp
         self.control_grp = pm.createNode('transform', name=f'{self.name}{df.control_grp}')
-        pm.parent(self.locator_grp, self.fk_ctrls[0].getParent(1), self.control_grp)
+        pm.parent(self.fk_ctrls[0].getParent(1), self.control_grp)
 
         # Group under root
         pm.parent(self.control_grp, get_group(df.root))
@@ -204,8 +220,8 @@ class Foot(Module):
 
 
     def connect(self, leg):
-        if self.check_if_connected(leg):
-            pm.warning(f"{self.name} already connected to {leg.name}")
+        if not self.check_if_connected(leg):
+            log.warning(f"{self.name} not connected to {leg.name}")
             return
 
         # Get ik_ctrl
@@ -221,7 +237,7 @@ class Foot(Module):
 
         for constraint in self.ikfk_constraints:
             weights = constraint.getWeightAliasList()
-
+            print(weights)
             for weight in weights:
                 name = weight.longName(fullPath=False)
                 # If ik weight connect to reverse
@@ -230,6 +246,9 @@ class Foot(Module):
                 # If fk weight connect to switch
                 if df.fk_sff in name:
                     leg.switch.IkFkSwitch.connect(weight)
+
+        # Connect switch to visibility
+        leg.switch.IkFkSwitch.connect(self.fk_ctrls[0].getParent(1).v)
 
         # Parent foot fk ctrls grp under leg fk ctrls grp
         pm.parentConstraint(leg.fk_ctrls[-1], self.fk_ctrls[0].getParent(1), maintainOffset=True)
@@ -247,67 +266,3 @@ class Foot(Module):
 
         # Constraint ik_ctrl to locator grp
         pm.parentConstraint(ik_ctrl, self.locator_grp, maintainOffset=True)
-
-        self.connect_metadata(leg)
-
-    def __mirror_locators(self):
-        grp_name = self.locator_grp.replace(f'{self.side}_', f'{self.side.opposite}_')
-        mir_locator_grp = pm.duplicate(self.locator_grp, renameChildren=True, n=grp_name)[0]
-        lst = pm.listRelatives(mir_locator_grp, ad=True)
-
-        # Add first element back to list
-        mir_locators = []
-        # Keep just the locators
-        for obj in lst:
-            try:
-                sh = obj.getShape()
-                if isinstance(sh, pm.nt.Locator):
-                    mir_locators.append(obj)
-                else:
-                    pm.delete(obj)
-            except:
-                # Skip shapes
-                pass
-
-        # Rename with proper prefix
-        for obj in mir_locators:
-            new_name = obj.name()[:-1].replace(f'{self.side}_', f'{self.side.opposite}_')
-            pm.rename(obj, new_name)
-
-        # Reverse locators to get original order back
-        mir_locators.reverse()
-
-        # Mirror by creating group and changing scale to -x
-        mir_grp = pm.createNode('transform')
-        pm.parent(mir_locator_grp, mir_grp)
-        mir_grp.scaleX.set(-1)
-
-        # Parent to world
-        pm.parent(mir_locator_grp, None)
-
-        # Delete mir_grp
-        pm.delete(mir_grp)
-        return mir_locators, mir_locator_grp
-
-    def mirror(self, rig=True, outputModule = None):
-        """
-        if output module is None, it creates a new class and returns it
-        """
-        #TODO: make this a bit less hacky, also in Limb.Leg
-        if outputModule is None:
-            # Get flipped name
-            name = self.name.replace(f'{self.side}_', f'{self.side.opposite}_')
-            mir_module=Foot(name, meta=self.meta)
-        else:
-            mir_module = outputModule
-
-        # Mirror Locators
-        mir_module.locators, mir_module.locator_grp = self.__mirror_locators()
-
-        # Mirror joints
-        mir_module.joints = utils.mirrorJoints(self.joints, searchReplace=(f'{self.side}_', f'{self.side.opposite}_'))
-
-        if rig:
-            mir_module.rig()
-
-        return mir_module
