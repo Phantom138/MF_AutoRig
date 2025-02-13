@@ -34,3 +34,7 @@ from .ik_fk_tools import (
     constraint_ikfk,
     ikfk_switch
 )
+from .color_tools import (
+    set_color,
+    auto_color
+)
