@@ -239,7 +239,7 @@ def create_guide_curve(name, guides, display=2, parent: pm.nt.Transform = None):
 
     return curve
 
-def create_guide_chain(name: str, number: int, pos: list, interpolate=True, parent: pm.nt.Transform = None):
+def create_guide_chain(name: str, number: int, pos: list, interpolate=True, parent = None):
     if interpolate and len(pos) == 2 and number > len(pos):
         new_pos = []
         start = pm.dt.Vector(pos[0])
