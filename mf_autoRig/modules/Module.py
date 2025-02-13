@@ -1,4 +1,5 @@
 import abc
+import gc
 from abc import abstractmethod
 import pymel.core as pm
 import pymel.core.nodetypes as nt
@@ -116,6 +117,20 @@ class Module(abc.ABC):
         self.jnt_orient_main = pm.dt.Vector([0,1,0])
         self.jnt_orient_secondary = pm.dt.Vector([0,0,1])
         self.jnt_orient_third = pm.dt.Vector([1,0,0])
+
+        # init other values
+        self.guides = []
+
+        self.guide_grp = None
+        self.control_grp = None
+        self.drivers_grp = None
+        self.joints_grp = None
+
+        self.mirrored_from = None
+        self.mirrored_to = None
+
+        self.curve_info = []
+        self.all_ctrls = []
 
         # Save instance
         self.instances[self.metaNode.name()] = self
@@ -415,9 +430,19 @@ class Module(abc.ABC):
             log.debug(f"Deleting {self.control_grp}")
             pm.delete(self.control_grp)
 
+        if self.drivers_grp is not None:
+            log.debug(f"Deleting {self.drivers_grp}")
+            pm.delete(self.drivers_grp)
 
         if not keep_meta_node:
             pm.delete(self.metaNode)
+
+        # Remove
+        self.parent.children.remove(self)
+        del self.instances[self.metaNode.name()]
+        del self
+
+        print(f"Succesfully deleted")
 
     def destroy_rig(self):
         # Save curve info
@@ -425,7 +450,7 @@ class Module(abc.ABC):
         #self.curve_info = save_curve_info(self.all_ctrls)
 
 
-        to_delete = [self.joints_grp, self.control_grp]
+        to_delete = [self.joints_grp, self.control_grp, self.drivers_grp]
         for node in to_delete:
             log.debug(f"Deleting {node}")
             pm.delete(node)
@@ -455,7 +480,7 @@ class Module(abc.ABC):
 
     def mirror_guides(self):
         name = self.name.replace(f'{self.side.side}_', f'{self.side.opposite}_')
-        print("mirror for class", self.__class__)
+        log.info(f"Mirroring {self.name} <{self.moduleType}>")
         # Copy creation args
         creation_args = {}
         for key in self.meta_args['creation_attrs']:
@@ -509,7 +534,7 @@ class Module(abc.ABC):
         # Do mirror connection for metadata
         self.metaNode.mirrored_to.connect(mir_module.metaNode.mirrored_from)
 
-        return  mir_module
+        return mir_module
 
     def mirror(self):
         """

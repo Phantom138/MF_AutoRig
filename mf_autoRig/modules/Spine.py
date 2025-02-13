@@ -65,7 +65,7 @@ class Spine(Module):
         self.guide_grp = pm.createNode('transform', name=f'{self.name}_guide_grp')
         pm.parent(self.guide_grp, utils.get_group(df.rig_guides_grp))
 
-        self.guides = utils.create_guide_chain(self.name, self.num, pos)
+        self.guides = utils.create_guide_chain(self.name, self.num, pos, parent=self.guide_grp)
         pm.parent(self.guides, self.guide_grp)
 
         pm.select(clear=True)

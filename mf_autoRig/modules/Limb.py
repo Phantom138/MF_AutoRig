@@ -111,7 +111,7 @@ class Limb(Module):
             if len(iks) == 1:
                 self.ikHandle = iks[0]
             else:
-                raise ValueError(f"{self.name} has {len(iks)} IKHandles")
+                log.warning(f"{self.name} has {len(iks)} IKHandles")
 
             # Recreate all_ctrls
             self.all_ctrls = self.fk_ctrls + self.ik_ctrls
@@ -119,15 +119,14 @@ class Limb(Module):
 
     def create_guides(self, pos=None):
         """
-        Creates guides between pos[0] and pos[1]
-        Pos should be a list with two elements!
+        Creates guides at positions specified by pos.
         """
         if pos is None:
-            pos = [(0, 10, 0), (0, 0, 0)]
+            pos = [(0, 10, 0), (0, 5, 1), (0, 0, 0)]
         self.guide_grp = pm.createNode('transform', name=f'{self.name}_guide_grp')
         pm.parent(self.guide_grp, get_group(df.rig_guides_grp))
 
-        self.guides = utils.create_guide_chain(self.name, 3, pos)
+        self.guides = utils.create_guide_chain(self.name, 3, pos, parent=self.guide_grp)
         pm.parent(self.guides, self.guide_grp)
 
 

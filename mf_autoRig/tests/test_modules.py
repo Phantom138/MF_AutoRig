@@ -1,7 +1,7 @@
 import time
 from maya import cmds
 import pymel.core as pm
-from mf_autoRig.modules import Limb, Hand, Clavicle, Spine, FKFoot
+from mf_autoRig.modules import Limb, Hand, Clavicle, Spine, FKFoot, IKFoot
 # from unload_packages import unload_packages
 # import mf_autoRig.UI.modifyWindow.modifyWindowUI as modifyWindow
 # modifyWindow.showWindow()
@@ -99,12 +99,27 @@ def test_config():
     R_arm = Limb.Limb('R_arm')
     R_arm.create_guides()
 
+def test_ik_foot():
+    L_foot = IKFoot.IKFoot('L_foot')
+    L_leg = Limb.Limb('L_leg')
+    L_leg.create_guides()
+    L_leg.create_joints()
+
+
+    L_foot.create_guides()
+    L_foot.create_joints()
+    L_foot.connect_guides(L_leg)
+
+    L_foot.rig()
+    L_leg.rig()
+
+
 def main():
-    # cmds.file(new=True, f=True)
+    cmds.file(new=True, f=True)
 
-    # time.sleep(2)
+    time.sleep(2)
 
-    test_body()
+    test_ik_foot()
 
 if __name__ == '__main__':
     main()

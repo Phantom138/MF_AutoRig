@@ -1,16 +1,17 @@
 try:
     from PySide2 import QtGui
     from PySide2.QtGui import QFont
-    from PySide2.QtWidgets import QMenu, QAction, QTreeWidgetItem, QStyledItemDelegate
-    from PySide2.QtCore import Qt
+    from PySide2.QtWidgets import QMenu, QAction, QTreeWidgetItem, QStyledItemDelegate, QObject
+    from PySide2.QtCore import Qt, QEvent
 except ImportError:
     from PySide6 import QtGui
     from PySide6.QtGui import QFont, QAction
     from PySide6.QtWidgets import QMenu, QTreeWidgetItem, QStyledItemDelegate
-    from PySide6.QtCore import Qt
+    from PySide6.QtCore import Qt, QObject, QEvent
 
 from functools import partial
 import pathlib
+import gc
 
 from mf_autoRig.UI.modifyWindow.editWidget import EditWidget
 from mf_autoRig.UI.utils.UI_Template import delete_workspace_control, UITemplate
@@ -18,8 +19,27 @@ import mf_autoRig.modules.module_tools as module_tools
 from mf_autoRig.utils.undo import UndoStack
 from mf_autoRig import log
 from mf_autoRig.UI.createWindow.modulePage import ConfigPage
+from mf_autoRig.modules.Module import Module
 
 WORK_PATH = pathlib.Path(__file__).parent.resolve()
+
+
+class TreeViewEventFilter(QObject):
+    """ Event filter to catch mouse clicks outside items in a QTreeWidget """
+    def __init__(self, tree_widget):
+        super().__init__(tree_widget)
+        self.tree_widget = tree_widget
+        self.tree_widget.viewport().installEventFilter(self)  # Install event filter on viewport
+
+    def eventFilter(self, obj, event):
+        if obj == self.tree_widget.viewport() and event.type() == QEvent.MouseButtonPress:
+            index = self.tree_widget.indexAt(event.pos())  # Check if clicked on an item
+
+            if not index.isValid():  # Clicked outside any item
+                self.tree_widget.selectionModel().clearSelection()  # Deselect all items
+                self.tree_widget.setCurrentItem(None)
+
+        return super().eventFilter(obj, event)  # Default event processing
 
 
 def run_update_tree(func):
@@ -49,6 +69,7 @@ class ModifyWindow(UITemplate):
         # self.ui.list_modules.setSpacing(2)
         self.ui.tree.setIndentation(15)
         self.ui.tree.itemSelectionChanged.connect(self.on_selection_changed)
+        TreeViewEventFilter(self.ui.tree)
 
         # Enable context menu
         self.ui.tree.setContextMenuPolicy(Qt.CustomContextMenu)
@@ -59,13 +80,18 @@ class ModifyWindow(UITemplate):
         self.update_tree()
     
     def update_tree(self):
+        # if force:
+        #     print("reset instances")
+        #     # force update
+        #     Module.instances = {}
+
         # Store expanded state
         expanded_items = self.get_expanded_items()
 
         self.ui.tree.clear()
 
         self.modules = module_tools.get_all_modules(create=True)
-
+        print("MODULES: ",self.modules)
         if self.modules is None:
             return
 
@@ -105,21 +131,21 @@ class ModifyWindow(UITemplate):
             tree_item.setToolTip(0, toolTip)
             tree_item.setToolTip(1, toolTip)
 
+        def add_children(parent_item, parent_mdl):
+            print("CHILDREN:", parent_mdl.name, parent_mdl.get_children())
+            for child_mdl in parent_mdl.get_children():
+                child_item = QTreeWidgetItem([child_mdl.name, child_mdl.moduleType])
+                parent_item.addChild(child_item)
+                # Validate item
+                validate(child_item, child_mdl)
+
+                add_children(child_item, child_mdl)
+
         for mdl in root_modules:
+
             item = QTreeWidgetItem([mdl.name, mdl.moduleType])
             self.ui.tree.addTopLevelItem(item)
             validate(item, mdl)
-
-            # add children recursively
-            def add_children(parent_item, parent_mdl):
-                for child_mdl in parent_mdl.get_children():
-                    child_item = QTreeWidgetItem([child_mdl.name, child_mdl.moduleType])
-
-                    parent_item.addChild(child_item)
-                    # Validate item
-                    validate(child_item, child_mdl)
-
-                    add_children(child_item, child_mdl)
 
             # Run the recursive function
             add_children(item, mdl)
@@ -128,18 +154,27 @@ class ModifyWindow(UITemplate):
         self.set_expanded_items(expanded_items)
 
     def get_expanded_items(self):
-        expanded_items = set()
+        expanded_items = {}
+
+        def _save_expanded_state(item):
+            expanded_items[item.text(0)] = item.isExpanded()
+            for j in range(item.childCount()):
+                _save_expanded_state(item.child(j))
+
         for i in range(self.ui.tree.topLevelItemCount()):
-            item = self.ui.tree.topLevelItem(i)
-            if item.isExpanded():
-                expanded_items.add(item.text(0))
+            _save_expanded_state(self.ui.tree.topLevelItem(i))
+
         return expanded_items
 
     def set_expanded_items(self, expanded_items):
-        for i in range(self.ui.tree.topLevelItemCount()):
-            item = self.ui.tree.topLevelItem(i)
+        def _expand_items(item):
             if item.text(0) in expanded_items:
-                item.setExpanded(True)
+                item.setExpanded(expanded_items[item.text(0)])
+            for j in range(item.childCount()):
+                _expand_items(item.child(j))
+
+        for i in range(self.ui.tree.topLevelItemCount()):
+            _expand_items(self.ui.tree.topLevelItem(i))
 
     def on_selection_changed(self):
         if self.config_widget is not None:
@@ -148,6 +183,7 @@ class ModifyWindow(UITemplate):
             self.config_widget = None
 
         if self.ui.tree.currentItem() is None:
+            self.selected_module = None
             return
 
         key = self.ui.tree.currentItem().text(0)
