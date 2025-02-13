@@ -91,7 +91,6 @@ class ModifyWindow(UITemplate):
         self.ui.tree.clear()
 
         self.modules = module_tools.get_all_modules(create=True)
-        print("MODULES: ",self.modules)
         if self.modules is None:
             return
 
@@ -132,7 +131,6 @@ class ModifyWindow(UITemplate):
             tree_item.setToolTip(1, toolTip)
 
         def add_children(parent_item, parent_mdl):
-            print("CHILDREN:", parent_mdl.name, parent_mdl.get_children())
             for child_mdl in parent_mdl.get_children():
                 child_item = QTreeWidgetItem([child_mdl.name, child_mdl.moduleType])
                 parent_item.addChild(child_item)

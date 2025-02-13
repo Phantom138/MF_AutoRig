@@ -1,7 +1,7 @@
 import time
 from maya import cmds
 import pymel.core as pm
-from mf_autoRig.modules import Limb, Hand, Clavicle, Spine, FKFoot, IKFoot
+from mf_autoRig.modules import Limb, Hand, Clavicle, Spine, FKFoot, IKFoot, FKChain
 # from unload_packages import unload_packages
 # import mf_autoRig.UI.modifyWindow.modifyWindowUI as modifyWindow
 # modifyWindow.showWindow()
@@ -45,7 +45,8 @@ pos = {
     'foot': {
         'guides': [[13.629721641540527, 7.229678630828857, -3.6611974239349365], [14.481945991516113, 1.121225118637085, 6.510270595550537], [14.691303253173828, 1.2859458923339844, 15.436973571777344]],
         'locators': [[20.68676479033753, 0.0, 5.0], [9.97200986019664, 0.0, 6.34463357263869], [13.837330829295325, 0.0, -8.660677518915602]]
-    }
+    },
+    'neck': [[3.151011819102351e-31, 141.91992040470987, -1.417937047779558], [3.1510118191023506e-31, 144.94525146484375, -1.417937047779558], [-1.2746704800627457e-30, 149.64504671096802, -0.22746194154023902]]
 }
 
 
@@ -54,6 +55,7 @@ def test_body(positions=pos):
     L_arm = Limb.Limb('L_arm')
     L_leg = Limb.Limb('L_leg')
     spine = Spine.Spine('M_spine', num=4)
+    M_neck = FKChain.FKChain('M_neck', num=3)
     L_clavicle = Clavicle.Clavicle('L_clavicle')
     L_hand = Hand.Hand('L_hand')
     L_foot = IKFoot.IKFoot('L_foot')
@@ -64,17 +66,17 @@ def test_body(positions=pos):
     L_clavicle.create_guides(pos=positions['clavicle'])
     L_hand.create_guides(pos = positions['hand'])
     L_foot.create_guides(pos=positions['foot'])
+    M_neck.create_guides(pos=positions['neck'])
 
-    print(L_arm)
-    print(L_clavicle)
     L_leg.attach_index = 0
-    L_leg.save_metadata()
+    L_leg.metaNode.attach_index.set(0)
+    # L_leg.save_metadata() TODO: debug and see why this isn't working?
     L_arm.connect_guides(L_clavicle)
     L_clavicle.connect_guides(spine)
     L_leg.connect_guides(spine)
     L_hand.connect_guides(L_arm)
     L_foot.connect_guides(L_leg)
-
+    M_neck.connect_guides(spine)
 
     # L_leg.mirror_guides()
     # L_hand.mirror_guides()

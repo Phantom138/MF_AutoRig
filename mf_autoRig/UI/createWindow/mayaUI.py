@@ -5,9 +5,8 @@ import pathlib
 import mf_autoRig.UI.createWindow.modulePage as modPages
 from mf_autoRig.UI.createWindow.modulePage import CreatePage
 from mf_autoRig.UI.utils.UI_Template import UITemplate, delete_workspace_control
-from mf_autoRig.modules import Limb, Spine, Clavicle, Hand, Body, FKFoot, IKFoot
+from mf_autoRig.modules import Limb, Spine, Clavicle, Hand, Body, FKFoot, IKFoot, FKChain
 from mf_autoRig.modules.Toon import BendyLimb
-import mf_autoRig.modules.module_tools as crMod
 import mf_autoRig.utils.defaults as df
 
 WORK_PATH = pathlib.Path(__file__).parent.resolve()
@@ -15,12 +14,14 @@ WORK_PATH = pathlib.Path(__file__).parent.resolve()
 #TODO: create separate window for module management
 
 class_name_map = {
+    #TODO: there has to be a better way to do this
     'Spine': Spine.Spine,
     'Clavicle': Clavicle.Clavicle,
     'Limb': Limb.Limb,
     # 'BendyLimb': BendyLimb.BendyLimb,
     'Hand': Hand.Hand,
     'IKFoot': IKFoot.IKFoot,
+    'FKChain': FKChain.FKChain
 }
 
 

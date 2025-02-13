@@ -6,7 +6,7 @@ def createModule(metaNode):
     """
     Function to create corresponding class from metadata node
     """
-    from mf_autoRig.modules import Hand, Limb, Clavicle, Spine, IKFoot, Module
+    from mf_autoRig.modules import Hand, Limb, Clavicle, Spine, IKFoot, Module, FKChain
     from mf_autoRig.modules import FKFoot
 
     from mf_autoRig.modules.Toon import BendyLimb
@@ -18,7 +18,8 @@ def createModule(metaNode):
         'IKFoot': IKFoot.IKFoot,
         'Clavicle': Clavicle.Clavicle,
         'Spine': Spine.Spine,
-        'BendyLimb': BendyLimb.BendyLimb
+        'BendyLimb': BendyLimb.BendyLimb,
+        'FKChain': FKChain.FKChain
     }
 
     if metaNode.name() in Module.Module.instances:
