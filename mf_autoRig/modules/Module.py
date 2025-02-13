@@ -479,6 +479,9 @@ class Module(abc.ABC):
             mirrored_to.update_mirrored(destroy=False)
 
     def mirror_guides(self):
+        if self.side.opposite is None:
+            log.warning(f"{self.name} is a middle module, cannot mirror")
+            return
         name = self.name.replace(f'{self.side.side}_', f'{self.side.opposite}_')
         log.info(f"Mirroring {self.name} <{self.moduleType}>")
         # Copy creation args

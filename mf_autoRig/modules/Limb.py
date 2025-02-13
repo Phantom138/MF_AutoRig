@@ -92,7 +92,6 @@ class Limb(Module):
         self.forearm_twist = False
 
         self.reset()
-        self.attach_index = -1
 
 
     def reset(self):
