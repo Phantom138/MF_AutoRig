@@ -78,8 +78,18 @@ def test_body(positions=pos):
     L_foot.connect_guides(L_leg)
     M_neck.connect_guides(spine)
 
-    # L_leg.mirror_guides()
-    # L_hand.mirror_guides()
+    ## Right side
+    R_arm = L_arm.mirror_guides()
+    R_leg = L_leg.mirror_guides()
+    R_clavicle = L_clavicle.mirror_guides()
+    R_hand = L_hand.mirror_guides()
+    R_foot = L_foot.mirror_guides()
+
+    R_arm.connect_guides(R_clavicle)
+    R_clavicle.connect_guides(spine)
+    R_leg.connect_guides(spine)
+    R_hand.connect_guides(R_arm)
+    R_foot.connect_guides(R_leg)
 
 
 def test_hand():
