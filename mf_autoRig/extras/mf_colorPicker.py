@@ -1,8 +1,13 @@
+try:
+    from PySide2 import QtCore, QtWidgets
+    from shiboken2 import wrapInstance
+except ImportError:
+    from PySide6 import QtCore, QtWidgets
+    from shiboken6 import wrapInstance
+
 import maya.cmds as cmds
-from PySide2 import QtCore, QtWidgets
 from functools import partial
 
-import shiboken2
 from maya import OpenMayaUI
 from maya.app.general.mayaMixin import MayaQWidgetDockableMixin
 
@@ -75,7 +80,7 @@ def disable_colors_outliner():
 
 def get_maya_win():
     win_ptr = OpenMayaUI.MQtUtil.mainWindow()
-    return shiboken2.wrapInstance(int(win_ptr), QtWidgets.QMainWindow)
+    return wrapInstance(int(win_ptr), QtWidgets.QMainWindow)
 
 
 def delete_workspace_control(control):

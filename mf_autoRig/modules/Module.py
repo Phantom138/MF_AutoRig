@@ -1,4 +1,5 @@
 import abc
+import gc
 from abc import abstractmethod
 import pymel.core as pm
 import pymel.core.nodetypes as nt
@@ -8,7 +9,7 @@ from mf_autoRig.utils.controllers_tools import apply_curve_info, save_curve_info
 from mf_autoRig.utt.Side import Side
 import mf_autoRig.utils as utils
 from mf_autoRig.modules import module_tools
-
+from mf_autoRig.utils import defaults as df
 from pprint import pprint
 
 class Module(abc.ABC):
@@ -50,19 +51,44 @@ class Module(abc.ABC):
             Returns a string representation of the Module instance.
     """
 
-    df_meta_args = {
-        'joints_grp': {'attributeType': 'message'},
-        'control_grp': {'attributeType': 'message'},
+    meta_args = {
+        'creation_attrs':{
+            'name': {'type': 'string'},
+            'moduleType': {'type': 'string'},
+        },
+
+        # Attrs that connect to other modules (Meta nodes)
+        'module_attrs': {
+            'mirrored_to': {'attributeType': 'message', 'w':False},
+            'mirrored_from': {'attributeType': 'message', 'r': False},
+            'children': {'attributeType': 'message', 'm': True, 'w': False},
+            'parent': {'attributeType': 'message', 'r': False},
+        },
+
+        # Stuff related to the rig config
+        'config_attrs': {
+            'attach_index': {'attributeType': 'long'},
+            'jnt_orient_main': {'attributeType': 'double3'},
+            'jnt_orient_secondary': {'attributeType': 'double3'},
+        },
+
+        # Attributes for keeping track of nodes created by the rig
+        'info_attrs':{
+            'guide_conn_node': {'attributeType': 'message'},
+            'guide_grp': {'attributeType': 'message'},
+            'joints_grp': {'attributeType': 'message'},
+            'drivers_grp': {'attributeType': 'message'},
+            'control_grp': {'attributeType': 'message'},
+            'all_ctrls': {'attributeType': 'message', 'm': True},
+        }
+
     }
+
+    # Class level dictionary that keeps track of all instances
+    instances = {}
 
     def __init__(self, name, args, meta):
         self.name = name
-        self.meta = meta
-        self.meta_args = args
-
-        # Add default args to meta_args
-        self.meta_args.update(self.df_meta_args)
-
         self.moduleType = self.__class__.__name__
         self.side = Side(name.split('_')[0])
 
@@ -72,27 +98,58 @@ class Module(abc.ABC):
         else:
             can_mirror = True
 
-        if meta is True:
-            log.debug(f"Creating metadata for {name}")
-            self.metaNode = mdata.create_metadata(name, self.moduleType, args, True)
+        self.meta = meta
         if isinstance(meta, pm.nt.Network):
             # Using existing metadata node
             self.metaNode = meta
-            # TODO: Validate metadata
 
+        elif meta is True:
+            log.debug(f"Creating metadata for {name}")
+            self.metaNode = mdata.create_metadata(name, self.moduleType, self.meta_args,True)
 
-    @abstractmethod
-    def reset(self):
-        self.all_ctrls = None
+        # Parent - child
+        self.parent = None
+        self.children = []
+        self.attach_index = -1 # Index to attach to parent
+        self.guide_conn_node = None
 
+        # Joint orient
+        self.jnt_orient_main = pm.dt.Vector([0,1,0])
+        self.jnt_orient_secondary = pm.dt.Vector([0,0,1])
+        self.jnt_orient_third = pm.dt.Vector([1,0,0])
+
+        # init other values
+        self.guides = []
+
+        self.guide_grp = None
         self.control_grp = None
+        self.drivers_grp = None
         self.joints_grp = None
 
         self.mirrored_from = None
         self.mirrored_to = None
 
-        self.curve_info = None
+        self.curve_info = []
+        self.all_ctrls = []
 
+        # Save instance
+        self.instances[self.metaNode.name()] = self
+
+
+    @abstractmethod
+    def reset(self):
+        self.guides = []
+
+        self.guide_grp = None
+        self.control_grp = None
+        self.drivers_grp = None
+        self.joints_grp = None
+
+        self.mirrored_from = None
+        self.mirrored_to = None
+
+        self.curve_info = []
+        self.all_ctrls = []
 
     @abstractmethod
     def create_guides(self):
@@ -105,6 +162,47 @@ class Module(abc.ABC):
     @abstractmethod
     def rig(self):
         pass
+
+    # GUIDES METHODS
+    def connect_guides(self, dest):
+        if self.check_if_connected(dest):
+            pm.warning(f"{self.name} already connected to {dest.name}")
+            return
+
+        dest_class = dest.__class__.__name__
+        if dest_class not in self.connectable_to:
+            log.warning(f"{self.name} not connectable to {dest.name}")
+            return
+
+        # TODO: Maybe this logic should be inside the connectable_to list?
+        # this works for now since only when connecting to the spine you keep the offset
+        if dest_class == "Spine":
+            keepOffset = True
+        else:
+            keepOffset = False
+
+        # TODO: Maybe add the base_guide as an attribute inside every class? right now only the hand is special
+        if self.moduleType == 'Hand':
+            base_guide = self.wrist_guide
+        else:
+            base_guide = self.guides[0]
+
+        # TODO: Maybe attach index should be an attribute in connectable_to list?
+
+        self.guide_conn_node = utils.connect_guides(dest.guides[self.attach_index], base_guide, keepOffset)
+        self.save_metadata()
+        self.connect_metadata(dest)
+
+    def disconnect_guides(self):
+        if self.parent is None:
+            pm.warning(f"{self.name} has no parent")
+            return
+
+        if self.guide_conn_node is not None:
+            utils.disconnect_guides(self.guide_conn_node)
+            self.guide_conn_node = None
+        self.save_metadata()
+        self.disconnect_metadata()
 
     # METADATA METHODS
     @classmethod
@@ -119,66 +217,115 @@ class Module(abc.ABC):
             Module: An instance of the Module class.
         """
 
-        name = metaNode.Name.get()
-        general_obj = cls(name, meta=False)
+        name = pm.getAttr(metaNode + '.name')
+        general_obj = cls(name, meta=metaNode)
 
         general_obj.moduleType = metaNode.moduleType.get()
 
         general_obj.metaNode = metaNode
         general_obj.meta = True
-
+        # general_obj.update_from_meta(only=['creation_attrs', 'config_attrs', 'info_attrs']) # Skip module_attrs
         general_obj.update_from_meta()
 
         return general_obj
 
-    def update_from_meta(self):
+    def update_from_meta(self, only=None):
         # Reset the class so we start with clean values
         self.reset()
 
-        # Get mirror info
-        self.mirrored_from = self.metaNode.mirrored_from.get()
-        self.mirrored_to = self.metaNode.mirrored_to.get()
+        if only is None:
+            only = []
+        elif isinstance(only, str):
+            only = [only]
+
+        # Validate skip attr
+        for o in only:
+            if o not in self.meta_args:
+                raise ValueError(f"Invalid skip value: {o}")
 
         # Get the attributes from the saved metadata
-        for attribute in self.meta_args:
-            data = self.metaNode.attr(attribute).get()
+        for typ in self.meta_args:
+            if typ == 'module_attrs':
+                for attribute in self.meta_args[typ]:
+                    # Skip children and mirrored_from attr to avoid cycles
+                    if attribute in ['children', 'mirrored_to']:
+                        continue
 
-            # If list is empty, set to None
-            if isinstance(data, list) and not data:
-                data = None
+                    data = self.metaNode.attr(attribute).get()
 
-            setattr(self, attribute, data)
+                    # If it's a metadata node, create the corresponding class
+                    if isinstance(data, pm.nt.Network) and data.name().startswith(df.meta_prf):
+                        data_class = module_tools.createModule(data)
+                        setattr(self, attribute, data_class)
+                        if attribute == 'parent' and self not in data_class.children:
+                            data_class.children.append(self)
+
+                        elif attribute == 'mirrored_from':
+                            data_class.mirrored_to = self
+
+                    elif data is not None:
+                        raise ValueError(f"Invalid data type for {attribute}: {data}, module_attrs should link to a meta node")
+
+                continue
+
+            for attribute in self.meta_args[typ]:
+                data = self.metaNode.attr(attribute).get()
+                setattr(self, attribute, data)
+
+        # Get jnt orient third based on the others
+        self.jnt_orient_third = pm.dt.Vector([1,1,1]) - abs(self.jnt_orient_main) - abs(self.jnt_orient_secondary)
+
 
     def save_metadata(self):
         """
         Do the appropriate connections to the metaNode, based on the meta_args
         Skip connections that already made to avoid warnings
         """
-        for attribute in self.meta_args:
-            src = getattr(self, attribute)
-            if isinstance(src, list) and not src:
-                # Skip if list is empty
-                continue
+        for typ in self.meta_args:
+            for attribute in self.meta_args[typ]:
+                src = getattr(self, attribute)
+                dst = self.metaNode.attr(attribute)
+                if isinstance(src, list) and not src:
+                    # Skip if list is empty
+                    continue
 
-            if src is None:
-                continue
+                if src is None:
+                    continue
 
-            dst = self.metaNode.attr(attribute)
-            mdata.add(src, dst)
-            log.debug(f"{self.name} - Metadata connected {src} to {dst}")
+                if isinstance(src, Module):
+                    continue
+
+                mdata.add(src, dst)
+                log.debug(f"{self.name} - Metadata connected {src} to {dst}")
 
     # CONNECTION METHODS
-    def connect_metadata(self, dest, index=0):
+    def connect_metadata(self, dest):
         # Connect meta nodes
         if self.meta:
-            dest.metaNode.attach_pts[index].connect(self.metaNode.connected_to)
+            # Connect children one by one
+            length = len(dest.children)
+            dest.metaNode.children[length].connect(self.metaNode.parent)
             log.info(f"Successfully connected {self.name} to {dest.name}")
+
+        self.parent = dest
+        dest.children.append(self)
+
+    def disconnect_metadata(self):
+        self.parent.children.remove(self)
+        self.parent = None
+        self.metaNode.parent.disconnect()
 
     def check_if_connected(self, dest):
         if self.meta:
-            if self.metaNode.connected_to.get() == dest.metaNode:
+            if self.metaNode.parent.get() == dest.metaNode:
                 return True
         return False
+
+    def connect_children(self):
+        print(f"Connecting parent {self.__dict__}")
+        print(f"Connecting children {self.children}")
+        for child in self.children:
+            child.connect(self)
 
     def get_connections(self, direction='up'):
         connections = []
@@ -223,12 +370,7 @@ class Module(abc.ABC):
         Returns:
             Parent module if it exists, None otherwise
         """
-        if self.meta:
-            parent = self.metaNode.connected_to.get()
-            if parent is None:
-                return None
-            else:
-                return module_tools.createModule(parent)
+        return self.parent
 
     def get_children(self) -> list:
         """
@@ -237,19 +379,15 @@ class Module(abc.ABC):
             List of children modules
             List is empty if there are no children
         """
-        if self.meta:
-            children = self.metaNode.attach_pts.get()
-            if len(children) == 0:
-                return []
-            return [module_tools.createModule(child) for child in children]
+        return self.children
 
     def get_info(self):
         """
         Utility method to get information about the module
         """
-        self.update_from_meta()
+        # self.update_from_meta()
 
-        if self.all_ctrls is None or len(self.all_ctrls) == 0:
+        if len(self.all_ctrls) == 0:
             # This means the module is not rigged
             is_rigged = False
         else:
@@ -280,9 +418,9 @@ class Module(abc.ABC):
                 c.disconnect()
 
         # Delete stuff
-        if self.guides is not None:
-            log.debug(f"Deleting {self.guides}")
-            pm.delete(self.guides)
+        if self.guide_grp is not None:
+            log.debug(f"Deleting {self.guide_grp}")
+            pm.delete(self.guide_grp)
 
         if self.joints_grp is not None:
             log.debug(f"Deleting {self.joints_grp}")
@@ -292,30 +430,36 @@ class Module(abc.ABC):
             log.debug(f"Deleting {self.control_grp}")
             pm.delete(self.control_grp)
 
+        if self.drivers_grp is not None:
+            log.debug(f"Deleting {self.drivers_grp}")
+            pm.delete(self.drivers_grp)
 
         if not keep_meta_node:
             pm.delete(self.metaNode)
 
-    def destroy_rig(self, disconnect=True):
+        # Remove
+        self.parent.children.remove(self)
+        del self.instances[self.metaNode.name()]
+        del self
+
+        print(f"Succesfully deleted")
+
+    def destroy_rig(self):
         # Save curve info
         log.info(f"{self.name}: Destroying rig")
-        self.curve_info = save_curve_info(self.all_ctrls)
+        #self.curve_info = save_curve_info(self.all_ctrls)
 
 
-        to_delete = [self.joints_grp, self.control_grp]
+        to_delete = [self.joints_grp, self.control_grp, self.drivers_grp]
         for node in to_delete:
             log.debug(f"Deleting {node}")
             pm.delete(node)
 
         self.update_from_meta()
 
-        if disconnect:
-            # Disconnect
-            self.metaNode.connected_to.disconnect()
-
         if self.mirrored_to is not None:
             mirrored_to = module_tools.createModule(self.mirrored_to)
-            mirrored_to.destroy_rig(disconnect = disconnect)
+            mirrored_to.destroy_rig()
 
     def rebuild_rig(self):
         log.info(f"{self.name}: Rebuilding rig")
@@ -333,6 +477,67 @@ class Module(abc.ABC):
         if self.mirrored_to is not None:
             mirrored_to = module_tools.createModule(self.mirrored_to)
             mirrored_to.update_mirrored(destroy=False)
+
+    def mirror_guides(self):
+        if self.side.opposite is None:
+            log.warning(f"{self.name} is a middle module, cannot mirror")
+            return
+        name = self.name.replace(f'{self.side.side}_', f'{self.side.opposite}_')
+        log.info(f"Mirroring {self.name} <{self.moduleType}>")
+        # Copy creation args
+        creation_args = {}
+        for key in self.meta_args['creation_attrs']:
+            if key == 'name' or key == 'moduleType':
+                continue
+            creation_args[key] = self.metaNode.attr(key).get()
+
+        mir_module = self.__class__(name, **creation_args)
+
+        # Copy attributes
+        for attr in self.meta_args['config_attrs']:
+            setattr(mir_module, attr, getattr(self, attr))
+
+        # Change orient
+        mir_module.jnt_orient_main = self.jnt_orient_main * -1
+        mir_module.jnt_orient_secondary = self.jnt_orient_secondary * -1
+
+        mir_module.create_guides()
+
+        identity_mtx = [1, 0, 0, 0,
+                        0, 1, 0, 0,
+                        0, 0, 1, 0,
+                        0, 0, 0, 1]
+
+        utils.mirror_guides_transforms([self.guide_grp], [mir_module.guide_grp])
+
+        # Get guide hierarchy
+        keep = ['joint', 'transform']
+        guide_hierarchy = []
+        for h in (self.guide_grp.getChildren(ad=True)):
+            if h.type() in keep and not h.endswith('_clusterHandle') and not h.endswith('_guide_crv'):
+                guide_hierarchy.append(h)
+
+        # Get mir hierarchy
+        mir_hierarchy = []
+        for h in mir_module.guide_grp.getChildren(ad=True):
+            if h.type() in keep and not h.endswith('_clusterHandle') and not h.endswith('_guide_crv'):
+                mir_hierarchy.append(h)
+
+        for guide, mir_guide in zip(guide_hierarchy, mir_hierarchy):
+            pm.xform(mir_guide, m=identity_mtx)
+            utils.lock_and_hide(mir_guide)
+            guide.xformMatrix.connect(mir_guide.offsetParentMatrix)
+
+        self.mirrored_to = mir_module
+        mir_module.mirrored_from = self
+
+        self.save_metadata()
+        mir_module.save_metadata()
+
+        # Do mirror connection for metadata
+        self.metaNode.mirrored_to.connect(mir_module.metaNode.mirrored_from)
+
+        return mir_module
 
     def mirror(self):
         """
@@ -388,6 +593,15 @@ class Module(abc.ABC):
         self.rig()
 
         self.mirror_ctrls(source)
+
+
+    # DEBUG METHODS
+    def print_guides_pos(self):
+        for guide in self.guides:
+            print(guide.getTranslation(ws=True), end=", ")
+
+    def print_class(self):
+        print(self)
 
     def __str__(self):
         return str(self.__dict__)

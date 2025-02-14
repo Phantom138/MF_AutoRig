@@ -2,7 +2,61 @@ import pymel.core as pm
 import mf_autoRig.utils.defaults as df
 from mf_autoRig.utils.general import lock_and_hide, get_group
 from mf_autoRig.utils.joint_tools import orient_joints
+from mf_autoRig.utils.general import lock_and_hide
+from mf_autoRig.utils.color_tools import set_color
 
+def mirror_guides_old(guides, new_name, plane='YZ'):
+    """
+    Mirror guides in X axis
+    """
+    yz_mirror_mtx = [-1, 0, 0, 0,
+                     0, 1, 0, 0,
+                     0, 0, 1, 0,
+                     0, 0, 0, 1]
+    new_group = pm.createNode('transform', name=f'{new_name}_mir_grp')
+    pm.parent(new_group, get_group("rig_guides_grp"))
+    lock_and_hide(new_group)
+
+    new_guides = []
+    for i,guide in enumerate(guides):
+        new_guide = pm.createNode('joint', name=f'{new_name}_mir_guide_{i}')
+        pm.parent(new_guide, new_group)
+        lock_and_hide(new_guide)
+
+        mult_mtx = pm.createNode('multMatrix', name=f'{new_guide.name()}_mirror_{plane}')
+
+        guide.worldMatrix[0].connect(mult_mtx.matrixIn[0])
+        mult_mtx.matrixIn[1].set(yz_mirror_mtx)
+
+        mult_mtx.matrixSum.connect(new_guide.offsetParentMatrix)
+
+
+    return new_guides
+
+def mirror_guides_transforms(guides, mir_guides, plane='YZ'):
+    """
+    Mirror guides in X axis
+    """
+    identity_mtx = [1, 0, 0, 0,
+                   0, 1, 0, 0,
+                   0, 0, 1, 0,
+                   0, 0, 0, 1]
+
+    yz_mirror_mtx = [-1, 0, 0, 0,
+                     0, 1, 0, 0,
+                     0, 0, 1, 0,
+                     0, 0, 0, 1]
+
+    for guide, mir_guide, in zip(guides, mir_guides):
+        # mir_guide.setMatrix(identity_mtx)
+        pm.xform(mir_guide, m=identity_mtx)
+        mult_mtx = pm.createNode('multMatrix', name=f'{mir_guide.name()}_mirror_{plane}')
+
+        guide.xformMatrix.connect(mult_mtx.matrixIn[0])
+        mult_mtx.matrixIn[1].set(yz_mirror_mtx)
+
+        mult_mtx.matrixSum.connect(mir_guide.offsetParentMatrix)
+        lock_and_hide(mir_guide)
 
 def __create_guides(pos):
     # Parent new guide shape under ctrl
@@ -29,6 +83,7 @@ def __create_guides(pos):
 
     return joints
 
+
 def create_joint_chain(jnt_number, name, start_pos, end_pos, rot=None, defaultValue=51):
     if rot is None:
         rot = [0, 0, 0]
@@ -36,7 +91,7 @@ def create_joint_chain(jnt_number, name, start_pos, end_pos, rot=None, defaultVa
     # Create plane
     plane = pm.polyPlane(name=f'tmp_{name}_Plane', w=2, h=26, sh=1, sw=1)[0]
     plane.v.set(0)
-    driven_grp = get_group(df.driven_grp)
+    driven_grp = get_group(df.deprecated_driven_grp)
     pm.parent(plane, driven_grp)
 
     joints = []
@@ -128,7 +183,7 @@ def create_joint_chain(jnt_number, name, start_pos, end_pos, rot=None, defaultVa
         pm.parent(cluster, joints[i])
 
     # color curve
-    from mf_autoRig.utils.color_tools import set_color
+
     curve.lineWidth.set(2)
     curve.alwaysDrawOnTop.set(1)
     set_color(curve, viewport='black')
@@ -147,7 +202,72 @@ def create_joint_chain(jnt_number, name, start_pos, end_pos, rot=None, defaultVa
     return joints
 
 
-def create_joints_from_guides(name, guides, suffix=None, endJnt=True):
+class Guide:
+    def __init__(self, name, pos):
+        self.guide = pm.createNode('joint', name=name)
+        pm.move(self.guide, pos)
+        self.guide.radius.set(0.5)
+        set_color(self.guide, viewport='cyan')
+
+
+def create_guide_curve(name, guides, display=2, parent: pm.nt.Transform = None):
+    # Create curve driven by the guides
+    crv_pts = []
+    for guide in guides:
+        crv_pt = pm.xform(guide, query=True, translation=True, worldSpace=True)
+        crv_pts.append(crv_pt)
+
+    curve = pm.curve(d=1, p=crv_pts, name=f'{name}_guide_crv')
+
+    # Parent under driven grp
+    if parent is not None:
+        pm.parent(curve, parent, relative=True)
+        parent.worldInverseMatrix.connect(curve.offsetParentMatrix)
+
+    # Create clusters
+    for i in range(curve.numCVs()):
+        cluster = pm.cluster(curve.cv[i], name=f'{curve.name()}_{i + 1:02}_cluster')[1]
+        cluster.visibility.set(0)
+        pm.parent(cluster, guides[i])
+
+    curve.lineWidth.set(2)
+    curve.alwaysDrawOnTop.set(1)
+    curve.overrideEnabled.set(1)
+    curve.overrideDisplayType.set(display) # Reference
+    # set_color(self.curve, viewport='black')
+    lock_and_hide(curve)
+
+    return curve
+
+def create_guide_chain(name: str, number: int, pos: list, interpolate=True, parent = None):
+    if interpolate and len(pos) == 2 and number > len(pos):
+        new_pos = []
+        start = pm.dt.Vector(pos[0])
+        end = pm.dt.Vector(pos[1])
+        # interpolate between two points
+        for i in range(number):
+            p = start + (end - start) * i / (number - 1)
+            new_pos.append(p.get())
+
+        pos = new_pos
+
+    if len(pos) != number:
+        raise ValueError(f"Number of positions {len(pos)} does not match the number of guides {number}")
+
+    guides = []
+    for i in range(number):
+        guide = Guide(f'{name}_{i}_guide', pos[i])
+        guides.append(guide.guide)
+
+    if parent is not None:
+        pm.matchTransform(parent, guides[0])
+        pm.parent(guides, parent)
+
+    create_guide_curve(name, guides, parent = parent)
+    pm.select(clear=True)
+    return guides
+
+def create_joints_from_guides(name, guides, aimVector, upVector, suffix=None, endJnt=True):
     pm.select(clear=True)
     radius = guides[0].radius.get()
     joints = []
@@ -164,18 +284,54 @@ def create_joints_from_guides(name, guides, suffix=None, endJnt=True):
         pm.matchTransform(jnt, tmp, pos=True)
         joints.append(jnt)
 
-    orient_joints(joints, aimVector=(0, 1, 0), upVector=(1, 0, 0))
-    # for i in range(len(joints) - 1, 0, -1):
-    #     pm.parent(joints[i], joints[i - 1])
-    #
-    # # Orient joints
-    # pm.joint(joints[0], edit=True, orientJoint='yzx', secondaryAxisOrient='zup', children=True)
-    # pm.joint(joints[-1], edit=True, orientJoint='none')
-    #
-    # # HACK: sometimes the x axis of the last joint gets very minimal values. This messes up the IK
-    # # This is more of a bandaid, the problem is somewhere in the code above
-    # # TODO: Fix this
-    # joints[-1].translateX.set(0)
+    orient_joints(joints, aimVector=aimVector, upVector=upVector, useNormal=True)
 
     pm.select(clear = True)
     return joints
+
+def connect_guides(source, dest, keepOffset=False):
+    # Unlock if locked
+    lock_dict = {}
+    for obj in (source, dest):
+        for channel in ['tx', 'ty', 'tz', 'rx', 'ry', 'rz']:
+            if obj.attr(channel).isLocked():
+                lock_dict[obj] = {}
+                lock_dict[obj][channel] = True
+                obj.attr(channel).unlock()
+
+    # Connection node is a node that when deleted it visually breaks the connection
+    if keepOffset:
+        # Symbolic connection
+        con_node = create_guide_curve(source+'_connection'+'_guide_crv', [source, dest], display=1, parent=source.getParent(1))
+    else:
+        con_node = pm.parentConstraint(source, dest)
+        pm.hide(dest)
+        set_color(source, "green")
+
+    print(f"Created con node: {con_node}")
+    # Save keepOffset type
+    con_node.addAttr('keepOffset', at='bool')
+    con_node.addAttr('source', at='message')
+    con_node.addAttr('dest', at='message')
+
+    con_node.keepOffset.set(keepOffset)
+    source.message.connect(con_node.source)
+    dest.message.connect(con_node.dest)
+
+    # Lock again if was locked
+    for obj in lock_dict:
+        for channel in lock_dict[obj]:
+            obj.attr(channel).lock()
+
+    return con_node
+
+def disconnect_guides(con_node):
+    keepOffset = con_node.keepOffset.get()
+
+    if keepOffset:
+        pm.delete(con_node)
+    else:
+        pm.showHidden(con_node.dest.get())
+        # reset color
+        set_color(con_node.source.get(), "cyan")
+        pm.delete(con_node)

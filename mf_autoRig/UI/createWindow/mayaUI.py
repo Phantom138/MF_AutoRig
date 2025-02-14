@@ -3,10 +3,10 @@ import re
 import pathlib
 
 import mf_autoRig.UI.createWindow.modulePage as modPages
+from mf_autoRig.UI.createWindow.modulePage import CreatePage
 from mf_autoRig.UI.utils.UI_Template import UITemplate, delete_workspace_control
-from mf_autoRig.modules import Limb, Spine, Clavicle, Hand, Body, FKFoot
+from mf_autoRig.modules import Limb, Spine, Clavicle, Hand, Body, FKFoot, IKFoot, FKChain
 from mf_autoRig.modules.Toon import BendyLimb
-import mf_autoRig.modules.module_tools as crMod
 import mf_autoRig.utils.defaults as df
 
 WORK_PATH = pathlib.Path(__file__).parent.resolve()
@@ -14,12 +14,14 @@ WORK_PATH = pathlib.Path(__file__).parent.resolve()
 #TODO: create separate window for module management
 
 class_name_map = {
+    #TODO: there has to be a better way to do this
     'Spine': Spine.Spine,
     'Clavicle': Clavicle.Clavicle,
     'Limb': Limb.Limb,
-    'BendyLimb': BendyLimb.BendyLimb,
+    # 'BendyLimb': BendyLimb.BendyLimb,
     'Hand': Hand.Hand,
-    'FKFoot': FKFoot.FKFoot,
+    'IKFoot': IKFoot.IKFoot,
+    'FKChain': FKChain.FKChain
 }
 
 
@@ -37,14 +39,8 @@ class MayaUI(UITemplate):
         for module in class_name_map:
             self.ui.mdl_comboBox.addItem(module)
 
-            if module == 'Hand':
-                module_tab = modPages.HandPage(class_name_map.get(module))
-            elif module == 'BendyLimb':
-                module_tab = modPages.BendyLimbPage(class_name_map.get(module))
-            elif module == 'Spine':
-                module_tab = modPages.SpinePage(class_name_map.get(module))
-            else:
-                module_tab = modPages.ModulePage(class_name_map.get(module))
+            module_tab = CreatePage(class_name_map.get(module))
+
             self.ui.mdl_stackedTabs.addWidget(module_tab)
 
         self.ui.mdl_comboBox.activated.connect(self.ui.mdl_stackedTabs.setCurrentIndex)

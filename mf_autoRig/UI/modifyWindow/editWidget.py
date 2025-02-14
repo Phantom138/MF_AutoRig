@@ -54,7 +54,7 @@ class EditWidget(QtWidgets.QDialog):
                 return
 
             # Get the index of the connection, this is relevant for connecting the limbs to the spine
-            meta_connect_to = module.metaNode.connected_to.listConnections(p=True)[0]
+            meta_connect_to = module.metaNode.parent.listConnections(p=True)[0]
             index = meta_connect_to.logicalIndex()
 
             if index == 0:

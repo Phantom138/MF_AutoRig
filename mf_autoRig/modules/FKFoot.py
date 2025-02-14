@@ -27,16 +27,13 @@ class FKFoot(Module):
     def reset(self):
         super().reset()
 
-        self.guides = None
+        self.guides = []
 
-        self.joints = None
-        self.fk_ctrls = None
-        self.locators_guides = None
-        self.locators = None
+        self.joints = []
+        self.fk_ctrls = []
+        self.locators_guides = []
+        self.locators = []
         self.all_ctrls = []
-
-        self.control_grp = None
-        self.joints_grp = None
 
 
     def update_from_meta(self):

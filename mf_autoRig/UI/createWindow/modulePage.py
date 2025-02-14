@@ -1,4 +1,5 @@
 import pathlib
+from functools import partial
 
 try:
     from PySide2 import QtWidgets, QtGui, QtCore
@@ -7,172 +8,223 @@ except ImportError:
 
 from mf_autoRig.UI.utils.loadUI import loadUi
 from mf_autoRig.utils.undo import UndoStack
+import pymel.core as pm
+from pymel.core import dt
 
-class ModulePage(QtWidgets.QWidget):
-    def __init__(self, base_module, parent=None):
-        path = pathlib.Path(__file__).parent.resolve()
+
+class CustomLineEdit(QtWidgets.QLineEdit):
+    def __init__(self, parent=None):
+        QtWidgets.QLineEdit.__init__(self, parent)
+        self.setMaximumWidth(50)
+
+class Vector3Input(QtWidgets.QWidget):
+    vectorChanged = QtCore.Signal()
+    def __init__(self, parent=None):
         QtWidgets.QWidget.__init__(self, parent)
-        # TODO: proper path joining
-        loadUi(rf"{path}\modulePage.ui", self)
 
-        self.base_module = base_module
-        # number = QtWidgets.QLabel()
-        # number.setText("Number")
-        # self.verticalLayout.insertWidget(1, number)
+        self.main_layout = QtWidgets.QHBoxLayout()
+        self.main_layout.setSpacing(1)
 
-        self.__create_connections()
+        self.main_layout.setContentsMargins(0, 0, 0, 0)
 
-    def __create_connections(self):
+        self.x_axis = CustomLineEdit()
+        self.y_axis = CustomLineEdit()
+        self.z_axis = CustomLineEdit()
 
-        self.btn_guides.clicked.connect(self.mdl_createGuides)
-        self.btn_rig.clicked.connect(self.mdl_rig)
-        self.mdl_name.textChanged.connect(self.nameChanged)
+        for input_field in (self.x_axis, self.y_axis, self.z_axis):
+            input_field.setValidator(QtGui.QDoubleValidator())
+            input_field.editingFinished.connect(self.emit_vector_changed)
+            self.main_layout.addWidget(input_field)
 
-        self.btn_guides.setEnabled(False)
-        self.btn_rig.setEnabled(False)
+        self.main_layout.addStretch()
+        self.setLayout(self.main_layout)
 
-    def mdl_createGuides(self):
-        name = self.mdl_name.text()
+    def setValue(self, value):
+        if isinstance(value, dt.Vector):
+            x,y,z = value.get()
+        elif isinstance(value, (list, tuple)):
+            x,y,z = value
+        else:
+            x,y,z = (0,0,0)
+            raise ValueError(f"Value {value} not recognized")
 
-        with UndoStack(f"Create {name} guides"):
-            self.module = self.base_module(name)
-            self.module.create_guides()
+        self.x_axis.setText(str(x))
+        self.y_axis.setText(str(y))
+        self.z_axis.setText(str(z))
 
-        self.btn_rig.setEnabled(True)
+    def emit_vector_changed(self):
+        self.vectorChanged.emit()
 
-    def mdl_rig(self):
-        with UndoStack(f"Rigged {self.module.name}"):
-            self.module.create_joints()
-            self.module.rig()
+    def value(self):
+        return dt.Vector([float(self.x_axis.text()), float(self.y_axis.text()), float(self.z_axis.text())])
 
-    def nameChanged(self):
-        name = self.mdl_name.text()
-        if not name:
-            self.btn_guides.setEnabled(False)
-            self.btn_rig.setEnabled(False)
-            return None
+class FormFromDict:
+    def __init__(self, module_dict, module=None):
+        self.module = module
+        self.form_layout = QtWidgets.QFormLayout()
 
-        self.btn_guides.setEnabled(True)
+        self.form_layout.setContentsMargins(0, 0, 0, 0)
 
+        for key, value in module_dict.items():
+            self.add_field(key, value)
 
-class SpinePage(ModulePage):
-    def __init__(self, base_module, parent=None):
-        super().__init__(base_module, parent)
+    def add_field(self, key, data):
+        if key == 'moduleType':
+            return
 
-        options = QtWidgets.QHBoxLayout()
+        # Get type
+        if 'attributeType' in data:
+            field_type = data['attributeType']
+        elif 'type' in data:
+            field_type = data['type']
+        else:
+            raise ValueError(f"Attribute {key} does not have an attributeType")
 
-        self.label = QtWidgets.QLabel("Joints for spine:")
-        self.num = QtWidgets.QSpinBox()
-        self.num.setValue(3)
-        self.num.setRange(2, 10)
+        # Use nice_name if existent
+        if 'niceName' in data:
+            label = data['niceName']
+        else:
+            label = key
 
-        options.addWidget(self.label)
-        options.addWidget(self.num)
+        # Set value if existent
+        if 'value' in data:
+            field_value = data['value']
+        else:
+            field_value = None
 
-        self.verticalLayout.insertLayout(1, options)
-    def mdl_createGuides(self):
-        name = self.mdl_name.text()
+        # Value is a dict of type: label: {'attributeType': 'type'}
+        if field_type in ['int','float','long']:
+            field = QtWidgets.QSpinBox()
+            policy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+            field.setMaximumWidth(50)
+            field.setMinimum(-1)
+            field.setSizePolicy(policy)
 
-        with UndoStack(f"Create {name} guides"):
-            self.module = self.base_module(name, num=self.num.value())
-            self.module.create_guides()
-        self.btn_rig.setEnabled(True)
+            if field_value is not None:
+                field.setValue(field_value)
+            # print(field.value)
+            print(key, field.value)
+            field.editingFinished.connect(lambda: self.update_class(key, field.value))
 
+        elif field_type == 'bool':
+            field = QtWidgets.QCheckBox()
+            if field_value is not None:
+                field.setChecked(field_value)
 
-class InputBox(QtWidgets.QWidget):
-    def __init__(self, label, parent=None):
-        super(InputBox, self).__init__(parent)
+            field.stateChanged.connect(lambda: self.update_class(key, field.isChecked))
 
-        self.layout = QtWidgets.QHBoxLayout()
-        self.setLayout(self.layout)
+        elif field_type == 'string':
+            field = QtWidgets.QLineEdit()
+            if field_value is not None:
+                field.setText(field_value)
 
-        self.label = QtWidgets.QLabel(label)
-        self.input = QtWidgets.QSpinBox()
+            field.editingFinished.connect(lambda: self.update_class(key, field.text))
 
-        self.layout.addWidget(self.label)
-        self.layout.addWidget(self.input, 1)
-        self.layout.addStretch(2)
-        self.layout.setContentsMargins(0,0, 0, 0)
+        elif field_type == 'double3':
+            field = Vector3Input()
+            if field_value is not None:
+                field.setValue(field_value)
 
-class HandPage(ModulePage):
-    def __init__(self, base_module, parent=None):
-        super().__init__(base_module, parent)
-
-        options = QtWidgets.QVBoxLayout()
-
-        self.fingers = InputBox("Fingers:")
-        self.fingers.input.setValue(5)
-        self.fingers.input.setRange(1,5)
-
-        self.finger_jnts = InputBox("Finger joints:")
-        self.finger_jnts.input.setValue(5)
-        self.finger_jnts.input.setRange(2,10)
-
-        self.thumb_jnts = InputBox("Thumb joints:")
-        self.thumb_jnts.input.setValue(4)
-        self.thumb_jnts.input.setRange(2,10)
-
-        self.spread = QtWidgets.QCheckBox("Spread")
-        self.spread.setChecked(True)
-
-        self.curl = QtWidgets.QCheckBox("Curl")
-        self.curl.setChecked(True)
-
-        options.addWidget(self.fingers)
-        options.addWidget(self.finger_jnts)
-        options.addWidget(self.thumb_jnts)
-
-        options.addWidget(self.spread)
-        options.addWidget(self.curl)
-
-        self.verticalLayout.insertLayout(1, options)
-
-    def mdl_createGuides(self):
-        name = self.mdl_name.text()
-
-        with UndoStack(f"Create {name} guides"):
-            self.module = self.base_module(name,
-                    finger_num = self.fingers.input.value(),
-                    finger_joints = self.finger_jnts.input.value(),
-                    thumb_joints = self.thumb_jnts.input.value())
-
-            self.module.create_guides()
-        self.btn_rig.setEnabled(True)
-
-    def mdl_rig(self):
-        with UndoStack(f"Rigged {self.module.name}"):
-            self.module.create_joints()
-            self.module.rig(spread = self.spread.isChecked(), curl = self.curl.isChecked())
-
-class BendyLimbPage(ModulePage):
-    def __init__(self, base_module, parent=None):
-        super().__init__(base_module, parent)
-        options = QtWidgets.QHBoxLayout()
-
-        self.input_label = QtWidgets.QLabel("Number of bend joints:")
-        self.bend_joints_input = QtWidgets.QLineEdit()
-
-        self.bend_joints_input.textChanged.connect(self.validate_input)
-
-        options.addWidget(self.input_label)
-        options.addWidget(self.bend_joints_input)
+            field.vectorChanged.connect(lambda: self.update_class(key, field.value))
+        else:
+            raise ValueError(f"Field type {field_type} not recognized")
 
 
-        self.verticalLayout.insertLayout(2, options)
 
-    def validate_input(self):
-        text = self.bend_joints_input.text()
-        try:
-            value = int(text)
-            if 2 <= value <= 10:
-                self.bend_joints_input.setStyleSheet("color: white;")
+        self.form_layout.addRow(label, field)
+
+    def update_class(self, attr, value_function):
+
+        if self.module is None:
+            return
+        value = value_function()
+        setattr(self.module, attr, value)
+        self.module.metaNode.attr(attr).set(value)
+
+    def get_data(self):
+        data = {}
+        for i in range(self.form_layout.rowCount()):
+            label = self.form_layout.itemAt(i, QtWidgets.QFormLayout.LabelRole).widget()
+            field = self.form_layout.itemAt(i, QtWidgets.QFormLayout.FieldRole).widget()
+
+            if isinstance(field, QtWidgets.QLineEdit):
+                data[label.text()] = field.text()
+            elif isinstance(field, QtWidgets.QSpinBox):
+                data[label.text()] = field.value()
+            elif isinstance(field, Vector3Input):
+                data[label.text()] = field.value()
+            elif isinstance(field, QtWidgets.QCheckBox):
+                data[label.text()] = field.isChecked()
             else:
-                self.bend_joints_input.setStyleSheet("color: red;")
-        except ValueError:
-            self.bend_joints_input.setStyleSheet("color: red;")
+                raise ValueError(f"Field type {type(field)} not recognized")
+
+        return data
+
+def value_dict_from_class(instance, key):
+    data = {}
+    for attr in instance.meta_args[key]:
+        attr_dict = {}
+        meta_attr = instance.metaNode.attr(attr)
+        attr_dict['niceName'] = pm.attributeName(meta_attr, n=True)
+        attr_dict['type'] = meta_attr.type()
+        attr_dict['value'] = meta_attr.get()
+        data[attr] = attr_dict
+
+    print(data)
+    return data
+
+class CreatePage(QtWidgets.QWidget):
+    def __init__(self, base_module, parent=None):
+        QtWidgets.QWidget.__init__(self, parent)
+        self.module = base_module
+
+        self.main_layout = QtWidgets.QVBoxLayout()
+        # self.main_layout.setContentsMargins(0, 0, 0, 0)
+
+        self.form = FormFromDict(self.module.meta_args['creation_attrs'])
+
+        self.create_button = QtWidgets.QPushButton("create")
+        self.create_button.clicked.connect(self.create_module)
+
+        self.main_layout.addLayout(self.form.form_layout)
+        self.main_layout.addWidget(self.create_button)
+
+        self.setLayout(self.main_layout)
+
+    def create_module(self):
+        args = self.form.get_data()
+        print(args)
+        with UndoStack(f"Create Module {args['name']}"):
+            mdl = self.module(**args)
+            mdl.create_guides()
+
+class ConfigPage(QtWidgets.QWidget):
+    def __init__(self, base_module, parent=None):
+        QtWidgets.QWidget.__init__(self, parent)
+        self.module = base_module
+
+        self.main_layout = QtWidgets.QVBoxLayout()
+        # self.main_layout.setContentsMargins(0, 0, 0, 0)
+        attr_dict = value_dict_from_class(self.module, 'config_attrs')
+        self.form = FormFromDict(attr_dict, module=self.module)
+
+        self.create_button = QtWidgets.QPushButton("save")
+        self.create_button.clicked.connect(self.save_config)
+
+        self.label = QtWidgets.QLabel(f"Config for module: {self.module.name}")
+
+        self.main_layout.addWidget(self.label)
+        self.main_layout.addLayout(self.form.form_layout)
+        self.main_layout.addWidget(self.create_button)
+
+        self.setLayout(self.main_layout)
+
+    def save_config(self):
+        config = self.form.get_data()
+        # print(args)
+        for attr, value in config.items():
+            setattr(self.module, attr, value)
+            self.module.save_metadata()
 
 
-    def mdl_rig(self):
-        with UndoStack(f"Rigged {self.module.name}"):
-            self.module.create_joints()
-            self.module.rig(bend_joints=int(self.bend_joints_input.text()))
+
