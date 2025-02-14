@@ -42,7 +42,6 @@ class FKChain(Module):
         self.joints = []
         self.guides = []
         self.fk_ctrls = []
-
         self.end_joint = False
 
         self.reset()
@@ -52,7 +51,6 @@ class FKChain(Module):
         self.joints = []
         self.guides = []
         self.fk_ctrls = []
-        self.end_joint = False
 
     def update_from_meta(self, only=None):
         super().update_from_meta(only)
@@ -89,8 +87,10 @@ class FKChain(Module):
             self.save_metadata()
 
     def rig(self):
-        self.control_grp = pm.createNode('transform', name=f'{self.name}_{df.control_grp}')
-        self.fk_ctrls = utils.create_fk_ctrls(self.joints)
+        self.control_grp = pm.createNode('transform', name=f'{self.name}{df.control_grp}')
+        pm.parent(self.control_grp, utils.get_group(df.root))
+
+        self.fk_ctrls = utils.create_fk_ctrls(self.joints, skipEnd=self.end_joint)
         pm.parent(self.fk_ctrls[0].getParent(1), self.control_grp)
 
 

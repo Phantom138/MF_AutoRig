@@ -351,8 +351,10 @@ class ModifyWindow(UITemplate):
 
         log.info(f"Rigging: {mdl_to_rig}")
         for module in mdl_to_rig:
-            module.create_joints()
-            module.rig()
+            is_rigged, _, _ = module.get_info()
+            if not is_rigged:
+                module.create_joints()
+                module.rig()
 
     @run_update_tree
     def delete_item(self):
