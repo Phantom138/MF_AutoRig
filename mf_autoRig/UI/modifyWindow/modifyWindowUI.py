@@ -20,6 +20,8 @@ from mf_autoRig.utils.undo import UndoStack
 from mf_autoRig import log
 from mf_autoRig.UI.createWindow.modulePage import ConfigPage
 from mf_autoRig.modules.Module import Module
+import pymel.core as pm
+import mf_autoRig.utils.defaults as df
 
 WORK_PATH = pathlib.Path(__file__).parent.resolve()
 
@@ -347,6 +349,7 @@ class ModifyWindow(UITemplate):
             log.info(f"Destroying Rig: {mdl_to_rig}")
             for module in mdl_to_rig:
                 module.destroy_rig()
+            pm.showHidden(df.rig_guides_grp)
             return
 
         log.info(f"Rigging: {mdl_to_rig}")
@@ -355,6 +358,9 @@ class ModifyWindow(UITemplate):
             if not is_rigged:
                 module.create_joints()
                 module.rig()
+
+        # Hide guides grp
+        pm.hide(df.rig_guides_grp)
 
     @run_update_tree
     def delete_item(self):
