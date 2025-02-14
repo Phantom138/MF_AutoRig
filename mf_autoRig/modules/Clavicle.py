@@ -93,7 +93,7 @@ class Clavicle(Module):
 
         # Create ctrl and group
         axis = utils.get_joint_orientation(self.joints[0], self.joints[1])
-        clav = utils.CtrlGrp(self.name, 'arc', axis=axis)
+        clav = utils.CtrlGrp(self.name, 'rectangle', axis=axis)
 
         # Match ctrl to first joint
         jnt = self.joints[0]
