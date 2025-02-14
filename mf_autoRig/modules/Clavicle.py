@@ -40,10 +40,6 @@ class Clavicle(Module):
 
         self.clavicle_ctrl = None
         self.joints = []
-        self.guides = []
-
-        self.control_grp = None
-        self.joints_grp = None
 
     def update_from_meta(self):
         super().update_from_meta()
@@ -142,7 +138,10 @@ class Clavicle(Module):
         if arm is None:
             log.warning(f'Cannot do auto clavicle for {self.name}, no arm found in children')
             return
-        
+        # Create drivers grp
+        self.drivers_grp = pm.createNode('transform', name=f"{self.name}_{df.drivers_grp}")
+        pm.parent(self.drivers_grp, get_group(df.drivers_grp))
+
         # Auto clavicle setup
         # Duplicate arm ik chain
         self.ik_jnts_guides = utils.duplicate_joints(arm.ik_joints, '_guide')
@@ -150,7 +149,7 @@ class Clavicle(Module):
             log.error("Only joint chains of 3 supported")
 
         # Do ik for duplicated joints
-        handle_name = get_base_name(self.ik_jnts_guides[0].name()) + "_guides" + "_ikHandle"
+        handle_name = get_base_name(self.ik_jnts_guides[0].name()) + "_ik_guides" + "_ikHandle"
         dup_ikHandle = pm.ikHandle(name=handle_name, startJoint=self.ik_jnts_guides[0],
                                    endEffector=self.ik_jnts_guides[2], solver='ikRPsolver')
 
@@ -158,6 +157,7 @@ class Clavicle(Module):
         pole_ctrl = arm.ik_ctrls[1]
         pm.parentConstraint(ik_ctrl, dup_ikHandle[0])
         pm.poleVectorConstraint(pole_ctrl, dup_ikHandle[0])
+        pm.parent(dup_ikHandle, self.drivers_grp)
 
         # AUTO CLAVICLE LOGIC
         # Create joint at clavicle start
@@ -169,6 +169,7 @@ class Clavicle(Module):
         clav_aim_grp = pm.createNode('transform', name=self.name + '_aim_grp')
         pm.matchTransform(clav_aim_grp, self.clav_aim_jnt)
         pm.parent(self.clav_aim_jnt, clav_aim_grp)
+        pm.parent(clav_aim_grp, self.drivers_grp)
 
         # Clavicle aim end locator
         elbow_posV = dt.Vector(self.ik_jnts_guides[1].getTranslation(space='world'))
@@ -176,6 +177,7 @@ class Clavicle(Module):
         clav_aim_end_pos = (elbow_posV - clav_posV) / 2 + clav_posV
         self.clav_aim_end_loc = pm.spaceLocator(name=self.name + '_aim_end_loc')
         self.clav_aim_end_loc.setTranslation(clav_aim_end_pos.get())
+        pm.parent(self.clav_aim_end_loc, self.drivers_grp)
 
         # Elbow locator
         self.elbow_loc = pm.spaceLocator(name='elbow_loc')
@@ -184,6 +186,7 @@ class Clavicle(Module):
 
         self.clav_aim_loc = pm.spaceLocator(name=self.name + '_aim_loc')
         pointConst = pm.pointConstraint(self.elbow_loc, self.clav_aim_end_loc, self.clav_aim_loc)
+        pm.parent(self.clav_aim_loc, self.drivers_grp)
 
         # Add attribute for auto clavicle strength
         self.clavicle_ctrl.addAttr("autoClavicle", attributeType="float", defaultValue=1,
@@ -205,7 +208,7 @@ class Clavicle(Module):
         # Connect aim to offset group of main clav controller
         clavicle_offset = create_offset_grp(self.clavicle_ctrl)
         pm.orientConstraint(self.clav_aim_jnt, clavicle_offset, maintainOffset=True)
-        
+
         
     def connect(self, torso, force=False):
         if not self.check_if_connected(torso):
