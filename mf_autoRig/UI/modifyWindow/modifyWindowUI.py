@@ -213,8 +213,13 @@ class ModifyWindow(UITemplate):
         menu = QMenu()
 
         if is_rigged:
-            # Show rig menu
-            self.__destroy_rig_menu(menu)
+            if self.selected_module.parent is not None:
+                parent_is_rigged, _, _ = self.selected_module.parent.get_info()
+            else:
+                parent_is_rigged = False
+
+            if not parent_is_rigged:
+                self.__destroy_rig_menu(menu)
         else:
             self.__rig_menu(menu)
 
