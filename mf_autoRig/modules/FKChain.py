@@ -17,6 +17,7 @@ class FKChain(Module):
 
         'config_attrs': {
             **Module.meta_args['config_attrs'],
+            'end_joint': {'attributeType': 'bool'}
         },
         'info_attrs': {
             **Module.meta_args['info_attrs'],
@@ -42,6 +43,8 @@ class FKChain(Module):
         self.guides = []
         self.fk_ctrls = []
 
+        self.end_joint = False
+
         self.reset()
 
     def reset(self):
@@ -49,6 +52,7 @@ class FKChain(Module):
         self.joints = []
         self.guides = []
         self.fk_ctrls = []
+        self.end_joint = False
 
     def update_from_meta(self, only=None):
         super().update_from_meta(only)
@@ -74,7 +78,8 @@ class FKChain(Module):
         self.joints_grp = pm.createNode('transform', name=f'{self.name}_{df.joints_grp}')
         self.joints = utils.create_joints_from_guides(self.name, self.guides,
                                                       aimVector=self.jnt_orient_main,
-                                                      upVector=self.jnt_orient_secondary)
+                                                      upVector=self.jnt_orient_secondary,
+                                                      endJnt=self.end_joint)
 
         pm.parent(self.joints_grp, utils.get_group(df.joints_grp))
         pm.parent(self.joints[0], self.joints_grp)
