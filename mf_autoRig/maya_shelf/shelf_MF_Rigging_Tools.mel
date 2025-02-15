@@ -32,7 +32,7 @@ global proc shelf_MF_Rigging_Tools () {
         -image "character.svg" 
         -image1 "character.svg" 
         -style "iconOnly" 
-        -marginWidth 1
+        -marginWidth 0
         -marginHeight 1
         -command "from unload_packages import unload_packages\nunload_packages(silent=True, packages=[\"mf_autoRig\"])\nimport mf_autoRig.UI.createWindow.mayaUI as createModulesUI\n\ncreateModulesUI.showWindow()" 
         -sourceType "python" 
@@ -67,7 +67,7 @@ global proc shelf_MF_Rigging_Tools () {
         -image "channelLayers.png" 
         -image1 "channelLayers.png" 
         -style "iconOnly" 
-        -marginWidth 1
+        -marginWidth 0
         -marginHeight 1
         -command "from unload_packages import unload_packages\nunload_packages(silent=True, packages=[\"mf_autoRig\"])\n\nimport mf_autoRig.UI.modifyWindow.modifyWindowUI as modifyWindow\nmodifyWindow.showWindow()    " 
         -sourceType "python" 
@@ -115,7 +115,7 @@ global proc shelf_MF_Rigging_Tools () {
         -image "advancedSettings_100.png" 
         -image1 "advancedSettings_100.png" 
         -style "iconOnly" 
-        -marginWidth 1
+        -marginWidth 0
         -marginHeight 1
         -command "from unload_packages import unload_packages\nunload_packages(silent=True, packages=[\"mf_autoRig\"])\nimport mf_autoRig.UI.toolsWindow.toolsWindow as toolsWindow\ntoolsWindow.showWindow()\n" 
         -sourceType "python" 
@@ -127,7 +127,7 @@ global proc shelf_MF_Rigging_Tools () {
         -flexibleWidthType 3
         -flexibleWidthValue 32
         -enable 1
-        -width 39
+        -width 35
         -height 34
         -manage 1
         -visible 1
@@ -149,9 +149,44 @@ global proc shelf_MF_Rigging_Tools () {
         -image "mf_colorPicker.png" 
         -image1 "mf_colorPicker.png" 
         -style "iconOnly" 
-        -marginWidth 1
+        -marginWidth 0
         -marginHeight 1
         -command "from mf_autoRig.extras.mf_colorPicker import showWindow\nshowWindow()" 
+        -sourceType "python" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -flexibleWidthType 3
+        -flexibleWidthValue 32
+        -enable 1
+        -width 35
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "from unload_packages import unload_packages\nunload_packages(silent=True, packages=[\"mf_autoRig\"])\n\nfrom mf_autoRig.modules.presets import biped\n\nbiped()" 
+        -enableBackground 0
+        -backgroundColor 0 0 0 
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "from unload_packages import unload_packages\nunload_packages(sile..." 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -imageOverlayLabel "BIPED" 
+        -overlayLabelColor 0 1 1 
+        -overlayLabelBackColor 0 0 0 1 
+        -image "character.svg" 
+        -image1 "character.svg" 
+        -style "iconOnly" 
+        -marginWidth 0
+        -marginHeight 1
+        -command "from unload_packages import unload_packages\nunload_packages(silent=True, packages=[\"mf_autoRig\"])\n\nfrom mf_autoRig.modules.presets import biped\n\nbiped()" 
         -sourceType "python" 
         -commandRepeatable 1
         -flat 1
