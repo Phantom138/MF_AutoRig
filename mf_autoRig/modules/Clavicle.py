@@ -157,13 +157,14 @@ class Clavicle(Module):
         pole_ctrl = arm.ik_ctrls[1]
         pm.parentConstraint(ik_ctrl, dup_ikHandle[0])
         pm.poleVectorConstraint(pole_ctrl, dup_ikHandle[0])
-        pm.parent(dup_ikHandle, self.drivers_grp)
+        pm.parent(dup_ikHandle[0], self.drivers_grp)
 
         # AUTO CLAVICLE LOGIC
         # Create joint at clavicle start
         clav_pos = self.joints[0].getTranslation(space='world')
         self.clav_aim_jnt = pm.createNode("joint", name=self.name + '_aim')
-        self.clav_aim_jnt.setTranslation(clav_pos)
+        pm.matchTransform(self.clav_aim_jnt, self.joints[0])
+        # self.clav_aim_jnt.setTranslation(clav_pos)
 
         # Create group for clav aim jnt
         clav_aim_grp = pm.createNode('transform', name=self.name + '_aim_grp')
