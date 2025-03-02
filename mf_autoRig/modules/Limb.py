@@ -291,12 +291,12 @@ class Limb(Module):
             log.info(f"Connecting {self.name} to {dest_class}.{self.attach_index}")
 
             if self.attach_index != 0:
-                pm.parentConstraint(dest.fk_ctrls[-1], self.ik_joints[0], maintainOffset=True)
-                pm.parentConstraint(dest.fk_ctrls[-1], self.fk_ctrls[0].getParent(1), maintainOffset=True)
+                pm.parentConstraint(dest.joints[-1], self.ik_joints[0], maintainOffset=True)
+                pm.parentConstraint(dest.joints[-1], self.fk_ctrls[0].getParent(1), maintainOffset=True)
 
             else:
                 # Connecting hip
-                pm.parentConstraint(dest.fk_ctrls[0], self.fk_ctrls[0].getParent(1), maintainOffset=True)
+                pm.parentConstraint(dest.joints[0], self.fk_ctrls[0].getParent(1), maintainOffset=True)
                 pm.parentConstraint(dest.hip_ctrl, self.ik_joints[0], maintainOffset=True)
 
             # else:

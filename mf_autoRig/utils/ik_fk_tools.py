@@ -51,7 +51,7 @@ def get_joint_orientation(firstJnt, secondJnt):
         return 0, 1, 0
 
 
-def create_fk_ctrls(joints, skipEnd=True, shape='circle', scale=1):
+def create_fk_ctrls(joints, skipEnd=True, shape='circle', scale=1, match_rot=True):
     scale *= df.CTRL_SCALE
     # Exception case: only one joint
     if type(joints) == pm.nodetypes.Joint:
@@ -64,7 +64,7 @@ def create_fk_ctrls(joints, skipEnd=True, shape='circle', scale=1):
         fk = CtrlGrp(base_name, shape, scale=scale)
 
         # Match transforms and parent constrain controller to joint
-        pm.matchTransform(fk.grp, jnt)
+        pm.matchTransform(fk.grp, jnt, pos=True, rot=match_rot)
         pm.parentConstraint(fk.ctrl, jnt, maintainOffset=True)
 
         return fk.ctrl
@@ -90,7 +90,7 @@ def create_fk_ctrls(joints, skipEnd=True, shape='circle', scale=1):
         fk = CtrlGrp(base_name, shape, scale=scale, axis=axis)
 
         # Match transforms and parent constrain controller to joint
-        pm.matchTransform(fk.grp, jnt)
+        pm.matchTransform(fk.grp, jnt, pos=True, rotation=match_rot)
         pm.parentConstraint(fk.ctrl, jnt, maintainOffset=True)
 
         # Parent previous group to the current controller

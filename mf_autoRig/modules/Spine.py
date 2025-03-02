@@ -17,6 +17,7 @@ class Spine(Module):
 
         'config_attrs': {
             **Module.meta_args['config_attrs'],
+            'ctrls_in_world': {'attributeType': 'bool'}
         },
         'info_attrs':{
             **Module.meta_args['info_attrs'],
@@ -41,6 +42,7 @@ class Spine(Module):
         for key, value in default_args.items():
             setattr(self, key, value)
 
+        self.ctrls_in_world = False
         self.reset()
         # self.save_metadata()
 
@@ -95,21 +97,149 @@ class Spine(Module):
         if self.meta:
             self.save_metadata()
 
-    def rig(self):
-        self.fk_ctrls = utils.create_fk_ctrls(self.joints, skipEnd=False, shape='square')
-        self.hip_ctrl = utils.create_fk_ctrls(self.hip_jnt, shape='star', scale=1.5)
+    def __fk_spine(self):
+        # Duplicate and name properly
+        self.fk_joints = utils.duplicate_joints(self.joints,"_dup")
+        for i,jnt in enumerate(self.fk_joints):
+            jnt.rename(f'{self.name}{i+1:02}{df.fk_sff}{df.jnt_sff}')
+        pm.parent(self.fk_joints[0], self.drivers_grp)
 
-        # Color ctrls
+        self.fk_ctrls = utils.create_fk_ctrls(self.fk_joints, skipEnd=False, shape='square', match_rot=not self.ctrls_in_world)
         set_color(self.fk_ctrls, viewport='yellow')
+
+        self.fk_ctrl_grp = self.fk_ctrls[0].getParent(1)
+        pm.parent(self.fk_ctrl_grp, self.control_grp)
+        # # Parent spine ctrl under Root
+        # pm.parent(self.fk_ctrls[0].getParent(1), utils.get_group(df.root))
+
+    def __ik_spine(self):
+        # Duplicate and name properly
+        self.ik_joints = utils.duplicate_joints(self.joints,"_tmp")
+        for i,jnt in enumerate(self.ik_joints):
+            jnt.rename(f'{self.name}{i+1:02}{df.ik_sff}{df.jnt_sff}')
+
+        pm.parent(self.ik_joints[0], self.drivers_grp)
+        # Create ik_ctrl_grp
+        self.ik_ctrl_grp = pm.createNode('transform',name=f'{self.name}{df.ik_sff}{df.control_grp}')
+        pm.parent(self.ik_ctrl_grp, self.control_grp)
+
+        # Ik Handle
+        ikHandle, _, curve = pm.ikHandle(startJoint=self.ik_joints[0], endEffector=self.ik_joints[-1], solver='ikSplineSolver',
+                                         scv=False, pcv=False)
+        ikHandle.rename(f'{self.name}_ikHandle')
+        pm.parent(ikHandle,utils.get_group(df.ikHandle_grp))
+
+        curve.rename(f'{self.name}_spine_ik_crv')
+        pm.parent(curve, self.drivers_grp)
+
+
+        guide_jnts = []
+        self.ik_ctrls = []
+        # Create locators for pos (ik_spine)
+        # This is for connecting other modules to it
+        # the reason this is to allow to offset the pivot of the ctrl
+        self.ik_locators = []
+        # self.ik_joints[len(self.ik_joints) // 2]
+        for i,jnt in enumerate([self.ik_joints[0], self.ik_joints[-1]]):
+            guide_jnt = pm.createNode('joint', name=f'{self.name}{df.ik_sff}_driver{i+1:02}_jnt')
+
+            pm.matchTransform(guide_jnt, jnt, pos=True, rotation = not self.ctrls_in_world)
+            pm.parent(guide_jnt, self.drivers_grp)
+
+            ctrl = utils.CtrlGrp(name=f'{self.name}{df.ik_sff}_driver{i+1:02}', shape='cube')
+            # ctrl = utils.create_fk_ctrls(guide_jnt)
+            pm.matchTransform(ctrl.grp, jnt)
+            pm.parent(ctrl.grp, self.ik_ctrl_grp)
+
+            loc = pm.spaceLocator(name=f'{self.name}{df.ik_sff}_driver{i+1:02}_loc')
+            pm.matchTransform(loc, ctrl.ctrl)
+            pm.parent(loc, ctrl.ctrl)
+            pm.parent(guide_jnt, loc)
+
+            self.ik_locators.append(loc)
+            self.ik_ctrls.append(ctrl.ctrl)
+            guide_jnts.append(guide_jnt)
+
+        pm.skinCluster(guide_jnts, curve, toSelectedBones=True)
+
+        # Configure ik Handle
+        ikHandle.dTwistControlEnable.set(1)
+        ikHandle.dWorldUpType.set(4)
+        ikHandle.dForwardAxis.set(2)
+        ikHandle.dWorldUpAxis.set(3)
+        ikHandle.dWorldUpVectorY.set(0)
+        ikHandle.dWorldUpVectorEndY.set(0)
+        ikHandle.dWorldUpVectorZ.set(1)
+        ikHandle.dWorldUpVectorEndZ.set(1)
+
+        self.fk_ctrls[0].worldMatrix.connect(ikHandle.dWorldUpMatrix)
+        self.fk_ctrls[1].worldMatrix.connect(ikHandle.dWorldUpMatrixEnd)
+
+    def __ik_fk_switch(self, switch_obj, other_constraints):
+        if not isinstance(other_constraints, list):
+            other_constraints = [other_constraints]
+
+        # Add ikfk switch attribute default: ik
+        pm.addAttr(switch_obj, longName=df.ikfkSwitch_name, attributeType='float', min=0, max=1, defaultValue=0,
+                   keyable=True)
+
+        # Reverse node
+        reverse_sw = pm.createNode('reverse', name=f'{self.name}_Ik_Fk_reverse')
+        getattr(switch_obj, df.ikfkSwitch_name).connect(reverse_sw.inputX)
+
+        # Get ports
+        ik_port = reverse_sw.outputX
+        fk_port = switch_obj.attr(df.ikfkSwitch_name)
+
+        constraints = []
+        for skin_jnt, fk_jnt, ik_jnt in zip(self.joints[:-1], self.fk_joints[:-1], self.ik_joints[:-1]):
+            constraints.append(pm.parentConstraint(fk_jnt, ik_jnt, skin_jnt))
+
+        # Do last joint
+        point_cst = pm.pointConstraint(self.fk_joints[-1], self.ik_joints[-1], self.joints[-1])
+        orient_cst = pm.orientConstraint(self.fk_joints[-1], self.ik_ctrls[-1], self.joints[-1])
+        constraints.append(point_cst)
+        constraints.append(orient_cst)
+        constraints.extend(other_constraints)
+
+        for cst in constraints:
+            weights = cst.getWeightAliasList()
+            for weight in weights:
+                name = weight.longName(fullPath=False)
+                if df.ik_sff in name:
+                    ik_port.connect(weight)
+                if df.fk_sff in name:
+                    fk_port.connect(weight)
+
+        # Hide ik or fk ctrls based on switch
+        ik_port.connect(self.ik_ctrl_grp.v)
+        fk_port.connect(self.fk_ctrl_grp.v)
+
+
+    def rig(self):
+        print("ctrls_in_world: ", self.ctrls_in_world)
+        # Create drivers grp
+        self.drivers_grp = pm.createNode('transform', name=f"{self.name}_{df.drivers_grp}")
+        pm.parent(self.drivers_grp, utils.get_group(df.drivers_grp))
+
+        # Create control grp
+        self.control_grp = pm.createNode('transform', name=f'{self.name}{df.control_grp}')
+        pm.parent(self.control_grp, utils.get_group(df.root))
+
+        self.__fk_spine()
+        self.__ik_spine()
+
+        # Create Hip
+        self.hip_ctrl = utils.create_fk_ctrls(self.hip_jnt, shape='star', scale=1.5, match_rot=not self.ctrls_in_world)
         set_color(self.hip_ctrl, viewport='green')
 
-        # Parent hip ctrl grp under pelvis ctrl
-        pm.parent(self.hip_ctrl.getParent(1), self.fk_ctrls[0])
+        cst = pm.parentConstraint(self.fk_ctrls[0], self.ik_locators[0], self.hip_ctrl.getParent(1))
 
-        # Parent spine ctrl under Root
-        pm.parent(self.fk_ctrls[0].getParent(1), utils.get_group(df.root))
+        self.__ik_fk_switch(self.hip_ctrl, cst)
 
-        self.control_grp = self.fk_ctrls[0].getParent(1)
+        # pm.parent(self.hip_ctrl.getParent(1), self.fk_ctrls[0])
+
+        # self.control_grp = self.fk_ctrls[0].getParent(1)
         self.all_ctrls = self.fk_ctrls
 
         self.connect_children()

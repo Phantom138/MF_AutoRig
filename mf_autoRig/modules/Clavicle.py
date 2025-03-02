@@ -216,7 +216,7 @@ class Clavicle(Module):
             pm.warning(f"{self.name} not connected to {torso.name}")
             return
 
-        pm.parentConstraint(torso.fk_ctrls[-1], self.control_grp.getChildren()[0], maintainOffset=True)
+        pm.parentConstraint(torso.joints[-1], self.control_grp.getChildren()[0], maintainOffset=True)
 
         if self.auto_clavicle:
             # Connect Guide Ik arm
