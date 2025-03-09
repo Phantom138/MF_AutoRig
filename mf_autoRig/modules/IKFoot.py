@@ -28,6 +28,7 @@ class IKFoot(Module):
             'guides': {'attributeType': 'message', 'm': True},
             'locators_guides': {'attributeType': 'message', 'm': True},
             'joints': {'attributeType': 'message', 'm': True},
+            'fk_ctrls': {'attributeType': 'message', 'm': True},
             'all_ctrls': {'attributeType': 'message', 'm': True},
         }
     }
