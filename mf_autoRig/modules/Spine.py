@@ -104,7 +104,8 @@ class Spine(Module):
             jnt.rename(f'{self.name}{i+1:02}{df.fk_sff}{df.jnt_sff}')
         pm.parent(self.fk_joints[0], self.drivers_grp)
 
-        self.fk_ctrls = utils.create_fk_ctrls(self.fk_joints, skipEnd=False, shape='square', match_rot=not self.ctrls_in_world)
+        # Todo: fk_joints[1:] is needed with the cog setup rn. Maybe theres a better way to do this?
+        self.fk_ctrls = utils.create_fk_ctrls(self.fk_joints[1:], skipEnd=True, shape='square', match_rot=not self.ctrls_in_world)
         set_color(self.fk_ctrls, viewport='yellow')
 
         self.fk_ctrl_grp = self.fk_ctrls[0].getParent(1)
@@ -152,6 +153,7 @@ class Spine(Module):
             pm.parent(ctrl.grp, self.ik_ctrl_grp)
 
             loc = pm.spaceLocator(name=f'{self.name}{df.ik_sff}_driver{i+1:02}_loc')
+            loc.v.set(0)
             pm.matchTransform(loc, ctrl.ctrl)
             pm.parent(loc, ctrl.ctrl)
             pm.parent(guide_jnt, loc)
@@ -172,12 +174,12 @@ class Spine(Module):
         ikHandle.dWorldUpVectorZ.set(1)
         ikHandle.dWorldUpVectorEndZ.set(1)
 
-        self.fk_ctrls[0].worldMatrix.connect(ikHandle.dWorldUpMatrix)
-        self.fk_ctrls[1].worldMatrix.connect(ikHandle.dWorldUpMatrixEnd)
+        self.ik_ctrls[0].worldMatrix.connect(ikHandle.dWorldUpMatrix)
+        self.ik_ctrls[1].worldMatrix.connect(ikHandle.dWorldUpMatrixEnd)
 
-    def __ik_fk_switch(self, switch_obj, other_constraints):
-        if not isinstance(other_constraints, list):
-            other_constraints = [other_constraints]
+    def __ik_fk_switch(self, switch_obj):
+        # if not isinstance(other_constraints, list):
+        #     other_constraints = [other_constraints]
 
         # Add ikfk switch attribute default: ik
         pm.addAttr(switch_obj, longName=df.ikfkSwitch_name, attributeType='float', min=0, max=1, defaultValue=0,
@@ -200,7 +202,6 @@ class Spine(Module):
         orient_cst = pm.orientConstraint(self.fk_joints[-1], self.ik_ctrls[-1], self.joints[-1])
         constraints.append(point_cst)
         constraints.append(orient_cst)
-        constraints.extend(other_constraints)
 
         for cst in constraints:
             weights = cst.getWeightAliasList()
@@ -217,7 +218,7 @@ class Spine(Module):
 
 
     def rig(self):
-        print("ctrls_in_world: ", self.ctrls_in_world)
+        # Todo: the part with the cog controller could be cleaned up a bit
         # Create drivers grp
         self.drivers_grp = pm.createNode('transform', name=f"{self.name}_{df.drivers_grp}")
         pm.parent(self.drivers_grp, utils.get_group(df.drivers_grp))
@@ -226,18 +227,28 @@ class Spine(Module):
         self.control_grp = pm.createNode('transform', name=f'{self.name}{df.control_grp}')
         pm.parent(self.control_grp, utils.get_group(df.root))
 
-        self.__fk_spine()
-        self.__ik_spine()
+        # Create cog ctrl
+        cog = utils.CtrlGrp("M_cog", "square", 4)
+        pm.parent(cog.grp, self.control_grp)
+        pm.matchTransform(cog.grp, self.joints[0], position=True)
+        self.cog_ctrl = cog.ctrl
 
         # Create Hip
         self.hip_ctrl = utils.create_fk_ctrls(self.hip_jnt, shape='star', scale=1.5, match_rot=not self.ctrls_in_world)
         set_color(self.hip_ctrl, viewport='green')
+        pm.parentConstraint(self.joints[0], self.hip_ctrl.getParent(1))
+        pm.parent(self.hip_ctrl.getParent(1), self.control_grp)
 
-        cst = pm.parentConstraint(self.fk_ctrls[0], self.ik_locators[0], self.hip_ctrl.getParent(1))
+        self.__fk_spine()
+        self.__ik_spine()
 
-        self.__ik_fk_switch(self.hip_ctrl, cst)
+        self.__ik_fk_switch(self.cog_ctrl)
+        # Cog is the first fk ctrl
+        pm.parentConstraint(self.cog_ctrl, self.fk_joints[0])
+        pm.parent(self.fk_ctrls[0].getParent(1), self.cog_ctrl)
+        pm.parent(self.ik_ctrl_grp, self.cog_ctrl)
 
-        # pm.parent(self.hip_ctrl.getParent(1), self.fk_ctrls[0])
+        # cst = pm.parentConstraint(self.fk_ctrls[0], self.ik_locators[0], self.hip_ctrl.getParent(1))
 
         # self.control_grp = self.fk_ctrls[0].getParent(1)
         self.all_ctrls = self.fk_ctrls
