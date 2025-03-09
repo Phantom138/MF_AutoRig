@@ -166,7 +166,7 @@ class IkFkSwitch:
             for foot_jnt, fk_ctrl in zip(self.foot.joints.get(), self.foot.fk_ctrls.get()):
                 mtx = foot_jnt.worldMatrix.get() * fk_ctrl.parentInverseMatrix.get()
                 pm.xform(fk_ctrl, m=mtx)
-
+        # test
 
     def fk_to_ik(self):
         # In fk mode, switch_ctrl to ik
