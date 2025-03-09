@@ -405,6 +405,16 @@ class Module(abc.ABC):
 
         return is_rigged, is_connected, is_mirrored
 
+    # Group methods
+    def get_drivers_grp(self):
+        if self.drivers_grp is None:
+            # Create node
+            self.drivers_grp = pm.createNode('transform',name=f"{self.name}_Drivers_grp")
+            pm.parent(self.drivers_grp, utils.get_group("Drivers_grp"))
+
+        # Todo: Check node exists in maya
+        return self.drivers_grp
+
     # EDIT METHODS
     def delete(self, keep_meta_node=False):
         """

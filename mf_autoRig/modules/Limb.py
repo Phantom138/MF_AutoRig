@@ -58,7 +58,9 @@ class Limb(Module):
         'config_attrs': {
             **Module.meta_args['config_attrs'],
             'forearm_twist': {'attributeType': 'bool'},
-            'world_ik': {'attributeType': 'bool'}
+            'arm_twist': {'attributeType': 'bool'},
+            'world_ik': {'attributeType': 'bool'},
+            'end_fk': {'attributeType': 'bool'}
         },
         'info_attrs':{
             **Module.meta_args['info_attrs'],
@@ -86,10 +88,13 @@ class Limb(Module):
         self.ik_ctrls = []
         self.fk_joints = []
         self.fk_ctrls = []
-        self.switch = []
+        self.switch = False
         self.world_ik = False
+        self.end_fk = False
 
         self.forearm_twist = False
+        self.arm_twist_extractor_grp = None
+        self.arm_twist = False
 
         self.reset()
 
@@ -104,9 +109,12 @@ class Limb(Module):
         self.ik_ctrls = []
         self.fk_joints = []
         self.fk_ctrls = []
-        self.switch = []
+        self.switch = None
+        self.end_fk = None
 
         self.forearm_twist = False
+        self.arm_twist_extractor_grp = None
+        self.arm_twist = False
 
 
     def update_from_meta(self):
@@ -157,7 +165,7 @@ class Limb(Module):
     def create_joints(self, mirror_from = None):
         self.joints = utils.create_joints_from_guides(self.name, self.guides,
                                                       aimVector=self.jnt_orient_main, upVector=self.jnt_orient_secondary)
-
+        # TODO: move twist jnt generation here
         if self.meta:
             self.save_metadata()
 
@@ -167,7 +175,7 @@ class Limb(Module):
         self.ik_joints, self.ik_ctrls, self.ik_ctrls_grp, self.ikHandle = utils.create_ik(self.joints, world_ik=self.world_ik)
         # FK
         self.fk_joints = utils.create_fk_jnts(self.joints)
-        self.fk_ctrls = utils.create_fk_ctrls(self.fk_joints)
+        self.fk_ctrls = utils.create_fk_ctrls(self.fk_joints, skipEnd=not self.end_fk)
 
         self.ikfk_constraints = utils.constraint_ikfk(self.joints, self.ik_joints, self.fk_joints)
         self.switch = utils.ikfk_switch(self.ik_ctrls_grp, self.fk_ctrls, self.ikfk_constraints, self.joints[-1])
@@ -180,6 +188,9 @@ class Limb(Module):
 
         if self.forearm_twist:
             self.__do_forearm_twist()
+
+        if self.arm_twist:
+            self._do_arm_twist()
 
         self.connect_children()
 
@@ -234,18 +245,10 @@ class Limb(Module):
             log.warning(f'Cannot do forearm twist for {self.name}, no hand found in children')
             return
 
-        # Create twist joint and parent it under the elbow
-        twist_jnt = pm.createNode('joint', n=self.name + '_twist_skin_jnt')
-        twist_jnt.radius.set(self.joints[1].radius.get())
-
-        _tmp_const = pm.parentConstraint(self.joints[1], self.joints[-1], twist_jnt)
-        pm.delete(_tmp_const)
-
-        pm.parent(twist_jnt, self.joints[1])
-        pm.makeIdentity(twist_jnt, apply=True, r=True)
         # pm.joint(twist_jnt, orientation=(0,0,0), edit=True)
         # twist_jnt.jointOrient.set(0,0,0)
 
+        ## Create rotation extractor
         # Create locator at arm end
         wrist_aim_loc = pm.spaceLocator(name = self.name + '_wrist_aim_loc')
         pm.matchTransform(wrist_aim_loc, self.joints[-1])
@@ -254,7 +257,7 @@ class Limb(Module):
 
         # Parent to hand
         pm.parentConstraint(hand.hand_jnts[0], wrist_aim_loc, maintainOffset=True)
-
+        pm.parent(wrist_aim_loc, self.get_drivers_grp())
         pm.select(clear=True)
 
         # Create aim constraint and aim jnt
@@ -262,22 +265,108 @@ class Limb(Module):
         aim_jnt.radius.set(self.joints[-1].radius.get())
         pm.matchTransform(aim_jnt, self.joints[-1])
         pm.makeIdentity(aim_jnt, apply=True, r=True)
-        pm.parent(aim_jnt, self.joints[-1])
+        pm.parent(aim_jnt, self.joints[1])
 
         pm.aimConstraint(self.joints[1], aim_jnt, aimVector=self.jnt_orient_main * -1, upVector=self.jnt_orient_third * -1, worldUpType='object', worldUpObject=wrist_aim_loc)
 
-        # Connect aim_jnt rotataion to twist jnt
-        mult_divide = pm.createNode('multiplyDivide', n=self.name + '_twist_mult')
-        mult_divide.input2Y.set(0.5) # divide by 2
+        rot_extractor = aim_jnt.rotateY
+        twist_jnt_num = 2
+        twist_jnts = []
+        y_offset = self.joints[-1].ty.get() / (twist_jnt_num + 1)
+        mult_offset = 1 / (twist_jnt_num + 1)
+        for i in range(twist_jnt_num):
+            # Create twist joint and parent it under the elbow
+            twist_jnt = pm.createNode('joint', n=f'{self.name}{i+1:02}_twist_skin_jnt')
+            twist_jnt.radius.set(self.joints[1].radius.get())
 
-        aim_jnt.rotateY.connect(mult_divide.input1Y)
-        mult_divide.outputY.connect(twist_jnt.rotateY)
+            pm.parent(twist_jnt, self.joints[1], relative=True)
+            # pm.makeIdentity(twist_jnt, apply=True, r=True)
+            twist_jnt.ty.set(y_offset * (i+1))
 
-        # Create drivers grp
-        self.drivers_grp = pm.createNode('transform', name=f'{self.name}_{df.drivers_grp}')
-        pm.parent(self.drivers_grp, get_group(df.drivers_grp))
-        pm.parent(wrist_aim_loc, self.drivers_grp)
+            mult_divide = pm.createNode('multiplyDivide', n=f'{self.name}{i+1:02}_twist_mult')
+            mult_divide.input2Y.set(mult_offset * (i+1))  # divide by mult_offset
 
+            rot_extractor.connect(mult_divide.input1Y)
+            mult_divide.outputY.connect(twist_jnt.rotateY)
+
+            twist_jnts.append(twist_jnt)
+
+        # _tmp_const = pm.parentConstraint(self.joints[1], self.joints[-1], twist_jnt)
+        # pm.delete(_tmp_const)
+        #
+        # pm.parent(twist_jnt, self.joints[1])
+        # pm.makeIdentity(twist_jnt, apply=True, r=True)
+
+
+
+
+
+    def _do_arm_twist(self):
+        # TODO: make this work for other orients instead of y
+        # TODO: Better naming, l_arm_top_twist_01_skin_jnt instead of l_arm01_top_twist_skin_jnt
+        twist_jnt_num = 2
+        twist_rot_mult = 0.5
+        twist_name = "top_twist"
+        # Create group for rot extractor
+        self.arm_twist_extractor_grp = pm.createNode('transform', name=f"{self.name}_{twist_name}_extractor_grp")
+        pm.parent(self.arm_twist_extractor_grp, self.get_drivers_grp())
+
+        # Twists drivers
+        twist_drivers = utils.duplicate_joints([self.joints[0], self.joints[1]], suffix="_tmp")
+        pm.joint(twist_drivers[1], orientJoint="none", e=True)
+        pm.parent(twist_drivers[0], self.arm_twist_extractor_grp)
+        # Rename drivers
+        for i, driver in enumerate(twist_drivers):
+            driver.rename(f"{self.name}{i+1:02}_{twist_name}_driver_jnt")
+
+        # Drivers iK handle
+        drivers_ikHandle = pm.ikHandle(n=f"{self.name}_{twist_name}_ikhandle",sj=twist_drivers[0], ee=twist_drivers[1], sol="ikSCsolver")[0]
+        pm.parent(drivers_ikHandle, self.arm_twist_extractor_grp)
+        pm.pointConstraint(self.joints[1], drivers_ikHandle)
+        pm.orientConstraint(self.joints[0], twist_drivers[1])
+
+        # Create grp for twist transform
+        twist_grp = pm.createNode('transform', name=f"{self.name}_{twist_name}_grp")
+        pm.parent(twist_grp, self.joints_grp)
+        # pm.matchTransform(twist_grp, rot_extractor_grp)
+        # pm.parent(twist_grp, rot_extractor_grp)
+        pm.parentConstraint(self.joints[0], twist_grp)
+
+        # Create twists
+        twist_start_jnt = utils.duplicate_joints([self.joints[0]], suffix="_tmp")[0]
+        twist_start_jnt.rename(f"{self.name}01_{twist_name}{df.skin_sff}{df.jnt_sff}")
+        pm.parent(twist_start_jnt, twist_grp)
+
+        y_offset = twist_drivers[1].ty.get() / (twist_jnt_num+1)
+        prev_joint = twist_start_jnt
+        twist_jnts = [twist_start_jnt]
+        for i in range(twist_jnt_num):
+            jnt = pm.createNode('joint', name=f"{self.name}{i+2:02}_{twist_name}{df.skin_sff}{df.jnt_sff}")
+            pm.parent(jnt, prev_joint, relative=True)
+            pm.joint(jnt, orientJoint="none", e=True)
+
+            jnt.ty.set(y_offset)
+            twist_jnts.append(jnt)
+            prev_joint = jnt
+        # Rename joints[0] so it's no longer skin_jnt
+        # TODO: this is a bit janky, might be better to handle this upstream
+        # Ah the power of pymel, renaming stuff without breaking everything :)
+        new_name = self.joints[0].replace("_skin_jnt", "_jnt")
+        self.joints[0].rename(new_name)
+
+        # Connect to rotation
+        rot_source = twist_drivers[1].ry
+        pma = pm.createNode('multDoubleLinear')
+        rot_source.connect(pma.input1)
+        pma.input2.set(-1)
+        pma.output.connect(twist_jnts[0].ry)
+
+        pma2 = pm.createNode('multDoubleLinear')
+        rot_source.connect(pma2.input1)
+        pma2.input2.set(twist_rot_mult)
+
+        for jnt in twist_jnts[1:]:
+            pma2.output.connect(jnt.ry)
 
 
     def connect(self, dest):
@@ -296,7 +385,8 @@ class Limb(Module):
 
             else:
                 # Connecting hip
-                pm.parentConstraint(dest.joints[0], self.fk_ctrls[0].getParent(1), maintainOffset=True)
+                pass
+                pm.parentConstraint(dest.cog_ctrl, self.fk_ctrls[0].getParent(1), maintainOffset=True)
                 pm.parentConstraint(dest.hip_ctrl, self.ik_joints[0], maintainOffset=True)
 
             # else:
@@ -311,5 +401,10 @@ class Limb(Module):
             # pm.matchTransform(ctrl_grp, dest.joints[-1], position=True)
             pm.parentConstraint(dest.clavicle_ctrl, ctrl_grp, maintainOffset=True)
             pm.parentConstraint(dest.joints[-1], self.ik_joints[0])
+
+            if self.arm_twist:
+                pm.parentConstraint(dest.joints[-1], self.arm_twist_extractor_grp, maintainOffset=True)
+
+
 
 
