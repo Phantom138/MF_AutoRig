@@ -6,8 +6,12 @@ import time
 
 from maya import OpenMayaUI
 from maya.app.general.mayaMixin import MayaQWidgetDockableMixin
-from PySide2 import QtCore, QtWidgets
-import shiboken2
+try:
+    from PySide2 import QtGui, QtCore, QtUiTools, QtWidgets
+    from shiboken2 import wrapInstance
+except ImportError:
+    from PySide6 import QtGui, QtCore, QtUiTools, QtWidgets
+    from shiboken6 import wrapInstance
 
 file = 'C:/Users/332770/Documents/Maya-Scripts/mf_autoRig/cvsInfo.json'
 
@@ -79,7 +83,7 @@ def load_cvs():
 
 def get_maya_win():
     win_ptr = OpenMayaUI.MQtUtil.mainWindow()
-    return shiboken2.wrapInstance(int(win_ptr), QtWidgets.QMainWindow)
+    return wrapInstance(int(win_ptr), QtWidgets.QMainWindow)
 
 
 def delete_workspace_control(control):
