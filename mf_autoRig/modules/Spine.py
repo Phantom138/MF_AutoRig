@@ -86,7 +86,7 @@ class Spine(Module):
         # Create hip at the beginning of joint chain
         self.hip_jnt = pm.createNode('joint', name=f'{self.name[0]}_hip{df.skin_sff}{df.jnt_sff}')
         self.hip_jnt.radius.set(self.joints[0].radius.get())
-        pm.matchTransform(self.hip_jnt, self.joints[0])
+        pm.matchTransform(self.hip_jnt, self.joints[0], pos=True, rot=not self.ctrls_in_world)
 
         # Parent Joints under Joint_grp
         self.joints_grp = pm.createNode('transform', name=f'{self.name}_{df.joints_grp}')
@@ -140,16 +140,17 @@ class Spine(Module):
         # This is for connecting other modules to it
         # the reason this is to allow to offset the pivot of the ctrl
         self.ik_locators = []
+
         # self.ik_joints[len(self.ik_joints) // 2]
         for i,jnt in enumerate([self.ik_joints[0], self.ik_joints[-1]]):
             guide_jnt = pm.createNode('joint', name=f'{self.name}{df.ik_sff}_driver{i+1:02}_jnt')
 
-            pm.matchTransform(guide_jnt, jnt, pos=True, rotation = not self.ctrls_in_world)
+            pm.matchTransform(guide_jnt, jnt)
             pm.parent(guide_jnt, self.drivers_grp)
 
             ctrl = utils.CtrlGrp(name=f'{self.name}{df.ik_sff}_driver{i+1:02}', shape='cube')
             # ctrl = utils.create_fk_ctrls(guide_jnt)
-            pm.matchTransform(ctrl.grp, jnt)
+            pm.matchTransform(ctrl.grp, guide_jnt, pos=True, rotation = not self.ctrls_in_world)
             pm.parent(ctrl.grp, self.ik_ctrl_grp)
 
             loc = pm.spaceLocator(name=f'{self.name}{df.ik_sff}_driver{i+1:02}_loc')
@@ -174,8 +175,9 @@ class Spine(Module):
         ikHandle.dWorldUpVectorZ.set(1)
         ikHandle.dWorldUpVectorEndZ.set(1)
 
-        self.ik_ctrls[0].worldMatrix.connect(ikHandle.dWorldUpMatrix)
-        self.ik_ctrls[1].worldMatrix.connect(ikHandle.dWorldUpMatrixEnd)
+        guide_jnts[0].worldMatrix.connect(ikHandle.dWorldUpMatrix)
+        guide_jnts[1].worldMatrix.connect(ikHandle.dWorldUpMatrixEnd)
+
 
     def __ik_fk_switch(self, switch_obj):
         # if not isinstance(other_constraints, list):
@@ -236,15 +238,19 @@ class Spine(Module):
         # Create Hip
         self.hip_ctrl = utils.create_fk_ctrls(self.hip_jnt, shape='star', scale=1.5, match_rot=not self.ctrls_in_world)
         set_color(self.hip_ctrl, viewport='green')
-        pm.parentConstraint(self.joints[0], self.hip_ctrl.getParent(1))
         pm.parent(self.hip_ctrl.getParent(1), self.control_grp)
+        print("HIP", self.hip_ctrl.getParent(1))
+        print("JOINT", self.joints[0])
+        pm.select(cl=True)
+        pm.parentConstraint(self.joints[0], self.hip_ctrl.getParent(1), maintainOffset=True)
+
 
         self.__fk_spine()
         self.__ik_spine()
 
         self.__ik_fk_switch(self.cog_ctrl)
         # Cog is the first fk ctrl
-        pm.parentConstraint(self.cog_ctrl, self.fk_joints[0])
+        pm.parentConstraint(self.cog_ctrl, self.fk_joints[0], maintainOffset=True)
         pm.parent(self.fk_ctrls[0].getParent(1), self.cog_ctrl)
         pm.parent(self.ik_ctrl_grp, self.cog_ctrl)
 
