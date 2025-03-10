@@ -134,7 +134,7 @@ class Spine(Module):
         pm.parent(curve, self.drivers_grp)
 
 
-        guide_jnts = []
+        self.ik_guide_jnts = []
         self.ik_ctrls = []
         # Create locators for pos (ik_spine)
         # This is for connecting other modules to it
@@ -161,9 +161,9 @@ class Spine(Module):
 
             self.ik_locators.append(loc)
             self.ik_ctrls.append(ctrl.ctrl)
-            guide_jnts.append(guide_jnt)
+            self.ik_guide_jnts.append(guide_jnt)
 
-        pm.skinCluster(guide_jnts, curve, toSelectedBones=True)
+        pm.skinCluster(self.ik_guide_jnts, curve, toSelectedBones=True)
 
         # Configure ik Handle
         ikHandle.dTwistControlEnable.set(1)
@@ -175,8 +175,8 @@ class Spine(Module):
         ikHandle.dWorldUpVectorZ.set(1)
         ikHandle.dWorldUpVectorEndZ.set(1)
 
-        guide_jnts[0].worldMatrix.connect(ikHandle.dWorldUpMatrix)
-        guide_jnts[1].worldMatrix.connect(ikHandle.dWorldUpMatrixEnd)
+        self.ik_guide_jnts[0].worldMatrix.connect(ikHandle.dWorldUpMatrix)
+        self.ik_guide_jnts[1].worldMatrix.connect(ikHandle.dWorldUpMatrixEnd)
 
 
     def __ik_fk_switch(self, switch_obj):
@@ -201,7 +201,7 @@ class Spine(Module):
 
         # Do last joint
         point_cst = pm.pointConstraint(self.fk_joints[-1], self.ik_joints[-1], self.joints[-1])
-        orient_cst = pm.orientConstraint(self.fk_joints[-1], self.ik_ctrls[-1], self.joints[-1])
+        orient_cst = pm.orientConstraint(self.fk_joints[-1], self.ik_guide_jnts[-1], self.joints[-1])
         constraints.append(point_cst)
         constraints.append(orient_cst)
 
