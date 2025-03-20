@@ -207,10 +207,18 @@ class IkFkSwitch:
         for fk in self.fk_ctrls:
             fk.r.setKey()
 
-        if self.foot is not None:
-            for ctrl in self.foot.fk_ctrls.get():
+        if self.has_foot:
+            for ctrl in self.foot_fk_ctrls:
                 ctrl.r.setKey()
     
+    def select_ik(self):
+        pm.select(self.ik_ctrls)
+
+    def select_fk(self):
+        pm.select(self.fk_ctrls)
+        if self.has_foot:
+            pm.select(self.foot_fk_ctrls,add=True)
+
     def bake_framerange(self):
         # Check that the switch value doesn't change in the fram range
         start = int(pm.playbackOptions(q=True, min=True))
@@ -225,6 +233,12 @@ class IkFkSwitch:
         for i in range(start, end+1):
             pm.currentTime(i, e=True)
             self.switch(key=True)
+
+    def flip_switch_value(self):
+        if self.ik_fk_attr.get() == 0:
+            self.ik_fk_attr.set(1)
+        else:
+            self.ik_fk_attr.set(0)
 
 # -------- Functions for creating switch ---------- #
 def create_switch(switch_ctrl):
@@ -323,17 +337,47 @@ def _add(nodes, dst):
             connect(node, dst[i])
     else:
         connect(nodes, dst)
+# ------------------------------------------------ #
 
 
-def main():
+# ---------------- UI Logic ---------------------- #
+def switch_cmd(sw: IkFkSwitch):
+    with UndoStack(f"Switching IKFK"):
+        sw.switch()
+        sw.flip_switch_value()
+
+def ik_setKey_cmd(sw: IkFkSwitch):
+    with UndoStack(f"Set IK"):
+        sw.ik_setKey()
+        sw.select_ik()
+
+def fk_setKey_cmd(sw: IkFkSwitch):
+    with UndoStack(f"Set FK"):
+        sw.fk_setKey()
+        sw.select_fk()
+
+def bake_framerange_cmd(sw: IkFkSwitch):
+    with UndoStack(f"Bake framerange"):
+        sw.bake_framerange()
+        sw.flip_switch_value()
+
+def animUI():
     if pm.selected():
         node = pm.selected()[0]
     else:
         pm.warning("Nothing is selected")
+        return
+    
+    sw = IkFkSwitch(node)
+    window_name = node.name()
 
-    with UndoStack(f"Switching {node} IKFK"):
-        sw = IkFkSwitch(node)
-        sw.switch()
+    win = pm.window(title=window_name, widthHeight=(200, 100))
 
-main()
-# create_for_switch(pm.selected()[0])
+    pm.columnLayout(adjustableColumn=True)
+
+    pm.button(label="Switch current frame", command=lambda _: switch_cmd(sw), bgc=(0.3, 0.6, 1.0))
+    pm.button(label="Key IK ctrls", command=lambda _: ik_setKey_cmd(sw))
+    pm.button(label="Key FK ctrls", command=lambda _: fk_setKey_cmd(sw))
+    pm.button(label="Mocap - Bake Framerange", command=lambda _: bake_framerange_cmd(sw), bgc=(1.0, 1.0, 0.3))
+
+    pm.showWindow(win)
