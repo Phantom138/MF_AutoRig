@@ -166,7 +166,6 @@ class IkFkSwitch:
             for foot_jnt, fk_ctrl in zip(self.foot.joints.get(), self.foot.fk_ctrls.get()):
                 mtx = foot_jnt.worldMatrix.get() * fk_ctrl.parentInverseMatrix.get()
                 pm.xform(fk_ctrl, m=mtx)
-        # test
 
     def fk_to_ik(self):
         # In fk mode, switch_ctrl to ik
@@ -175,13 +174,20 @@ class IkFkSwitch:
 
         # Set IK
         if self.foot is not None:
-            # Match rotation for ik ctrl
-            match_to = self.foot.fk_ctrls.get()[0]
-        else:
-            match_to = self.fk_joints[-1]
+            # Match rotation of fk ankle to ik ctrl
+            # This more complex setup is needed since they are oriented in different ways
+            ankle = self.foot.fk_ctrls.get()[0]
+            fk_parent_inv_mtx = ankle.parentInverseMatrix.get()
+            ik_ctrl_parent_mtx = ik_ctrl.parentMatrix.get()
+            fk_world_mtx = ankle.worldMatrix.get()
 
-        ik_mtx = match_to.worldMatrix.get() * ik_ctrl.parentInverseMatrix.get()
-        pm.xform(ik_ctrl, m=ik_mtx)
+            res_mtx = fk_parent_inv_mtx * ik_ctrl_parent_mtx * fk_world_mtx
+            pm.xform(ik_ctrl, m=res_mtx) # This is only for rotation
+            pm.matchTransform(ik_ctrl, ankle, position=True)
+
+        else:
+            ik_mtx = self.fk_joints[-1].worldMatrix.get() * ik_ctrl.parentInverseMatrix.get()
+            pm.xform(ik_ctrl, m=ik_mtx)
 
         # Set pole
         pole_parent_t = pole_ctrl.getParent(1).t.get()
@@ -191,15 +197,6 @@ class IkFkSwitch:
         pole_ctrl.t.set(res_t)
 
 
-
-        # ikfk_attr.set(0)
-        #
-        # # Set keyframes
-        # pole_ctrl.t.setKey()
-        # ik_ctrl.t.setKey()
-        # ik_ctrl.r.setKey()
-        pass
-
     def switch(self):
         if self.ik_fk_attr.get() == 0:
             # In ik mode
@@ -207,6 +204,17 @@ class IkFkSwitch:
         else:
             # in fk mode
             self.fk_to_ik()
+    def ik_setKey(self):
+        self.ik_ctrls[0].t.setKey()
+        self.ik_ctrls[0].r.setKey()
+        self.ik_ctrls[1].t.setKey() # pole vector
+
+    def fk_setKey(self):
+        for fk in self.fk_ctrls:
+            fk.r.setKey()
+
+        if self.foot is not None:
+
 
 def main():
     if pm.selected():
