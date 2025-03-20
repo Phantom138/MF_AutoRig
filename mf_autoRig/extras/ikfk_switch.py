@@ -268,7 +268,7 @@ def create_switch(switch_ctrl):
     data["has_foot"] = False
     data["foot_joints"] = []
     data["foot_fk_ctrls"] = []
-    data["foot_offset"] = []
+    data["foot_offset"] = pm.dt.Vector(0,0,0)
 
     if node:
         data["has_foot"] = True
@@ -290,6 +290,8 @@ def create_switch(switch_ctrl):
 def _save_dict_to_node(node, data: dict):
     for key, item in data.items():
         if isinstance(item, list):
+            if len(item) == 0:
+                continue
             if isinstance(item[0], pm.PyNode):
                 node.addAttr(key, attributeType='message', m=True)
 
@@ -333,6 +335,8 @@ def _add(nodes, dst):
 
     # If it's a list of nodes connect each one to the destination
     if isinstance(nodes, list):
+        if len(nodes) == 0:
+            return
         for i, node in enumerate(nodes):
             connect(node, dst[i])
     else:
