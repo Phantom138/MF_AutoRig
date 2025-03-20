@@ -268,6 +268,8 @@ class Limb(Module):
         pm.parent(aim_jnt, self.joints[1])
 
         pm.aimConstraint(self.joints[1], aim_jnt, aimVector=self.jnt_orient_main * -1, upVector=self.jnt_orient_third * -1, worldUpType='object', worldUpObject=wrist_aim_loc)
+        aim_jnt.rotateOrder.set(1) # set to yzx for more stable rotation
+        # TODO: change this so it works for every rotation, right now it is only for joints aimed with Y
 
         rot_extractor = aim_jnt.rotateY
         twist_jnt_num = 2
@@ -297,10 +299,6 @@ class Limb(Module):
         # pm.parent(twist_jnt, self.joints[1])
         # pm.makeIdentity(twist_jnt, apply=True, r=True)
 
-
-
-
-
     def _do_arm_twist(self):
         # TODO: make this work for other orients instead of y
         # TODO: Better naming, l_arm_top_twist_01_skin_jnt instead of l_arm01_top_twist_skin_jnt
@@ -324,6 +322,8 @@ class Limb(Module):
         pm.parent(drivers_ikHandle, self.arm_twist_extractor_grp)
         pm.pointConstraint(self.joints[1], drivers_ikHandle)
         pm.orientConstraint(self.joints[0], twist_drivers[1])
+        twist_drivers[1].rotateOrder.set(1) # set to yzx for more stable rotation
+        # TODO: change this so it works for every rotation, right now it is only for joints aimed with Y
 
         # Create grp for twist transform
         twist_grp = pm.createNode('transform', name=f"{self.name}_{twist_name}_grp")
@@ -385,9 +385,10 @@ class Limb(Module):
 
             else:
                 # Connecting hip
-                pass
                 pm.parentConstraint(dest.cog_ctrl, self.fk_ctrls[0].getParent(1), maintainOffset=True)
                 pm.parentConstraint(dest.hip_ctrl, self.ik_joints[0], maintainOffset=True)
+                if self.arm_twist:
+                    pm.parentConstraint(dest.cog_ctrl, self.arm_twist_extractor_grp, maintainOffset=True)
 
             # else:
             #     raise NotImplementedError(f"Method for attaching {self.name} to point {attach_pt} from {dest_class} not implemented yet.")
